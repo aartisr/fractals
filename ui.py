@@ -11,7 +11,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QProgressBar,
     QTextEdit,
-    QSizePolicy
+    QSizePolicy,
+    QTabWidget
 )
 from PyQt6.QtCore import Qt
 import sys
@@ -30,10 +31,49 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Fractal Generator")
+        self.setWindowTitle("Fractal Workspace")
         # self.resize(640, 800)
         self.resize(1200, 800)
+        
+        # Create a QTabWidget
+        self.tabs = QTabWidget()
 
+        # Create the first tab (Fractal Generator)
+        self.fractal_tab = QWidget()
+        self.setup_fractal_tab1()
+        self.tabs.addTab(self.fractal_tab, "Fractal Generator")
+
+        # Create the second tab (Settings or Notes)
+        self.notes_tab = QWidget()
+        self.setup_notes_tab()
+        self.tabs.addTab(self.notes_tab, "Fractal Box Counting")
+        
+        # Set the QTabWidget as the central widget
+        self.setCentralWidget(self.tabs)
+      
+    def setup_fractal_tab(self):
+        layout = QGridLayout()
+
+        self.fractal_types = [
+            "Mandelbrot",
+            "Julia",
+            "Burning Ship",
+            "Newton",
+            "Barnsley Fern",
+            "Sierpinski Triangle",
+        ]
+        # Add widgets for the fractal generator (existing code)
+        self.fractal_menu_label = QLabel("Select Fractal Type:")
+        self.fractal_menu = QComboBox()
+        self.fractal_menu.setEditable(False)
+        self.fractal_menu.addItems(self.fractal_types)
+        layout.addWidget(self.fractal_menu_label, 0, 0)
+        layout.addWidget(self.fractal_menu, 0, 1)
+        self.fractal_tab.setLayout(layout)  
+
+    def setup_fractal_tab1(self):
+        # Set the QTabWidget as the central widget
+       
         self.fractal_type = "Mandelbrot"
         self.resolution = "500x500"
         self.color_scheme = "inferno"
@@ -156,11 +196,12 @@ class MainWindow(QMainWindow):
             "<li><b>N(&epsilon;)</b> is the number of boxes of size <b>&epsilon;</b> needed to cover the fractal.</li>"
             "<li><b>&epsilon;</b> is the box size.</li>"
             "</ul>"
-)
+        )
 
         # Adjust the size policy to make the text area responsive
         self.text_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
+       
+        
         self.generate_button = QPushButton("Generate Fractal")
         self.generate_button.clicked.connect(self.generate_fractal_threaded)
         self.generate_button.setStyleSheet("QPushButton{padding: 6px;}")
@@ -178,10 +219,22 @@ class MainWindow(QMainWindow):
         self.save_button.setStyleSheet("QPushButton{padding: 6px; font-weight: bold;}")
         layoutRight.addWidget(self.save_button, 6, 2, 1, 2)
 
-        widget = QWidget()
-        widget.setLayout(layout)
-        self.setCentralWidget(widget)
+        
+        self.fractal_tab.setLayout(layout)
+        # widget = QWidget()
+        # widget.setLayout(layout)
+        # self.setCentralWidget(widget)
 
+    def setup_notes_tab(self):
+        layout = QGridLayout()
+
+        # Add a QTextEdit for notes
+        self.text_area = QTextEdit()
+        self.text_area.setPlaceholderText("Enter your notes here...")
+        layout.addWidget(self.text_area, 0, 0)
+
+        self.notes_tab.setLayout(layout)
+        
     def combo_frac_type_changed(self, s):
         self.fractal_type = s
         fractal_type = self.fractal_type
