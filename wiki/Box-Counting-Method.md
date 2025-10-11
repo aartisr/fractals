@@ -28,17 +28,37 @@ In practice, D is estimated from the slope of the best-fit line in the log-log p
 
 ## Real-World Applications
 
+
+
 ### 1. **Medical Imaging**
 Box counting is widely used to analyze the complexity of anatomical structures in medical images. For example, it can quantify the irregularity of tumor boundaries in mammograms, or the branching of blood vessels in retinal scans, providing valuable biomarkers for disease diagnosis and progression.
+
+![Medical Imaging Example: Tumor Boundary Box Counting](https://upload.wikimedia.org/wikipedia/commons/2/2e/Mammogram_with_breast_cancer.jpg)
+*Source: Wikimedia Commons, “Mammogram with breast cancer” ([link](https://commons.wikimedia.org/wiki/File:Mammogram_with_breast_cancer.jpg)), CC BY-SA 3.0*
+
+
 
 ### 2. **Ecology and Geography**
 Researchers use box counting to measure the fractal dimension of coastlines, forest canopies, and river networks, helping to understand environmental processes and landscape evolution.
 
+![Ecology Example: Coastline Box Counting](https://upload.wikimedia.org/wikipedia/commons/2/2c/Fractal_dimension_coastline.png)
+*Source: Wikimedia Commons, “Fractal dimension coastline” ([link](https://commons.wikimedia.org/wiki/File:Fractal_dimension_coastline.png)), Public Domain*
+
+
+
 ### 3. **Material Science**
 The method helps characterize the roughness of surfaces, the porosity of materials, and the structure of polymers, all of which influence material properties and performance.
 
+![Material Science Example: Surface Roughness Box Counting](https://upload.wikimedia.org/wikipedia/commons/2/2a/AFM_image_of_a_surface.png)
+*Source: Wikimedia Commons, “AFM image of a surface” ([link](https://commons.wikimedia.org/wiki/File:AFM_image_of_a_surface.png)), Public Domain*
+
+
+
 ### 4. **Art and Pattern Recognition**
 Box counting can even be used to analyze the complexity of artworks, handwriting, or fingerprints, aiding in authentication and pattern recognition tasks.
+
+![Art Example: Fractal Analysis of Handwriting](https://upload.wikimedia.org/wikipedia/commons/6/6b/Handwriting-sample.png)
+*Source: Wikimedia Commons, “Handwriting sample” ([link](https://commons.wikimedia.org/wiki/File:Handwriting-sample.png)), Public Domain*
 
 ## Limitations and Considerations
 
