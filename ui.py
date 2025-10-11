@@ -154,51 +154,75 @@ class MainWindow(QMainWindow):
         layout.addLayout(layoutLeft, 0, 0)
         layout.addLayout(layoutRight, 0, 1)
 
+        # Fractal type selector
         self.fractal_menu_label = QLabel("Select Fractal Type:")
+        self.fractal_menu_label.setToolTip("Choose the type of fractal to generate.")
         self.fractal_menu = QComboBox()
         self.fractal_menu.setEditable(False)
         self.fractal_menu.addItems(self.fractal_types)
+        self.fractal_menu.setToolTip("Fractal type (e.g., Mandelbrot, Julia, etc.)")
+        self.fractal_menu.setAccessibleName("Fractal Type Selector")
         self.fractal_menu.currentTextChanged.connect(self.combo_frac_type_changed)
         layoutLeft.addWidget(self.fractal_menu_label, 0, 0)
         layoutLeft.addWidget(self.fractal_menu, 0, 1)
 
-        self.color_menu_label = QLabel("Select Resolution:")
-        self.color_menu = QComboBox()
-        self.color_menu.setEditable(False)
-        self.color_menu.addItems(self.resolutions)
-        self.color_menu.currentTextChanged.connect(self.combo_resolution_changed)
-        layoutLeft.addWidget(self.color_menu_label, 1, 0)
-        layoutLeft.addWidget(self.color_menu, 1, 1)
+        # Resolution selector
+        self.resolution_menu_label = QLabel("Select Resolution:")
+        self.resolution_menu_label.setToolTip("Choose the output image resolution.")
+        self.resolution_menu = QComboBox()
+        self.resolution_menu.setEditable(False)
+        self.resolution_menu.addItems(self.resolutions)
+        self.resolution_menu.setToolTip("Image resolution for the generated fractal.")
+        self.resolution_menu.setAccessibleName("Resolution Selector")
+        self.resolution_menu.currentTextChanged.connect(self.combo_resolution_changed)
+        layoutLeft.addWidget(self.resolution_menu_label, 1, 0)
+        layoutLeft.addWidget(self.resolution_menu, 1, 1)
 
+        # Color scheme selector
         self.color_menu_label = QLabel("Select Color Scheme:")
+        self.color_menu_label.setToolTip("Choose the color scheme for the fractal visualization.")
         self.color_menu = QComboBox()
         self.color_menu.setEditable(False)
         self.color_menu.addItems(self.color_schemes)
+        self.color_menu.setToolTip("Colormap for fractal rendering.")
+        self.color_menu.setAccessibleName("Color Scheme Selector")
         self.color_menu.currentTextChanged.connect(self.combo_color_scheme_changed)
         layoutLeft.addWidget(self.color_menu_label, 2, 0)
         layoutLeft.addWidget(self.color_menu, 2, 1)
 
         self.max_iter_label = QLabel("Max Iterations:")
+        self.max_iter_label.setToolTip("Maximum number of iterations for fractal calculation.")
         self.max_iter_entry = QLineEdit()
         self.max_iter_entry.setText(str(self.max_iter))
+        self.max_iter_entry.setToolTip("Enter an integer (e.g., 100). Higher values increase detail but slow down rendering.")
+        self.max_iter_entry.setAccessibleName("Max Iterations Input")
         self.max_iter_entry.editingFinished.connect(self.edit_max_iter_changed)
         layoutLeft.addWidget(self.max_iter_label, 3, 0)
         layoutLeft.addWidget(self.max_iter_entry, 3, 1)
 
         self.power_label = QLabel("Power:")
+        self.power_label.setToolTip("Exponent used in Mandelbrot/Burning Ship fractals.")
         self.power_entry = QLineEdit()
         self.power_entry.setText(str(self.power))
+        self.power_entry.setToolTip("Enter a decimal (e.g., 2.0). Only used for Mandelbrot/Burning Ship.")
+        self.power_entry.setAccessibleName("Power Input")
         self.power_entry.editingFinished.connect(self.edit_power_changed)
         layoutLeft.addWidget(self.power_label, 4, 0)
         layoutLeft.addWidget(self.power_entry, 4, 1)
 
         self.c_real_label = QLabel("Constant (c) - Real Part:")
+        self.c_real_label.setToolTip("Real part of the Julia set constant.")
         self.c_real_entry = QLineEdit()
         self.c_real_entry.setText(str(self.c_real))
+        self.c_real_entry.setToolTip("Enter a decimal (e.g., -0.42). Only used for Julia fractal.")
+        self.c_real_entry.setAccessibleName("Julia Real Input")
         self.c_real_entry.editingFinished.connect(self.edit_c_real_changed)
         self.c_imag_label = QLabel("Constant (c) - Imaginary Part:")
+        self.c_imag_label.setToolTip("Imaginary part of the Julia set constant.")
         self.c_imag_entry = QLineEdit()
         self.c_imag_entry.setText(str(self.c_imag))
+        self.c_imag_entry.setToolTip("Enter a decimal (e.g., 0.6). Only used for Julia fractal.")
+        self.c_imag_entry.setAccessibleName("Julia Imaginary Input")
         self.c_imag_entry.editingFinished.connect(self.edit_c_imag_changed)
         layoutLeft.addWidget(self.c_real_label,8, 0, alignment=Qt.AlignmentFlag.AlignTop) 
         layoutLeft.addWidget(self.c_real_entry, 8, 1) 
@@ -236,6 +260,8 @@ class MainWindow(QMainWindow):
        
         
         self.generate_button = QPushButton("Generate Fractal")
+        self.generate_button.setToolTip("Click to generate the selected fractal with current parameters.")
+        self.generate_button.setAccessibleName("Generate Fractal Button")
         self.generate_button.clicked.connect(self.generate_fractal_threaded)
         self.generate_button.setStyleSheet("QPushButton{padding: 6px;}")
         layoutRight.addWidget(self.generate_button, 0, 2, 1, 2)
@@ -248,6 +274,8 @@ class MainWindow(QMainWindow):
         layoutRight.addWidget(self.canvas, 2, 2, 4, 2)
 
         self.save_button = QPushButton("Save Fractal")
+        self.save_button.setToolTip("Save the currently displayed fractal as a PNG image.")
+        self.save_button.setAccessibleName("Save Fractal Button")
         self.save_button.clicked.connect(self.save_fractal)
         self.save_button.setStyleSheet("QPushButton{padding: 6px; font-weight: bold;}")
         layoutRight.addWidget(self.save_button, 6, 2, 1, 2)
@@ -544,20 +572,33 @@ class MainWindow(QMainWindow):
         layout = QGridLayout()
 
         # Controls
+        # Select Image button
         self.bc_select_btn = QPushButton("Select Image")
+        self.bc_select_btn.setToolTip("Load a grayscale image for box counting analysis.")
+        self.bc_select_btn.setAccessibleName("Select Image Button")
         self.bc_select_btn.clicked.connect(self.bc_select_image)
         layout.addWidget(self.bc_select_btn, 0, 0, 1, 2)
 
-        layout.addWidget(QLabel("ROI Size:"), 1, 0)
+        # ROI Size input
+        roi_label = QLabel("ROI Size:")
+        roi_label.setToolTip("Region of Interest (ROI) size in pixels (e.g., 128).")
+        layout.addWidget(roi_label, 1, 0)
         self.bc_roi_edit = QLineEdit()
         self.bc_roi_edit.setPlaceholderText("e.g. 128")
+        self.bc_roi_edit.setToolTip("Enter the ROI size in pixels. Must be a positive integer.")
+        self.bc_roi_edit.setAccessibleName("ROI Size Input")
         layout.addWidget(self.bc_roi_edit, 1, 1)
 
+        # Apply ROI Size button
         self.bc_start_btn = QPushButton("Apply ROI Size")
+        self.bc_start_btn.setToolTip("Apply the specified ROI size for box counting.")
+        self.bc_start_btn.setAccessibleName("Apply ROI Size Button")
         self.bc_start_btn.clicked.connect(self.bc_apply_roi_size)
         layout.addWidget(self.bc_start_btn, 2, 0, 1, 2)
 
+        # Status label
         self.bc_status = QLabel("No image loaded.")
+        self.bc_status.setToolTip("Status of the loaded image and ROI selection.")
         layout.addWidget(self.bc_status, 3, 0, 1, 2)
 
         # Image display area
