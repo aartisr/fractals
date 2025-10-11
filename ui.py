@@ -258,17 +258,56 @@ class MainWindow(QMainWindow):
         # widget.setLayout(layout)
         # self.setCentralWidget(widget)
 
+
     def setup_notes_tab(self):
         """
-        Set up the Notes tab UI for user notes and reference formulas.
-        Provides a QTextEdit for user notes.
+        Set up the Fractal Box Counting tab to display wiki content with a dropdown selector.
         """
-        layout = QGridLayout()
+        import os
+        from PyQt6.QtWidgets import QComboBox, QTextBrowser, QVBoxLayout, QLabel
+        from PyQt6.QtCore import Qt
+        import markdown
 
-        # Add a QTextEdit for notes
-        self.text_area = QTextEdit()
-        self.text_area.setPlaceholderText("Enter your notes here...")
-        layout.addWidget(self.text_area, 0, 0)
+        layout = QVBoxLayout()
+
+        # Dropdown to select wiki article
+        self.wiki_selector = QComboBox()
+        self.wiki_selector.addItems([
+            "Fractals in Medical Imaging",
+            "Box Counting Method"
+        ])
+        self.wiki_selector.setToolTip("Select a topic to view detailed information.")
+        layout.addWidget(QLabel("<b>Fractal Box Counting Wiki</b>"))
+        layout.addWidget(self.wiki_selector)
+
+        # QTextBrowser for displaying HTML content
+        self.wiki_viewer = QTextBrowser()
+        self.wiki_viewer.setOpenExternalLinks(True)
+        self.wiki_viewer.setStyleSheet("font-size: 15px; padding: 16px;")
+        layout.addWidget(self.wiki_viewer, stretch=1)
+
+        # Load markdown files and convert to HTML
+        wiki_dir = os.path.join(os.path.dirname(__file__), "wiki")
+        self.wiki_files = [
+            os.path.join(wiki_dir, "Fractals-in-Medical-Imaging.md"),
+            os.path.join(wiki_dir, "Box-Counting-Method.md")
+        ]
+        self.wiki_html = []
+        for md_file in self.wiki_files:
+            try:
+                with open(md_file, "r", encoding="utf-8") as f:
+                    md_text = f.read()
+                html = markdown.markdown(md_text, extensions=["extra", "sane_lists", "toc", "tables"])
+                self.wiki_html.append(html)
+            except Exception as e:
+                self.wiki_html.append(f"<b>Error loading file:</b> {md_file}<br><pre>{e}</pre>")
+
+        def on_wiki_changed(idx):
+            self.wiki_viewer.setHtml(self.wiki_html[idx])
+
+        self.wiki_selector.currentIndexChanged.connect(on_wiki_changed)
+        # Show the first article by default
+        self.wiki_viewer.setHtml(self.wiki_html[0])
 
         self.notes_tab.setLayout(layout)
         
