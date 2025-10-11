@@ -184,7 +184,7 @@ A: Add a new Python file in the `fractals/` directory and update the UI dropdown
 A: Yes, it is cross-platform. Just ensure you have Python 3.8+ and the required dependencies.
 
 **Q: Where can I learn more about fractals and box counting?**  
-A: See the [wiki](#📖-advanced-topics--wiki) or the in-app wiki tab.
+A: See the [Advanced Topics & Wiki](#advanced-topics--wiki) section or the in-app wiki tab.
 
 ---
 
