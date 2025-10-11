@@ -1,5 +1,11 @@
 
-> **Related:** For an application of box counting in medical imaging, see the [[Fractals in Medical Imaging|Fractals-in-Medical-Imaging]] wiki page.
+
+
+> **Related:** For an application of box counting in medical imaging, see the [Fractals in Medical Imaging](Fractals-in-Medical-Imaging.md) wiki page.
+> 
+> For equations and details on all fractal types, see the [Fractal Types and Equations](Fractal-Types-and-Equations.md) wiki page.
+
+> **See also:** For equations and details on all fractal types, see the [Fractal Types and Equations](Fractal-Types-and-Equations.md) wiki page.
 
 
 # The Box Counting Method: Measuring the Fractal Dimension of Complexity
