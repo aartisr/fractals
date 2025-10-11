@@ -1,4 +1,4 @@
-**Related:** For a practical explanation of the box counting method, see the [[Box Counting Method|Box-Counting-Method]] wiki page.
+**Related:** For a practical explanation of the box counting method, see the [Box Counting Method](Box-Counting-Method.md) wiki page.
 
 # Fractals in Medical Imaging: Unlocking the Complexity of Life
 
@@ -16,7 +16,7 @@ Biological systems, from the branching of blood vessels to the convolutions of t
 
 ## Fractal Dimension: A Quantitative Biomarker
 
-For a practical explanation of the box counting method used to estimate fractal dimension, see the [[Box Counting Method|Box-Counting-Method]] wiki page.
+For a practical explanation of the box counting method used to estimate fractal dimension, see the [Box Counting Method](Box-Counting-Method.md) wiki page.
 
 The **fractal dimension** is a key metric that quantifies the complexity of a structure. Unlike simple geometric shapes, biological tissues often have non-integer dimensions, reflecting their intricate organization. In medical imaging, the fractal dimension can be computed from images using techniques such as **box counting**, providing a single value that summarizes the degree of structural complexity.
 
