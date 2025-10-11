@@ -1,0 +1,30 @@
+@startuml fractals-1-flow
+title Fractals-1 Application Flow Diagram
+
+start
+
+:User launches MainWindow;
+:User selects Fractal Type or Box Counting;
+
+if (Fractal Generation?) then (yes)
+  :MainWindow collects parameters;
+  :MainWindow calls Fractal Class (e.g., Mandelbrot, Julia, etc.);
+  :Fractal Class generates image;
+  :MainWindow displays fractal;
+  :User can save or adjust parameters;
+else (no)
+  if (Box Counting?) then (yes)
+    :User selects image;
+    :MainWindow delegates to BoxCounterHelpers;
+    :BoxCounterHelpers manages ROI selection via ROIImageLabel;
+    :BoxCounterHelpers calls BoxCounterUtils for box counting;
+    :BoxCounterUtils computes fractal dimension;
+    :MainWindow displays results;
+  else (no)
+    :User views notes or exits;
+  endif
+endif
+
+stop
+
+@enduml
