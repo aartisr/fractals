@@ -4,12 +4,6 @@
 
 ---
 
-<p align="center">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/2/2e/Mammogram_with_breast_cancer.jpg" alt="Mammogram with breast cancer" width="400" />
-</p>
-
-<p align="center"><em>Figure 1. Mammogram with breast cancer. <a href="https://commons.wikimedia.org/wiki/File:Mammogram_with_breast_cancer.jpg">Wikimedia Commons</a>, CC BY-SA 3.0</em></p>
-
 Fractals, with their intricate self-similar patterns and mathematical elegance, have revolutionized our understanding of complex structures in nature. In the realm of medical imaging, fractal geometry offers a powerful lens through which we can analyze, quantify, and interpret the subtle complexities of biological tissues—complexities that often elude traditional Euclidean approaches.
 
 ---
