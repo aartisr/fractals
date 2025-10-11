@@ -6,7 +6,10 @@ Fractals, with their intricate self-similar patterns and mathematical elegance, 
 
 Biological systems, from the branching of blood vessels to the convolutions of the brain, exhibit fractal-like patterns. These structures are not random; rather, they follow recursive rules that create repeating motifs at different scales. This self-similarity is not just visually striking—it encodes vital information about the health and function of tissues.
 
+
 ## Fractal Dimension: A Quantitative Biomarker
+
+For a detailed explanation of the box counting method used to estimate fractal dimension, see the [[Box Counting Method|Box-Counting-Method]].
 
 The fractal dimension is a key metric that quantifies the complexity of a structure. Unlike simple geometric shapes, biological tissues often have non-integer dimensions, reflecting their intricate organization. In medical imaging, the fractal dimension can be computed from images using techniques such as box counting, providing a single value that summarizes the degree of structural complexity.
 
