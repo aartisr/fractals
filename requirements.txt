@@ -3,3 +3,5 @@ matplotlib
 PyQt6
 opencv-python==4.10.0.84
 scikit-image==0.24.0
+markdown
+pytest

@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fractal-box-counter"
+version = "0.1.0"
+description = "Interactive fractal generator and box counting analysis toolkit."
+authors = [
+    { name = "semruktech", email = "contact@example.com" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "PyQt6",
+    "opencv-python==4.10.0.84",
+    "scikit-image==0.24.0",
+    "markdown",
+    "pytest"
+]

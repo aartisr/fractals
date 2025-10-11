@@ -7,8 +7,15 @@ class BoxCounterUtils:
     """
     Utility class for box counting and fractal dimension estimation.
     """
+
     @staticmethod
     def box_counting(image):
+        """
+        Perform box counting on a binary image.
+        Returns:
+            counts (list): Number of occupied boxes for each box size.
+            sizes (list): Box sizes used.
+        """
         sizes = 2 ** np.arange(1, int(np.log2(min(image.shape))) + 1)
         counts = [
             sum(
@@ -18,8 +25,7 @@ class BoxCounterUtils:
             )
             for size in sizes
         ]
-        log_sizes, log_counts = np.log(sizes), np.log(counts)
-        return -np.polyfit(log_sizes, log_counts, 1)[0]
+        return counts, sizes
 
     @staticmethod
     def fractal_dim(image):
@@ -31,5 +37,7 @@ class BoxCounterUtils:
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         processed = cv2.morphologyEx(binarized, cv2.MORPH_CLOSE, kernel)
         skeletonized = (skeletonize(processed // 255) * 255).astype(np.uint8)
-        fd = BoxCounterUtils.box_counting(skeletonized)
+        counts, sizes = BoxCounterUtils.box_counting(skeletonized)
+        log_sizes, log_counts = np.log(sizes), np.log(counts)
+        fd = -np.polyfit(log_sizes, log_counts, 1)[0]
         return round(fd, 4), round(time.time() - start, 4)

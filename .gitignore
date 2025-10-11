@@ -12,3 +12,4 @@ fractals/__pycache__/julia.cpython-313.pyc
 fractals/__pycache__/mandelbrot.cpython-313.pyc
 fractals/__pycache__/newton.cpython-313.pyc
 fractals/__pycache__/sierpinski_triangle.cpython-313.pyc
+*.pyc
