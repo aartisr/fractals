@@ -302,12 +302,13 @@ class MainWindow(QMainWindow):
 
         self.wiki_selector = QComboBox()
         self.wiki_selector.addItems([
+            "Wiki Home",
             "Fractals in Medical Imaging",
             "Box Counting Method",
             "Fractal Types and Equations"
         ])
         self.wiki_selector.setToolTip("Select a topic to view detailed information.")
-        layout.addWidget(QLabel("<b>Fractal Box Counting Wiki</b>"))
+        layout.addWidget(QLabel("<b>Fractal Workspace Wiki</b>"))
         layout.addWidget(self.wiki_selector)
 
         # QTextBrowser for displaying HTML content
@@ -319,6 +320,7 @@ class MainWindow(QMainWindow):
         # Load markdown files and convert to HTML
         wiki_dir = os.path.join(os.path.dirname(__file__), "wiki")
         self.wiki_files = [
+            os.path.join(wiki_dir, "Home.md"),
             os.path.join(wiki_dir, "Fractals-in-Medical-Imaging.md"),
             os.path.join(wiki_dir, "Box-Counting-Method.md"),
             os.path.join(wiki_dir, "Fractal-Types-and-Equations.md")
