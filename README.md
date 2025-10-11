@@ -101,7 +101,7 @@ python ui.py
 
 ---
 
-## 📖 Advanced Topics & Wiki
+## Advanced Topics & Wiki
 
 - [Fractals in Medical Imaging](wiki/Fractals-in-Medical-Imaging.md)
 - [Box Counting Method](wiki/Box-Counting-Method.md)

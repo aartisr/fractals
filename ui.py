@@ -66,7 +66,7 @@ class MainWindow(QMainWindow):
 
     """
     Main window for the Fractal Workspace application.
-    Provides tabs for fractal generation, notes, and box counting.
+    Provides tabs for fractal generation, wiki, and box counting.
     """
 
     def __init__(self):
@@ -86,10 +86,10 @@ class MainWindow(QMainWindow):
         self.setup_fractal_tab()
         self.tabs.addTab(self.fractal_tab, "Fractal Generator")
 
-        # Create the second tab (Settings or Notes)
-        self.notes_tab = QWidget()
-        self.setup_notes_tab()
-        self.tabs.addTab(self.notes_tab, "Fractal Box Counting")
+        # Create the second tab (Wiki)
+        self.wiki_tab = QWidget()
+        self.setup_wiki_tab()
+        self.tabs.addTab(self.wiki_tab, "Wiki")
         
          # Create third tab (Fractal Box Counter)
         self.box_counter_tab = QWidget()
@@ -233,11 +233,11 @@ class MainWindow(QMainWindow):
         self.c_imag_label.setVisible(False)
         self.c_imag_entry.setVisible(False)
         
-        # self.text_area_label = QLabel("Notes:")
+    # self.text_area_label = QLabel("Wiki:")
         # layout.addWidget(self.text_area_label, 5, 0)  # Add label for the text area
 
         self.text_area = QTextEdit()
-        self.text_area.setPlaceholderText("Enter your notes here...")
+        self.text_area.setPlaceholderText("Enter wiki search or notes here...")
         layoutLeft.addWidget(self.text_area, 5, 0, 3, 2)  # Add the text area to column 1
         
         # Set the content of the text area with a summary on fractals
@@ -287,7 +287,7 @@ class MainWindow(QMainWindow):
         # self.setCentralWidget(widget)
 
 
-    def setup_notes_tab(self):
+    def setup_wiki_tab(self):
         """
         Set up the Fractal Box Counting tab to display wiki content with a dropdown selector.
         """
@@ -340,7 +340,7 @@ class MainWindow(QMainWindow):
         # Show the first article by default
         self.wiki_viewer.setHtml(self.wiki_html[0])
 
-        self.notes_tab.setLayout(layout)
+        self.wiki_tab.setLayout(layout)
         
     def combo_frac_type_changed(self, s):
         """
