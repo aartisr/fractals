@@ -105,6 +105,7 @@ python ui.py
 
 - [Fractals in Medical Imaging](wiki/Fractals-in-Medical-Imaging.md)
 - [Box Counting Method](wiki/Box-Counting-Method.md)
+- [Fractal Types and Equations](wiki/Fractal-Types-and-Equations.md)
 
 ---
 

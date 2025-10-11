@@ -299,10 +299,12 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
 
         # Dropdown to select wiki article
+
         self.wiki_selector = QComboBox()
         self.wiki_selector.addItems([
             "Fractals in Medical Imaging",
-            "Box Counting Method"
+            "Box Counting Method",
+            "Fractal Types and Equations"
         ])
         self.wiki_selector.setToolTip("Select a topic to view detailed information.")
         layout.addWidget(QLabel("<b>Fractal Box Counting Wiki</b>"))
@@ -318,7 +320,8 @@ class MainWindow(QMainWindow):
         wiki_dir = os.path.join(os.path.dirname(__file__), "wiki")
         self.wiki_files = [
             os.path.join(wiki_dir, "Fractals-in-Medical-Imaging.md"),
-            os.path.join(wiki_dir, "Box-Counting-Method.md")
+            os.path.join(wiki_dir, "Box-Counting-Method.md"),
+            os.path.join(wiki_dir, "Fractal-Types-and-Equations.md")
         ]
         self.wiki_html = []
         for md_file in self.wiki_files:

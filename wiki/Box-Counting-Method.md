@@ -24,7 +24,8 @@ The box counting method is a mathematical approach used to estimate the fractal 
 1. **Overlay a Grid:** Place a grid of equally sized boxes over the image or set.
 2. **Count Occupied Boxes:** For each box size, count the number of boxes that contain any part of the object (e.g., a pixel belonging to a shape).
 3. **Repeat for Multiple Scales:** Reduce the box size and repeat the counting process for several scales.
-4. **Plot and Analyze:** Plot the logarithm of the number of occupied boxes (N) against the logarithm of the inverse box size (1/ε). The slope of the resulting line gives the fractal (box-counting) dimension D:
+
+4. **Plot and Analyze:** Plot the logarithm of the number of occupied boxes $N(\epsilon)$ against the logarithm of the inverse box size $1/\epsilon$. The slope of the resulting line gives the fractal (box-counting) dimension $D$:
 
 $$
 D = \lim_{\epsilon \to 0} \frac{\log N(\epsilon)}{\log(1/\epsilon)}
