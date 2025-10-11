@@ -202,6 +202,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Contact / Maintainer
 
-For questions, suggestions, or feedback, please open an issue or contact [aartisr](https://github.com/aartisr).
+For questions, suggestions, or feedback, please open an issue or contact [Aarti Sri Ravikumar](https://github.com/aartisr).
 
 
