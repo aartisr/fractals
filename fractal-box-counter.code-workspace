@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "../fractal-box-counter"
+		},
+		{
+			"name": "Fractal-dimension-and-clinical-neurophysiology",
+			"path": "../Fractal-dimension-and-clinical-neurophysiology"
+		},
+		{
+			"name": "fractals-1",
+			"path": "."
+		},
+		{
+			"name": "fractalbrain-toolkit",
+			"path": "../fractalbrain-toolkit"
+		}
+	]
+}

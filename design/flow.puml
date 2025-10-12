@@ -1,0 +1,48 @@
+@startuml fractals-1-flow
+title Fractals-1 Application Flow Diagram (2025)
+
+start
+
+:User launches MainWindow;
+
+partition "Tabbed UI" {
+  :Tabs: Fractal Generator; Box Counter; Image Compare; Wiki;
+}
+
+partition "Fractal Generator Tab" {
+  :User selects fractal type, resolution, color scheme;
+  :User sees info/formula for selected fractal;
+  :User clicks Generate;
+  :Fractal class generates image;
+  :Fractal displayed in maximized area;
+  :User can save image or adjust parameters;
+}
+
+partition "Box Counter Tab" {
+  :User loads image;
+  :User selects ROI (via ROIImageLabel);
+  :User runs box counting;
+  :BoxCounterUtils computes fractal dimension;
+  :Results and interpretation displayed;
+}
+
+partition "Image Compare Tab" {
+  :User loads two images;
+  :User steps through comparison (stepwise);
+  :Box counting and results for both images;
+  :Interpretation and summary displayed;
+}
+
+partition "Wiki Tab" {
+  :User browses markdown docs;
+  :Markdown rendered with math, images, and links;
+  :User can search or cross-link topics;
+}
+
+
+:User can switch tabs at any time;
+:User can exit app;
+
+stop
+
+@enduml

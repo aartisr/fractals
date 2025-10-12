@@ -1,0 +1,14 @@
+name: fractal-box-counter
+channels:
+  - conda-forge
+dependencies:
+  - python=3.8
+  - numpy
+  - matplotlib
+  - pyqt
+  - opencv
+  - scikit-image
+  - pip
+  - pip:
+      - markdown
+      - pytest

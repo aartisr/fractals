@@ -1,0 +1,222 @@
+@startuml fractals-1-architecture
+' =====================================================================
+
+' Fractals-1 Application Architecture Diagram (2025, updated)
+' ---------------------------------------------------------------------
+' This diagram illustrates the modular, layered architecture of the
+' Fractals-1 application, including the UI, fractal logic, box counting,
+' image comparison, wiki, and utility layers. Each package and class is annotated for clarity.
+' =====================================================================
+
+title Fractals-1 Application Architecture (2025)
+
+
+' Define UX-friendly colors
+
+' Define UX-friendly colors (PlantUML syntax)
+skinparam package {
+  BackgroundColor<<UI>> #B3C7F7
+  BackgroundColor<<BOX>> #FFD6E0
+  BackgroundColor<<FRACTAL>> #FFF7B2
+  BackgroundColor<<UTIL>> #B2F7C1
+  BackgroundColor<<WIKI>> #E0E7FF
+}
+
+note as N1
+  LEGEND:
+  [Soft Blue]    UI Layer: User interface, main window, and tabs
+  [Soft Pink]    Box Counting & ROI Layer: Modular helpers for box counting, ROI selection, and comparison dialog
+  [Soft Yellow]  Fractal Logic Layer: Fractal generation algorithms
+  [Soft Green]   Utility Layer: External libraries for math, plotting, and image processing
+  [Soft Purple]  Wiki Layer: Markdown rendering and documentation
+end note
+
+' ---------------------------
+'         UI LAYER
+' ---------------------------
+package "UI Layer" <<UI>> {
+    class MainWindow {
+        +setup_fractal_tab()
+        +setup_box_counter_tab()
+        +setup_image_compare_tab()
+        +setup_wiki_tab()
+        +generate_fractal_threaded()
+        +display_fractal()
+        +save_fractal()
+        +get_resolution()
+        +combo_frac_type_changed()
+        +combo_resolution_changed()
+        +combo_color_scheme_changed()
+        +edit_max_iter_changed()
+        +edit_power_changed()
+        +edit_c_real_changed()
+        +edit_c_imag_changed()
+        +bc_select_image()
+        +bc_apply_roi_size()
+        +bc_update_display()
+        +bc_compute_roi()
+        ...
+    }
+    class ROIImageLabel {
+        +mousePressEvent()
+        +resizeEvent()
+        ...
+    }
+    class WikiTab <<WIKI>> {
+        +render_markdown()
+        +load_markdown_file()
+        ...
+    }
+    note right of MainWindow
+      MainWindow is the central application window.
+      It manages all user interaction, tab navigation,
+      and delegates fractal generation, box counting,
+      image comparison, and wiki tasks.
+    end note
+    note right of ROIImageLabel
+      ROIImageLabel is a custom QLabel for
+      interactive ROI selection in images.
+    end note
+    note right of WikiTab
+      WikiTab handles markdown documentation,
+      math rendering, and in-app wiki navigation.
+    end note
+}
+
+' ---------------------------
+'   BOX COUNTING & ROI LAYER
+' ---------------------------
+package "Box Counting & ROI Layer" <<BOX>> {
+    class BoxCounterHelpers {
+        +select_image()
+        +apply_roi_size()
+        +update_display()
+        +compute_roi()
+        ...
+    }
+    class BoxCounterUtils {
+        +box_counting()
+        +fractal_dim()
+        ...
+    }
+    class BoxCounterCompareDialog {
+        +show()
+        +set_images()
+        +display_results()
+        ...
+    }
+    note right of BoxCounterHelpers
+      BoxCounterHelpers provides high-level
+      logic for the box counting UI, including image
+      selection, ROI handling, and display updates.
+    end note
+    note right of BoxCounterUtils
+      BoxCounterUtils contains static methods
+      for fractal dimension estimation and box counting.
+    end note
+    note right of BoxCounterCompareDialog
+      Dialog for stepwise image comparison,
+      result display, and interpretation.
+    end note
+}
+
+' ---------------------------
+'     FRACTAL LOGIC LAYER
+' ---------------------------
+package "Fractal Logic Layer" <<FRACTAL>> {
+    class Mandelbrot {
+        +generate()
+    }
+    class Julia {
+        +generate()
+    }
+    class BurningShip {
+        +generate()
+    }
+    class NewtonFractal {
+        +generate()
+    }
+    class BarnsleyFern {
+        +generate()
+    }
+    class SierpinskiTriangle {
+        +generate()
+    }
+    note right
+      Each class implements a fractal algorithm
+      and exposes a generate() method for rendering.
+    end note
+}
+
+' ---------------------------
+'        UTILITY LAYER
+' ---------------------------
+package "Utility Layer" <<UTIL>> {
+    class numpy
+    class matplotlib
+    class cv2
+    class skimage
+    note right
+      External libraries for math, plotting,
+      image processing, and scientific computing.
+    end note
+}
+
+' ---------------------------
+'        RELATIONSHIPS
+' ---------------------------
+
+MainWindow --> Mandelbrot : uses
+MainWindow --> Julia : uses
+MainWindow --> BurningShip : uses
+MainWindow --> NewtonFractal : uses
+MainWindow --> BarnsleyFern : uses
+MainWindow --> SierpinskiTriangle : uses
+MainWindow --> ROIImageLabel : owns
+MainWindow --> BoxCounterHelpers : uses
+MainWindow --> BoxCounterUtils : uses
+MainWindow --> BoxCounterCompareDialog : uses
+MainWindow --> WikiTab : uses
+ROIImageLabel ..> MainWindow : parent_ref
+BoxCounterHelpers --> BoxCounterUtils : uses
+BoxCounterHelpers --> ROIImageLabel : updates
+BoxCounterHelpers --> MainWindow : updates
+BoxCounterHelpers --> BoxCounterCompareDialog : launches
+BoxCounterCompareDialog --> BoxCounterUtils : uses
+BoxCounterCompareDialog --> ROIImageLabel : uses
+BoxCounterUtils ..> numpy
+BoxCounterUtils ..> cv2
+BoxCounterUtils ..> skimage
+
+Mandelbrot ..> numpy
+Mandelbrot ..> matplotlib
+Julia ..> numpy
+Julia ..> matplotlib
+BurningShip ..> numpy
+BurningShip ..> matplotlib
+NewtonFractal ..> numpy
+NewtonFractal ..> matplotlib
+BarnsleyFern ..> numpy
+BarnsleyFern ..> matplotlib
+SierpinskiTriangle ..> numpy
+SierpinskiTriangle ..> matplotlib
+
+MainWindow ..> cv2
+MainWindow ..> numpy
+MainWindow ..> matplotlib
+MainWindow ..> skimage
+WikiTab ..> MainWindow : updates
+
+' ---------------------------
+'         FOOTER
+' ---------------------------
+note bottom
+  How to read this diagram:
+  - Each colored package represents a logical layer in the application.
+  - Arrows show usage or ownership relationships.
+  - Notes explain the role of each class and package.
+  - Tabs: Fractal Generator, Box Counter, Image Compare, Wiki.
+  - This modular design makes the codebase easy to extend and maintain.
+end note
+
+@enduml
