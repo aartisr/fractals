@@ -20,6 +20,8 @@ import matplotlib.pyplot as plt
 
 
 def show_boxcount_comparison_dialog(parent, img1, img2, np_to_pixmap):
+    from PyQt6.QtWidgets import QDialog, QLabel
+    from PyQt6.QtCore import Qt, QEvent, QPoint
     def export_image():
         file_path, _ = QFileDialog.getSaveFileName(
             dialog, "Export as Image", "box_counting_analysis.png", "PNG Files (*.png)"
@@ -196,6 +198,8 @@ def show_boxcount_comparison_dialog(parent, img1, img2, np_to_pixmap):
     vis_layout = QGridLayout()
     vis_layout.setContentsMargins(0, 0, 0, 0)
     vis_layout.setSpacing(4)
+    box_img_pixmap1 = None
+    box_img_pixmap2 = None
     for idx, (img_bin, color, label) in enumerate(
         [
             (img1_bin, '#1976d2', 'Image 1'),
@@ -227,6 +231,10 @@ def show_boxcount_comparison_dialog(parent, img1, img2, np_to_pixmap):
         img_label.setToolTip(f"{label} with box overlays")
         vis_layout.addWidget(QLabel(f"<b style='color:{color};'>{label}</b>"), idx, 0)
         vis_layout.addWidget(img_label, idx, 1)
+        if idx == 0:
+            box_img_pixmap1 = pixmap
+        elif idx == 1:
+            box_img_pixmap2 = pixmap
     vis_hbox.setLayout(vis_layout)
     step2_layout.addWidget(vis_hbox)
     # Calculate box counts
@@ -351,6 +359,64 @@ def show_boxcount_comparison_dialog(parent, img1, img2, np_to_pixmap):
         )
     )
     loglog_label.setToolTip("Log-log plot of box size vs box count for both images")
+
+    # --- Magnify on hover (fixed for PyQt6) ---
+    class MagnifyPopup(QDialog):
+        def __init__(self, pixmap, parent=None):
+            super().__init__(parent)
+            self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+            self.label = QLabel(self)
+            self.label.setPixmap(pixmap)
+            self.label.setScaledContents(True)
+            self.setStyleSheet("background: transparent;")
+            self.resize(pixmap.width(), pixmap.height())
+        def show_at(self, pos):
+            self.move(pos)
+            self.show()
+
+    magnified_pixmap = loglog_pixmap.scaled(
+        600, 480, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+    )
+    # Subclass QLabel for hover events
+    class MagnifyLabel(QLabel):
+        def __init__(self, normal_pixmap, magnified_pixmap, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.setPixmap(normal_pixmap)
+            self.setMouseTracking(True)
+            self.magnify_popup = MagnifyPopup(magnified_pixmap, parent=dialog)
+            self._mouse_inside = False
+        def enterEvent(self, event):
+            self._mouse_inside = True
+            event.accept()
+        def leaveEvent(self, event):
+            self._mouse_inside = False
+            self.magnify_popup.hide()
+            event.accept()
+        def mouseMoveEvent(self, event):
+            # Only show popup if mouse is over the actual chart area (pixmap, not just label)
+            if self.pixmap() is not None:
+                pixmap_rect = self.contentsRect().adjusted(0, 0, 0, 0)
+                if pixmap_rect.contains(event.pos()):
+                    if not self.magnify_popup.isVisible():
+                        cursor_pos = self.mapToGlobal(event.pos())
+                        popup_x = cursor_pos.x() + 20
+                        popup_y = cursor_pos.y() - self.magnify_popup.height() // 2
+                        self.magnify_popup.show_at(QPoint(popup_x, popup_y))
+                else:
+                    self.magnify_popup.hide()
+            event.accept()
+
+    loglog_label = MagnifyLabel(
+        loglog_pixmap.scaled(
+            300,
+            240,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        ),
+        magnified_pixmap,
+    )
+    loglog_label.setToolTip("Log-log plot of box size vs box count for both images")
     step4_layout.addWidget(loglog_label)
     step4_layout.addStretch(1)
     layout.addWidget(step4_box, stretch=1)
@@ -425,22 +491,40 @@ The <b>fractal dimension</b> (FD) quantifies the complexity or roughness of a pa
             html += "</table>"
             # Step 2: Box Counting
             html += "<h2>Step 2: Box Counting</h2>"
-            html += box_text.toHtml()
-            # Step 3: Fractal Dimension Results
-            html += "<h2>Step 3: Fractal Dimension Results</h2>"
-            html += fd_text.toHtml()
-            # Step 4: Results and Comparison (include log-log plot)
-            html += "<h2>Step 4: Results and Comparison</h2>"
-            loglog_b64 = pixmap_to_base64(loglog_label.pixmap())
-            html += f"<div><b>Log-Log Plot:</b><br><img src='data:image/png;base64,{loglog_b64}' width='240'></div>"
-            # Interpretation
-            html += interp_label.text()
-            html += interp_text.toHtml()
-            doc.setHtml(html)
-            doc.print(printer)
-            QMessageBox.information(
-                dialog, "Export Complete", f"PDF exported to: {file_path}"
-            )
+        # Only export styled box count summary, not raw numpy arrays
+        import re
+        box_html = box_text.text()
+        # Remove any raw numpy array reprs (e.g., np.int64(...))
+        box_html = re.sub(r"np\.int64\([^)]*\)", "", box_html)
+        # Remove 'Image 1:' and 'Image 2:' labels
+        box_html = re.sub(r"<b>Image 1:</b>.*?</span>", "", box_html)
+        box_html = re.sub(r"<b>Image 2:</b>.*?</span>", "", box_html)
+        # Remove any stray brackets or extra whitespace
+        box_html = re.sub(r"\[|\]", "", box_html)
+        box_html = re.sub(r"\s+", " ", box_html)
+        html += box_html.strip()
+        # Step 2: Box Counting Images (Image 1 and Image 2)
+        if box_img_pixmap1 is not None:
+            box_img_b64_1 = pixmap_to_base64(box_img_pixmap1)
+            html += f"<div><b>Box Counting Image (Image 1):</b><br><img src='data:image/png;base64,{box_img_b64_1}' width='160'></div>"
+        if box_img_pixmap2 is not None:
+            box_img_b64_2 = pixmap_to_base64(box_img_pixmap2)
+            html += f"<div><b>Box Counting Image (Image 2):</b><br><img src='data:image/png;base64,{box_img_b64_2}' width='160'></div>"
+        # Step 3: Fractal Dimension Results
+        html += "<h2>Step 3: Fractal Dimension Results</h2>"
+        html += fd_text.text()
+        # Step 4: Results and Comparison (include log-log plot)
+        html += "<h2>Step 4: Results and Comparison</h2>"
+        loglog_b64 = pixmap_to_base64(loglog_label.pixmap())
+        html += f"<div><b>Log-Log Plot:</b><br><img src='data:image/png;base64,{loglog_b64}' width='240'></div>"
+        # Interpretation
+        html += interp_label.text()
+        html += interp_text.toHtml()
+        doc.setHtml(html)
+        doc.print(printer)
+        QMessageBox.information(
+            dialog, "Export Complete", f"PDF exported to: {file_path}"
+        )
 
 
     export_pdf_btn = QPushButton("Export as PDF")
