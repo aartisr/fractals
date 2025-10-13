@@ -1,0 +1,132 @@
+/* Import Cinzel and Inter fonts from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+@import "tailwindcss";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Apply fonts */
+@layer base {
+  html, body {
+    font-family: 'Inter', sans-serif;
+  }
+  .font-serif {
+    font-family: 'Cinzel', serif;
+  }
+  h1, h2 {
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+}
+
+/* Custom animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(234, 88, 12, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(234, 88, 12, 0.6); }
+}
+
+@layer utilities {
+  .float-anim {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  
+  .mandala-bg {
+    background-image: radial-gradient(circle at center, rgba(251, 146, 60, 0.03) 0%, transparent 70%);
+  }
+  
+  .om-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 30m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0' fill='%23fb923c' fill-opacity='0.02'/%3E%3C/svg%3E");
+  }
+}
+
+.carousel-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel-slide {
+  scroll-snap-align: start;
+  flex: 0 0 100%;
+}
+
+.carousel-pagination {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.carousel-pagination .carousel-pagination-indicator {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background-color: rgba(156, 163, 175, 0.4);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  outline: none;
+}
+
+.carousel-pagination .carousel-pagination-indicator:hover {
+  background-color: rgba(156, 163, 175, 0.6);
+  transform: scale(1.1);
+}
+
+.carousel-pagination .carousel-pagination-indicator[data-active="true"] {
+  background-color: #d97706;
+  transform: scale(1.2);
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+}
+
+/* Smooth transitions for carousel content */
+.carousel-slide > div {
+  transition: all 0.5s ease;
+}
+
+.carousel-slide img {
+  transition: transform 0.7s ease;
+}
+
+.carousel-slide:hover img {
+  transform: scale(1.02);
+}
+
+/* Enhanced button styles */
+.carousel-prev-btn,
+.carousel-next-btn {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.carousel-prev-btn:hover,
+.carousel-next-btn:hover {
+  background: #f9fafb;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.carousel-prev-btn:active,
+.carousel-next-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}

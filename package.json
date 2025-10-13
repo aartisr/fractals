@@ -1,0 +1,56 @@
+{
+  "name": "paradise-reserve-group",
+  "description": "Paradise Reserve Group - Exclusive access to spectacular tropical paradise land",
+  "version": "1.0.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "trustedDependencies": [
+    "sharp"
+  ],
+  "scripts": {
+    "build": "qwik build",
+    "build.client": "vite build",
+    "build.preview": "vite build --ssr src/entry.preview.tsx",
+    "build.server": "vite build -c adapters/express/vite.config.ts",
+    "dev": "vite --mode ssr",
+    "dev.custom": "CUSTOM_CONFIG=true vite --mode ssr",
+    "dev.debug": "node --inspect-brk ./node_modules/vite/bin/vite.js --mode ssr --force",
+    "fmt": "prettier --write .",
+    "fmt.check": "prettier --check .",
+    "preview": "qwik build preview && vite preview",
+    "serve": "node server/entry.express",
+    "start": "vite --open --mode ssr",
+    "qwik": "qwik"
+  },
+  "devDependencies": {
+    "@builder.io/qwik": "latest",
+    "@builder.io/qwik-city": "latest",
+    "@qwik-ui/headless": "latest",
+    "@qwikdev/pwa": "latest",
+    "@tailwindcss/vite": "latest",
+    "@types/compression": "latest",
+    "@types/express": "latest",
+    "@types/node": "latest",
+    "@vite-pwa/assets-generator": "latest",
+    "compression": "latest",
+    "ignore": "latest",
+    "prettier": "latest",
+    "prettier-plugin-tailwindcss": "latest",
+    "tailwindcss": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vite-tsconfig-paths": "latest"
+  },
+  "dependencies": {
+    "@libsql/client": "latest",
+    "@modular-forms/qwik": "latest",
+    "@qwikest/icons": "^0.0.13",
+    "bcryptjs": "latest",
+    "express": "latest",
+    "lucide-static": "latest"
+  }
+}

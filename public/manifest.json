@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "name": "topografo-merida",
+  "short_name": "topografo-merida",  
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fff",
+  "theme_color": "#086870",
+  "description": "topografo",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot.png",
+      "type": "image/png",
+      "sizes": "862x568"
+    },
+    {
+      "src": "/screenshot.png",
+      "type": "image/png",
+      "sizes": "862x568",
+      "form_factor": "wide"
+    }
+  ]
+}

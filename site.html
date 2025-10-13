@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nithyananda TV - Divine Streaming Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        
+        .font-cinzel { font-family: 'Cinzel', serif; }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .float-anim {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(234, 88, 12, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(234, 88, 12, 0.6); }
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+        
+        .mandala-bg {
+            background-image: radial-gradient(circle at center, rgba(251, 146, 60, 0.03) 0%, transparent 70%);
+        }
+        
+        .om-pattern {
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 30m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0' fill='%23fb923c' fill-opacity='0.02'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 text-gray-900 antialiased om-pattern">
+    <!-- Navigation -->
+    <nav class="border-b border-orange-200/50 bg-white/70 backdrop-blur-xl fixed w-full top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-8">
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <div class="absolute inset-0 bg-orange-500 blur-xl opacity-20 rounded-full"></div>
+                            <div class="relative w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center shadow-lg">
+                                <span class="text-white text-sm font-semibold font-cinzel">ॐ</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-xl font-cinzel font-semibold tracking-tight bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Nithyananda TV</div>
+                            <div class="text-[10px] text-orange-600/60 tracking-widest uppercase">Divine Streaming</div>
+                        </div>
+                    </div>
+                    <div class="hidden md:flex items-center gap-6">
+                        <a href="#" class="text-sm font-medium text-gray-900 hover:text-orange-600 transition-colors relative group">
+                            Home
+                            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-orange-600 to-amber-600 group-hover:w-full transition-all duration-300"></span>
+                        </a>
+                        <a href="#" class="text-sm font-medium text-gray-600 hover:text-orange-600 transition-colors relative group">
+                            Watch
+                            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-orange-600 to-amber-600 group-hover:w-full transition-all duration-300"></span>
+                        </a>
+                        <a href="#" class="text-sm font-medium text-gray-600 hover:text-orange-600 transition-colors relative group flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                            SPH LIVE
+                            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-orange-600 to-amber-600 group-hover:w-full transition-all duration-300"></span>
+                        </a>
+                        <a href="#" class="text-sm font-medium text-gray-600 hover:text-orange-600 transition-colors relative group">
+                            Playlists
+                            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-orange-600 to-amber-600 group-hover:w-full transition-all duration-300"></span>
+                        </a>
+                        <a href="#" class="text-sm font-medium text-gray-600 hover:text-orange-600 transition-colors relative group">
+                            Explore
+                            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-orange-600 to-amber-600 group-hover:w-full transition-all duration-300"></span>
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="hidden lg:flex items-center gap-2 bg-white/80 border border-orange-200/50 rounded-xl px-4 py-2 w-80 shadow-sm">
+                        <i data-lucide="search" class="w-4 h-4 text-orange-400"></i>
+                        <input type="text" placeholder="Search divine wisdom..." class="bg-transparent text-sm outline-none w-full placeholder:text-gray-400">
+                    </div>
+                    <button class="lg:hidden p-2 hover:bg-orange-50 rounded-xl transition-colors">
+                        <i data-lucide="search" class="w-5 h-5 text-gray-600"></i>
+                    </button>
+                    <button class="p-2 hover:bg-orange-50 rounded-xl transition-colors relative">
+                        <i data-lucide="bell" class="w-5 h-5 text-gray-600"></i>
+                        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full"></span>
+                    </button>
+                    <button class="px-5 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-300">
+                        Sign In
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="pt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 mandala-bg">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <!-- LOTO CSS ILLUSTRATION (added) -->
+                <div class="relative float-anim">
+                    <div class="pointer-events-none absolute -z-10 -left-10 -top-8 w-[360px] h-[360px] opacity-50">
+                        <!-- Lotus base circle -->
+                        <div class="absolute inset-0 rounded-full" style="background: radial-gradient( circle at 50% 55%, rgba(251,146,60,0.18), rgba(251,146,60,0.06) 45%, transparent 60% ); filter: blur(0.2px);"></div>
+                        <!-- Petals -->
+                        <!-- We create 12 petals rotated around center -->
+                        <!-- Petal template duplicated with different rotations -->
+                        <div class="absolute left-1/2 top-1/2" style="width:120px;height:180px;transform: translate(-50%,-50%) rotate(0deg) translateY(-70px); transform-origin:center bottom; border-radius:60px 60px 60px 60px / 90px 90px 60px 60px; background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.6) 0%, rgba(253,186,116,0.55) 35%, rgba(234,88,12,0.25) 70%, rgba(234,88,12,0.0) 80%); box-shadow: 0 6px 16px rgba(234,88,12,0.08);"></div>
+                        <div class="absolute left-1/2 top-1/2" style="width:120px;height:180px;transform: translate(-50%,-50%) rotate(30deg) translateY(-70px); transform-origin:center bottom; border-radius:60px 60px 60px 60px / 90px 90px 60px 60px; background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.6), rgba(253,186,116,0.55) 35%, rgba(234,88,12,0.25) 70%, rgba(234,88,12,0.0) 80%); box-shadow: 0 6px 16px rgba(234,88,12,0.08);"></div>
+                        <div class="absolute left-1/2 top-1/2" style="width:120px;height:180px;transform: translate(-50%,-50%) rotate(60deg) translateY(-70px); transform-origin:center bottom; border-radius:60px 60px 60px 60px / 90px 90px 60px 60px; background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.6), rgba(253,186,116,0.55) 35%, rgba(234,88,12,0.25) 70%, rgba(234,88,12,0.0) 80%); box-shadow: 0 6px 16px rgba(234,88,12,0.08);"></div>
+                        <div class="absolute left-1/2 top-1/2" style="width:120px;height:180px;transform: translate(-50%,-50%) rotate(90deg) translateY(-70px); transform-origin:center bottom; border-radius:60px 60px 60px 60px / 90px 90px 60px 60px; background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.6), rgba(253,186,116,0.55) 35%, rgba(234,88,12,0.25) 70%, rgba(234,88,12,0.0) 80%); box-shadow: 0 6px 16px rgba(234,88,12,0.08);"></div>
+                        <div class="absolute left-1/2 top-1/2" style="width:120px;height:180px;transform: translate(-50%,-50%) rotate(120deg) translateY(-70px); transform-origin:center bottom; border-radius:60px 60px 60px 60px / 90px 90px 60px 60px; background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.6), rgba(253,186,116,0.55) 35%, rgba(234,88,12,0.25) 70%, rgba(234,88,12,0.0) 80%); box-shadow: 0 6px 16px rgba(234,88,12,0.08);"></div>
+                        <div class="absolute left-1/2 top-1/2" style="width:120px;height:180px;transform: translate(-50%,-50%) rotate(150deg) translateY(-70px); transform-origin:center bottom; border-radius:60px 60px 60px 60px / 90px 90px 60px 60px; background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.6), rgba(253,186,116,0.55) 35%, rgba(234,88,12,0.25) 70%, rgba(234,88,12,0.0) 80%); box-shadow: 0 6px 16px rgba(234,88,12,0.08);"></div>
+                        <div class="absolute left-1/2 top-1/2" style="width:120px;height:180px;transform: translate(-50%,-50%) rotate(180deg) translateY(-70px); transform-origin:center bottom; border-radius:60px 60px 60px 60px / 90px 90px 60px 60px; background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.6), rgba(253,186,116,0.55) 35%, rgba(234,88,12,0.25) 70%, rgba(234,88,12,0.0) 80%); box-shadow: 0 6px 16px rgba(234,88,12,0.08);"></div>
+                        <div class="absolute left-1/2 top-1/2" style="width:120px;height:180px;transform: translate(-50%,-50%) rotate(210deg) translateY(-70px); transform-origin:center bottom; border-radius:60px 60px 60px 60px / 90px 90px 60px 60px; background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.6), rgba(253,186,116,0.55) 35%, rgba(234,88,12,0.25) 70%, rgba(234,88,12,0.0) 80%); box-shadow: 0 6px 16px rgba(234,88,12,0.08);"></div>
+                        <div class="absolute left-1/2 top-1/2" style="width:120px;height:180px;transform: translate(-50%,-50%) rotate(240deg) translateY(-70px); transform-origin:center bottom; border-radius:60px 60px 60px 60px / 90px 90px 60px 60px; background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.6), rgba(253,186,116,0.55) 35%, rgba(234,88,12,0.25) 70%, rgba(234,88,12,0.0) 80%); box-shadow: 0 6px 16px rgba(234,88,12,0.08);"></div>
+                        <div class="absolute left-1/2 top-1/2" style="width:120px;height:180px;transform: translate(-50%,-50%) rotate(270deg) translateY(-70px); transform-origin:center bottom; border-radius:60px 60px 60px 60px / 90px 90px 60px 60px; background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.6), rgba(253,186,116,0.55) 35%, rgba(234,88,12,0.25) 70%, rgba(234,88,12,0.0) 80%); box-shadow: 0 6px 16px rgba(234,88,12,0.08);"></div>
+                        <div class="absolute left-1/2 top-1/2" style="width:120px;height:180px;transform: translate(-50%,-50%) rotate(300deg) translateY(-70px); transform-origin:center bottom; border-radius:60px 60px 60px 60px / 90px 90px 60px 60px; background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.6), rgba(253,186,116,0.55) 35%, rgba(234,88,12,0.25) 70%, rgba(234,88,12,0.0) 80%); box-shadow: 0 6px 16px rgba(234,88,12,0.08);"></div>
+                        <div class="absolute left-1/2 top-1/2" style="width:120px;height:180px;transform: translate(-50%,-50%) rotate(330deg) translateY(-70px); transform-origin:center bottom; border-radius:60px 60px 60px 60px / 90px 90px 60px 60px; background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.6), rgba(253,186,116,0.55) 35%, rgba(234,88,12,0.25) 70%, rgba(234,88,12,0.0) 80%); box-shadow: 0 6px 16px rgba(234,88,12,0.08);"></div>
+                        <!-- Lotus center -->
+                        <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full w-28 h-28 border border-orange-300/50" style="background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.9) 0%, rgba(253,186,116,0.6) 55%, rgba(251,146,60,0.3) 75%, rgba(251,146,60,0.0) 85%); backdrop-filter: blur(0.5px);"></div>
+                    </div>
+
+                    <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-100 to-amber-100 border border-orange-200 text-orange-700 text-xs font-medium rounded-full mb-8 shadow-sm">
+                        <span class="w-2 h-2 bg-gradient-to-r from-orange-600 to-red-600 rounded-full animate-pulse"></span>
+                        <span class="font-cinzel tracking-wide">LIVE DARSHAN NOW</span>
+                    </div>
+                    <h1 class="text-5xl lg:text-6xl xl:text-7xl font-cinzel font-semibold tracking-tight text-transparent bg-gradient-to-br from-orange-800 via-orange-600 to-amber-600 bg-clip-text mb-6 leading-tight">
+                        Experience Divine Consciousness
+                    </h1>
+                    <p class="text-lg text-gray-700 mb-8 leading-relaxed font-light">
+                        Immerse yourself in the sacred teachings of His Holiness Paramahamsa Nithyananda. Access thousands of enlightening discourses, live darshans, and transformative spiritual practices.
+                    </p>
+                    <div class="flex flex-wrap items-center gap-4">
+                        <button class="px-8 py-4 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium rounded-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-2 pulse-glow">
+                            <i data-lucide="play" class="w-5 h-5"></i>
+                            Begin Your Journey
+                        </button>
+                        <button class="px-8 py-4 border-2 border-orange-300 bg-white/50 backdrop-blur-sm text-orange-800 font-medium rounded-xl hover:bg-white hover:border-orange-400 hover:shadow-lg transition-all duration-300 flex items-center gap-2">
+                            <i data-lucide="calendar" class="w-5 h-5"></i>
+                            Sacred Schedule
+                        </button>
+                    </div>
+                    <div class="mt-12 flex items-center gap-8 text-sm">
+                        <div class="flex items-center gap-2">
+                            <div class="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center border border-orange-200">
+                                <span class="text-orange-700 font-semibold font-cinzel">2.4K</span>
+                            </div>
+                            <div>
+                                <div class="font-medium text-gray-900">Live Viewers</div>
+                                <div class="text-xs text-gray-500">Watching now</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center border border-orange-200">
+                                <span class="text-orange-700 font-semibold font-cinzel">10K+</span>
+                            </div>
+                            <div>
+                                <div class="font-medium text-gray-900">Sacred Videos</div>
+                                <div class="text-xs text-gray-500">Available</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative">
+                    <div class="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-400 blur-3xl opacity-20 rounded-3xl"></div>
+                    <div class="relative aspect-[4/5] bg-gradient-to-br from-orange-100 via-amber-50 to-yellow-100 rounded-3xl overflow-hidden shadow-2xl border-4 border-white/50">
+                        <img src="https://images.unsplash.com/photo-1545389336-cf090694435e?w=800&q=80" alt="Meditation" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-orange-900/60 via-transparent to-transparent"></div>
+                        <button class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-transform duration-300 pulse-glow">
+                            <i data-lucide="play" class="w-9 h-9 text-orange-600 ml-1"></i>
+                        </button>
+                        <div class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent backdrop-blur-sm">
+                            <div class="flex items-center gap-3 text-white">
+                                <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/50">
+                                    <span class="text-lg font-cinzel">ॐ</span>
+                                </div>
+                                <div>
+                                    <div class="font-cinzel font-medium">Morning Darshan</div>
+                                    <div class="text-xs text-white/80">Day 342 • Live Now</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="absolute -top-6 -right-6 w-32 h-32 bg-gradient-to-br from-orange-400 to-amber-500 rounded-full opacity-10 blur-2xl"></div>
+                    <div class="absolute -bottom-6 -left-6 w-40 h-40 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full opacity-10 blur-3xl"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPH LIVE Section -->
+    <div class="bg-gradient-to-br from-white to-orange-50/50 border-y border-orange-200/50 py-16 lg:py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 relative">
+                <!-- TRIDENT CSS ILLUSTRATION (added) -->
+                <div class="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-6 opacity-70">
+                    <div class="relative w-10 h-14">
+                        <!-- shaft -->
+                        <div class="absolute left-1/2 -translate-x-1/2 top-4 w-[2px] h-9 rounded-full" style="background: linear-gradient(to bottom, rgba(234,88,12,0.8), rgba(245,158,11,0.7));"></div>
+                        <!-- center prong -->
+                        <div class="absolute left-1/2 -translate-x-1/2 top-0" style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:14px solid rgba(234,88,12,0.85);"></div>
+                        <!-- side prongs -->
+                        <div class="absolute left-[18%] top-2 rotate-12" style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:12px solid rgba(245,158,11,0.8);"></div>
+                        <div class="absolute right-[18%] top-2 -rotate-12" style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:12px solid rgba(245,158,11,0.8);"></div>
+                        <!-- cross guard -->
+                        <div class="absolute left-1/2 -translate-x-1/2 top-[34px] w-8 h-[2px] rounded-full" style="background: linear-gradient(to right, rgba(245,158,11,0.7), rgba(234,88,12,0.7));"></div>
+                        <!-- damaru dot -->
+                        <div class="absolute left-1/2 -translate-x-1/2 top-[28px] w-2 h-2 rounded-full" style="background: radial-gradient(circle, rgba(255,255,255,0.95), rgba(251,146,60,0.6));"></div>
+                    </div>
+                </div>
+
+                <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-100 to-orange-100 border border-red-200 text-red-700 text-xs font-medium rounded-full mb-4">
+                    <span class="w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>
+                    <span class="font-cinzel tracking-wide">SACRED LIVE STREAMS</span>
+                </div>
+                <h2 class="text-4xl font-cinzel font-semibold tracking-tight text-gray-900 mb-3">SPH LIVE Darshan</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">Connect with divine consciousness through live spiritual sessions</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="bg-white rounded-2xl overflow-hidden border-2 border-orange-200/50 hover:border-orange-400 hover:shadow-2xl transition-all duration-300 group cursor-pointer">
+                    <div class="aspect-video bg-gradient-to-br from-orange-100 to-amber-50 relative">
+                        <img src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&q=80" alt="Live Session" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                        <div class="absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-500 text-white text-xs font-medium rounded-lg flex items-center gap-2 shadow-lg">
+                            <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                            LIVE NOW
+                        </div>
+                        <div class="absolute top-4 right-4 px-3 py-1.5 bg-black/60 backdrop-blur-md text-white text-xs font-medium rounded-lg flex items-center gap-1.5">
+                            <i data-lucide="users" class="w-3 h-3"></i>
+                            2,487
+                        </div>
+                        <div class="absolute bottom-4 left-4 right-4">
+                            <div class="flex items-center gap-2 text-white">
+                                <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/50">
+                                    <span class="text-sm font-cinzel">ॐ</span>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-xs text-white/80 font-cinzel">SPH Nithyananda</div>
+                                    <div class="text-sm font-medium">Morning Darshan - Day 342</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center justify-between text-sm text-gray-600">
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="clock" class="w-4 h-4"></i>
+                                Started 1h 23m ago
+                            </span>
+                            <button class="text-orange-600 hover:text-orange-700 font-medium">Watch Now</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl overflow-hidden border-2 border-orange-200/50 hover:border-orange-400 hover:shadow-2xl transition-all duration-300 group cursor-pointer">
+                    <div class="aspect-video bg-gradient-to-br from-orange-100 to-amber-50 relative">
+                        <img src="https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=600&q=80" alt="Session" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                        <div class="absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs font-medium rounded-lg shadow-lg font-cinzel">
+                            UPCOMING
+                        </div>
+                        <div class="absolute bottom-4 left-4 right-4">
+                            <div class="flex items-center gap-2 text-white">
+                                <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/50">
+                                    <span class="text-sm font-cinzel">ॐ</span>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-xs text-white/80 font-cinzel">SPH Nithyananda</div>
+                                    <div class="text-sm font-medium">Evening Satsang</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center justify-between text-sm text-gray-600">
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="calendar" class="w-4 h-4"></i>
+                                Today at 6:00 PM EST
+                            </span>
+                            <button class="text-orange-600 hover:text-orange-700 font-medium">Set Reminder</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl overflow-hidden border-2 border-orange-200/50 hover:border-orange-400 hover:shadow-2xl transition-all duration-300 group cursor-pointer">
+                    <div class="aspect-video bg-gradient-to-br from-orange-100 to-amber-50 relative">
+                        <img src="https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?w=600&q=80" alt="Session" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                        <div class="absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r from-gray-800 to-gray-700 text-white text-xs font-medium rounded-lg shadow-lg font-cinzel">
+                            SCHEDULED
+                        </div>
+                        <div class="absolute bottom-4 left-4 right-4">
+                            <div class="flex items-center gap-2 text-white">
+                                <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/50">
+                                    <span class="text-sm font-cinzel">ॐ</span>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-xs text-white/80 font-cinzel">SPH Nithyananda</div>
+                                    <div class="text-sm font-medium">Special Discourse Series</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center justify-between text-sm text-gray-600">
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="calendar" class="w-4 h-4"></i>
+                                Tomorrow at 8:00 AM
+                            </span>
+                            <button class="text-orange-600 hover:text-orange-700 font-medium">Set Reminder</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Featured Playlists -->
+    <div class="py-16 lg:py-20 mandala-bg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 border border-amber-200 text-amber-700 text-xs font-medium rounded-full mb-4">
+                    <i data-lucide="sparkles" class="w-3 h-3"></i>
+                    <span class="font-cinzel tracking-wide">CURATED COLLECTIONS</span>
+                </div>
+                <h2 class="text-4xl font-cinzel font-semibold tracking-tight text-gray-900 mb-3">Sacred Playlists</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">Journey through curated paths of spiritual awakening</p>
+            </div>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="group cursor-pointer">
+                    <div class="aspect-square bg-gradient-to-br from-orange-100 via-amber-50 to-yellow-100 rounded-2xl overflow-hidden mb-4 relative border-2 border-orange-200/50 hover:border-orange-400 transition-all duration-300 shadow-lg hover:shadow-2xl">
+                        <img src="https://images.unsplash.com/photo-1602192509154-0b900ee1f851?w=400&q=80" alt="Playlist" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-orange-900/80 via-orange-900/20 to-transparent"></div>
+                        <div class="absolute top-4 right-4 w-12 h-12 bg-white/90 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
+                            <span class="text-sm font-semibold text-orange-700">24</span>
+                        </div>
+                        <div class="absolute bottom-4 left-4 right-4">
+                            <div class="flex items-center gap-2 text-white mb-2">
+                                <div class="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/50">
+                                    <i data-lucide="play" class="w-4 h-4"></i>
+                                </div>
+                                <span class="text-xs font-cinzel">Video Series</span>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="font-cinzel font-medium text-gray-900 mb-1 group-hover:text-orange-600 transition-colors">Meditation Mastery</h3>
+                    <p class="text-sm text-gray-600">Complete guide to meditation practices</p>
+                </div>
+                <div class="group cursor-pointer">
+                    <div class="aspect-square bg-gradient-to-br from-orange-100 via-amber-50 to-yellow-100 rounded-2xl overflow-hidden mb-4 relative border-2 border-orange-200/50 hover:border-orange-400 transition-all duration-300 shadow-lg hover:shadow-2xl">
+                        <img src="https://images.unsplash.com/photo-1621619856624-42fd193a0661?w=400&q=80" alt="Playlist" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-orange-900/80 via-orange-900/20 to-transparent"></div>
+                        <div class="absolute top-4 right-4 w-12 h-12 bg-white/90 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
+                            <span class="text-sm font-semibold text-orange-700">18</span>
+                        </div>
+                        <div class="absolute bottom-4 left-4 right-4">
+                            <div class="flex items-center gap-2 text-white mb-2">
+                                <div class="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/50">
+                                    <i data-lucide="play" class="w-4 h-4"></i>
+                                </div>
+                                <span class="text-xs font-cinzel">Video Series</span>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="font-cinzel font-medium text-gray-900 mb-1 group-hover:text-orange-600 transition-colors">Yoga & Wellness</h3>
+                    <p class="text-sm text-gray-600">Ancient practices for modern life</p>
+                </div>
+                <div class="group cursor-pointer">
+                    <div class="aspect-square bg-gradient-to-br from-orange-100 via-amber-50 to-yellow-100 rounded-2xl overflow-hidden mb-4 relative border-2 border-orange-200/50 hover:border-orange-400 transition-all duration-300 shadow-lg hover:shadow-2xl">
+                        <img src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&q=80" alt="Playlist" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-orange-900/80 via-orange-900/20 to-transparent"></div>
+                        <div class="absolute top-4 right-4 w-12 h-12 bg-white/90 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
+                            <span class="text-sm font-semibold text-orange-700">32</span>
+                        </div>
+                        <div class="absolute bottom-4 left-4 right-4">
+                            <div class="flex items-center gap-2 text-white mb-2">
+                                <div class="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/50">
+                                    <i data-lucide="play" class="w-4 h-4"></i>
+                                </div>
+                                <span class="text-xs font-cinzel">Video Series</span>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="font-cinzel font-medium text-gray-900 mb-1 group-hover:text-orange-600 transition-colors">Spiritual Wisdom</h3>
+                    <p class="text-sm text-gray-600">Timeless teachings and insights</p>
+                </div>
+                <div class="group cursor-pointer">
+                    <div class="aspect-square bg-gradient-to-br from-orange-100 via-amber-50 to-yellow-100 rounded-2xl overflow-hidden mb-4 relative border-2 border-orange-200/50 hover:border-orange-400 transition-all duration-300 shadow-lg hover:shadow-2xl">
+                        <img src="https://images.unsplash.com/photo-1528715471579-d1bcf0ba5e83?w=400&q=80" alt="Playlist" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-orange-900/80 via-orange-900/20 to-transparent"></div>
+                        <div class="absolute top-4 right-4 w-12 h-12 bg-white/90 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
+                            <span class="text-sm font-semibold text-orange-700">15</span>
+                        </div>
+                        <div class="absolute bottom-4 left-4 right-4">
+                            <div class="flex items-center gap-2 text-white mb-2">
+                                <div class="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/50">
+                                    <i data-lucide="play" class="w-4 h-4"></i>
+                                </div>
+                                <span class="text-xs font-cinzel">Video Series</span>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="font-cinzel font-medium text-gray-900 mb-1 group-hover:text-orange-600 transition-colors">Sacred Scriptures</h3>
+                    <p class="text-sm text-gray-600">Deep dives into ancient texts</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ask Nithyananda Feature -->
+    <div class="relative overflow-hidden py-20 lg:py-28">
+        <div class="absolute inset-0 bg-gradient-to-br from-orange-600 via-amber-600 to-yellow-600"></div>
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-0 left-1/4 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+        </div>
+        <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="inline-flex w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl items-center justify-center mx-auto mb-8 border-2 border-white/50 shadow-2xl">
+                <i data-lucide="message-circle" class="w-10 h-10 text-white"></i>
+            </div>
+            <h2 class="text-4xl lg:text-5xl font-cinzel font-semibold tracking-tight text-white mb-6">Ask Nithyananda</h2>
+            <p class="text-lg text-white/90 mb-10 max-w-2xl mx-auto leading-relaxed">
+                Dive deeper into spiritual wisdom with our divine AI assistant. Get instant insights and guidance about the teachings you're exploring.
+            </p>
+            <button class="px-8 py-4 bg-white text-orange-700 font-medium rounded-xl hover:bg-orange-50 hover:shadow-2xl hover:scale-105 transition-all duration-300 inline-flex items-center gap-2">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+                <span class="font-cinzel">Begin Sacred Dialogue</span>
+            </button>
+            <div class="mt-12 flex items-center justify-center gap-12 text-white/90">
+                <div>
+                    <div class="text-3xl font-cinzel font-semibold">10K+</div>
+                    <div class="text-sm text-white/70">Questions Answered</div>
+                </div>
+                <div class="w-px h-12 bg-white/30"></div>
+                <div>
+                    <div class="text-3xl font-cinzel font-semibold">24/7</div>
+                    <div class="text-sm text-white/70">Always Available</div>
+                </div>
+                <div class="w-px h-12 bg-white/30"></div>
+                <div>
+                    <div class="text-3xl font-cinzel font-semibold">∞</div>
+                    <div class="text-sm text-white/70">Divine Wisdom</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Explore Categories -->
+    <div class="py-16 lg:py-20 bg-gradient-to-br from-white to-amber-50/30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-100 to-amber-100 border border-orange-200 text-orange-700 text-xs font-medium rounded-full mb-4">
+                    <i data-lucide="compass" class="w-3 h-3"></i>
+                    <span class="font-cinzel tracking-wide">SACRED PATHS</span>
+                </div>
+                <h2 class="text-4xl font-cinzel font-semibold tracking-tight text-gray-900 mb-3">Explore & Discover</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">Find teachings that resonate with your spiritual journey</p>
+            </div>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-8 border-2 border-orange-200/50 hover:border-orange-400 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                    <div class="w-14 h-14 bg-gradient-to-br from-orange-600 to-amber-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
+                        <i data-lucide="user" class="w-7 h-7 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-cinzel font-medium text-gray-900 mb-2">Sacred Discourses</h3>
+                    <p class="text-sm text-gray-600 mb-4">432 enlightening videos</p>
+                    <div class="flex items-center gap-2 text-orange-600 text-sm font-medium">
+                        <span class="font-cinzel">Explore Path</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border-2 border-blue-200/50 hover:border-blue-400 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                    <div class="w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
+                        <i data-lucide="heart" class="w-7 h-7 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-cinzel font-medium text-gray-900 mb-2">Meditation Arts</h3>
+                    <p class="text-sm text-gray-600 mb-4">187 transformative practices</p>
+                    <div class="flex items-center gap-2 text-blue-600 text-sm font-medium">
+                        <span class="font-cinzel">Explore Path</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-8 border-2 border-purple-200/50 hover:border-purple-400 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                    <div class="w-14 h-14 bg-gradient-to-br from-purple-600 to-purple-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
+                        <i data-lucide="activity" class="w-7 h-7 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-cinzel font-medium text-gray-900 mb-2">Yogic Sciences</h3>
+                    <p class="text-sm text-gray-600 mb-4">256 ancient techniques</p>
+                    <div class="flex items-center gap-2 text-purple-600 text-sm font-medium">
+                        <span class="font-cinzel">Explore Path</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-8 border-2 border-green-200/50 hover:border-green-400 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                    <div class="w-14 h-14 bg-gradient-to-br from-green-600 to-green-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
+                        <i data-lucide="book-open" class="w-7 h-7 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-cinzel font-medium text-gray-900 mb-2">Sacred Scriptures</h3>
+                    <p class="text-sm text-gray-600 mb-4">143 divine texts explained</p>
+                    <div class="flex items-center gap-2 text-green-600 text-sm font-medium">
+                        <span class="font-cinzel">Explore Path</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-8 border-2 border-amber-200/50 hover:border-amber-400 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                    <div class="w-14 h-14 bg-gradient-to-br from-amber-600 to-amber-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
+                        <i data-lucide="sparkles" class="w-7 h-7 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-cinzel font-medium text-gray-900 mb-2">Divine Healing</h3>
+                    <p class="text-sm text-gray-600 mb-4">98 healing transmissions</p>
+                    <div class="flex items-center gap-2 text-amber-600 text-sm font-medium">
+                        <span class="font-cinzel">Explore Path</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-rose-50 to-rose-100 rounded-2xl p-8 border-2 border-rose-200/50 hover:border-rose-400 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                    <div class="w-14 h-14 bg-gradient-to-br from-rose-600 to-rose-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
+                        <i data-lucide="calendar" class="w-7 h-7 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-cinzel font-medium text-gray-900 mb-2">Sacred Events</h3>
+                    <p class="text-sm text-gray-600 mb-4">76 divine celebrations</p>
+                    <div class="flex items-center gap-2 text-rose-600 text-sm font-medium">
+                        <span class="font-cinzel">Explore Path</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="relative border-t border-orange-200/50 bg-gradient-to-br from-white to-orange-50/30 py-16">
+        <!-- CHAKRA RINGS CSS ILLUSTRATION (added) -->
+        <div class="pointer-events-none absolute -z-10 -bottom-24 -right-20 w-[420px] h-[420px] opacity-40">
+            <div class="absolute inset-0 rounded-full border border-orange-200" style="box-shadow: 0 0 0 18px rgba(251,146,60,0.08), 0 0 0 42px rgba(251,146,60,0.06), 0 0 0 70px rgba(251,146,60,0.04); background: radial-gradient(circle at 60% 40%, rgba(253,186,116,0.2), rgba(255,255,255,0) 55%);"></div>
+            <div class="absolute inset-10 rounded-full border border-amber-200" style="background: radial-gradient(circle at 40% 60%, rgba(251,191,36,0.18), rgba(255,255,255,0) 60%);"></div>
+            <div class="absolute inset-20 rounded-full border border-orange-200/70"></div>
+            <div class="absolute inset-32 rounded-full border border-orange-300/60"></div>
+            <div class="absolute inset-40 rounded-full border border-orange-300/40"></div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-4 gap-12 mb-12">
+                <div>
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="relative">
+                            <div class="absolute inset-0 bg-orange-500 blur-xl opacity-20 rounded-full"></div>
+                            <div class="relative w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center shadow-lg">
+                                <span class="text-white text-lg font-semibold font-cinzel">ॐ</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-xl font-cinzel font-semibold tracking-tight bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Nithyananda TV</div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-6 leading-relaxed">
+                        Your gateway to divine consciousness and spiritual enlightenment through sacred teachings.
+                    </p>
+                    <div class="flex items-center gap-2">
+                        <button class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 hover:from-orange-200 hover:to-amber-200 border border-orange-200 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110">
+                            <i data-lucide="twitter" class="w-4 h-4 text-orange-600"></i>
+                        </button>
+                        <button class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 hover:from-orange-200 hover:to-amber-200 border border-orange-200 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110">
+                            <i data-lucide="facebook" class="w-4 h-4 text-orange-600"></i>
+                        </button>
+                        <button class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 hover:from-orange-200 hover:to-amber-200 border border-orange-200 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110">
+                            <i data-lucide="instagram" class="w-4 h-4 text-orange-600"></i>
+                        </button>
+                        <button class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 hover:from-orange-200 hover:to-amber-200 border border-orange-200 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110">
+                            <i data-lucide="youtube" class="w-4 h-4 text-orange-600"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-cinzel font-medium text-gray-900 mb-4">Sacred Content</h4>
+                    <ul class="space-y-3 text-sm">
+                        <li><a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <span class="w-1 h-1 bg-orange-400 rounded-full"></span>SPH LIVE Darshan
+                        </a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <span class="w-1 h-1 bg-orange-400 rounded-full"></span>Playlists
+                        </a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <span class="w-1 h-1 bg-orange-400 rounded-full"></span>Sacred Categories
+                        </a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <span class="w-1 h-1 bg-orange-400 rounded-full"></span>Event Schedule
+                        </a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-cinzel font-medium text-gray-900 mb-4">Divine Resources</h4>
+                    <ul class="space-y-3 text-sm">
+                        <li><a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <span class="w-1 h-1 bg-orange-400 rounded-full"></span>About KAILASA
+                        </a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <span class="w-1 h-1 bg-orange-400 rounded-full"></span>Support Center
+                        </a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <span class="w-1 h-1 bg-orange-400 rounded-full"></span>Global Community
+                        </a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <span class="w-1 h-1 bg-orange-400 rounded-full"></span>Wisdom Blog
+                        </a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-cinzel font-medium text-gray-900 mb-4">Legal</h4>
+                    <ul class="space-y-3 text-sm">
+                        <li><a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <span class="w-1 h-1 bg-orange-400 rounded-full"></span>Privacy Policy
+                        </a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <span class="w-1 h-1 bg-orange-400 rounded-full"></span>Terms of Service
+                        </a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <span class="w-1 h-1 bg-orange-400 rounded-full"></span>Cookie Policy
+                        </a></li>
+                        <li><a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <span class="w-1 h-1 bg-orange-400 rounded-full"></span>Contact Us
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-orange-200/50 pt-8">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <p class="text-sm text-gray-600">© 2024 Nithyananda TV. All rights reserved. Blessed with divine grace.</p>
+                    <div class="flex items-center gap-2 text-sm text-gray-600">
+                        <span>Powered by</span>
+                        <span class="font-cinzel font-medium text-orange-600">KAILASA</span>
+                        <span class="text-orange-400">•</span>
+                        <span class="font-cinzel">नित्यानंद</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Set all lucide icons to 1.5 stroke-width for consistency
+        lucide.createIcons({ attrs: { 'stroke-width': 1.5 }});
+    </script>
+</body>
+</html>

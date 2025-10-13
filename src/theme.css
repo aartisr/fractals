@@ -1,0 +1,784 @@
+/* ✨ SOPHISTICATED PARADISE BEACH SCENE - Azure Palms STP ✨ */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  /* 🌊 Ocean Paradise Palette */
+  --ocean-deepest: #001122;
+  --ocean-deep: #003366;
+  --ocean-medium: #0066cc;
+  --ocean-bright: #0099ff;
+  --ocean-light: #33aaff;
+  --ocean-foam: #66ccff;
+  --ocean-crystal: #99ddff;
+  
+  /* 🌴 Tropical Palm Greens */
+  --palm-trunk: #654321;
+  --palm-dark: #1a5f1a;
+  --palm-medium: #228B22;
+  --palm-bright: #32CD32;
+  --palm-light: #90EE90;
+  --nature-glow: #ADFF2F;
+  
+  /* 🌅 Coral Sunset Paradise */
+  --coral-deep: #cc3300;
+  --coral-medium: #ff6633;
+  --coral-bright: #ff9966;
+  --coral-light: #ffcc99;
+  --sunset-gold: #FFD700;
+  --sunset-orange: #FFA500;
+  
+  /* 🏖️ Golden Beach Sands */
+  --sand-dark: #D2691E;
+  --sand-medium: #F4A460;
+  --sand-light: #F5DEB3;
+  --sand-cream: #FFF8DC;
+  --beach-white: #FFFEF7;
+  
+  /* ☀️ Radiant Sun Colors */
+  --sun-core: #FFFF00;
+  --sun-bright: #FFD700;
+  --sun-warm: #FFA500;
+  --sun-glow: #FFFF99;
+  --sky-blue: #87CEEB;
+  --sky-light: #B0E0E6;
+}
+
+/* 🎨 Base Paradise Foundation */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(180deg, var(--sky-light) 0%, var(--beach-white) 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ✨ PREMIUM GLASSMORPHISM SYSTEM ✨ */
+.glass-card {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 0 40px rgba(255, 255, 255, 0.05);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 60px rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.glass-button {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.25) 0%,
+    rgba(255, 255, 255, 0.15) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.3), 
+    transparent);
+  transition: left 0.6s ease;
+}
+
+.glass-button:hover::before {
+  left: 100%;
+}
+
+.glass-button:hover {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.25) 100%);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.2),
+    0 0 50px rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.hero-glass {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.03) 100%);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-radius: 32px;
+  box-shadow: 
+    0 25px 80px rgba(0, 0, 0, 0.1),
+    inset 0 2px 0 rgba(255, 255, 255, 0.2),
+    0 0 100px rgba(255, 255, 255, 0.08);
+}
+
+/* 🏝️ MASTERPIECE PARADISE BEACH SCENE 🏝️ */
+.bg-paradise-scene {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: 
+    /* Gradient Sky to Ocean to Beach */
+    linear-gradient(180deg,
+      #87CEEB 0%,      /* Sky blue */
+      #87CEEB 25%,     /* Sky continues */
+      #40E0D0 40%,     /* Turquoise horizon */
+      #20B2AA 55%,     /* Light sea green */
+      #006994 70%,     /* Deep ocean */
+      #4682B4 85%,     /* Steel blue water */
+      #F4A460 94%,     /* Sandy shore */
+      #DEB887 100%     /* Beach sand */
+    );
+}
+
+/* ☁️ DREAMY SKY LAYER ☁️ */
+.paradise-sky {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ☁️ Realistic 3D Clouds */
+.cloud-1, .cloud-2 {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 60px;
+  filter: blur(1px);
+  opacity: 0.8;
+}
+
+.cloud-1 {
+  width: 140px;
+  height: 50px;
+  top: 12%;
+  left: 15%;
+  animation: cloudDrift1 30s infinite ease-in-out;
+  box-shadow: 
+    0 10px 30px rgba(255, 255, 255, 0.5),
+    inset 0 -10px 20px rgba(0, 0, 0, 0.05);
+}
+
+.cloud-1::before {
+  content: '';
+  position: absolute;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 80px;
+  width: 90px;
+  height: 70px;
+  top: -35px;
+  left: 20px;
+  box-shadow: inset 0 -10px 15px rgba(0, 0, 0, 0.03);
+}
+
+.cloud-1::after {
+  content: '';
+  position: absolute;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50px;
+  width: 70px;
+  height: 50px;
+  top: -25px;
+  right: 25px;
+  box-shadow: inset 0 -8px 12px rgba(0, 0, 0, 0.04);
+}
+
+.cloud-2 {
+  width: 120px;
+  height: 45px;
+  top: 20%;
+  right: 12%;
+  animation: cloudDrift2 35s infinite ease-in-out reverse;
+  box-shadow: 
+    0 8px 25px rgba(255, 255, 255, 0.4),
+    inset 0 -8px 15px rgba(0, 0, 0, 0.04);
+}
+
+.cloud-2::before {
+  content: '';
+  position: absolute;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 70px;
+  width: 80px;
+  height: 60px;
+  top: -30px;
+  left: 25px;
+}
+
+.cloud-2::after {
+  content: '';
+  position: absolute;
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 45px;
+  width: 60px;
+  height: 40px;
+  top: -20px;
+  right: 20px;
+}
+
+@keyframes cloudDrift1 {
+  0%, 100% { transform: translateX(0px) translateY(0px); }
+  25% { transform: translateX(40px) translateY(-15px); }
+  50% { transform: translateX(-25px) translateY(8px); }
+  75% { transform: translateX(20px) translateY(-8px); }
+}
+
+@keyframes cloudDrift2 {
+  0%, 100% { transform: translateX(0px) translateY(0px); }
+  30% { transform: translateX(-35px) translateY(12px); }
+  70% { transform: translateX(25px) translateY(-18px); }
+}
+
+/* 🕊️ Graceful Flying Birds */
+.flying-birds {
+  position: absolute;
+  top: 18%;
+  left: 55%;
+  width: 250px;
+  height: 120px;
+}
+
+.flying-birds::before,
+.flying-birds::after {
+  content: '🕊️';
+  position: absolute;
+  font-size: 16px;
+  color: rgba(0, 0, 0, 0.4);
+  animation: birdGlide 12s infinite ease-in-out;
+  filter: blur(0.5px);
+}
+
+.flying-birds::before {
+  top: 35px;
+  left: 60px;
+  animation-delay: 0s;
+}
+
+.flying-birds::after {
+  top: 50px;
+  left: 100px;
+  animation-delay: -4s;
+  font-size: 14px;
+}
+
+@keyframes birdGlide {
+  0%, 100% { transform: translateX(0px) translateY(0px) rotate(0deg); }
+  25% { transform: translateX(30px) translateY(-8px) rotate(5deg); }
+  50% { transform: translateX(-20px) translateY(5px) rotate(-3deg); }
+  75% { transform: translateX(15px) translateY(-12px) rotate(8deg); }
+}
+
+/* ☀️ MAGNIFICENT RADIANT SUN ☀️ */
+.paradise-sun {
+  position: absolute;
+  top: 8%;
+  right: 12%;
+  width: 100px;
+  height: 100px;
+  background: 
+    radial-gradient(circle,
+      #FFFF00 0%,
+      #FFD700 25%,
+      #FFA500 45%,
+      #FF8C00 65%,
+      rgba(255, 215, 0, 0.6) 85%,
+      transparent 100%);
+  border-radius: 50%;
+  box-shadow: 
+    0 0 60px rgba(255, 215, 0, 0.8),
+    0 0 120px rgba(255, 215, 0, 0.4),
+    0 0 180px rgba(255, 165, 0, 0.2);
+  z-index: 2;
+  animation: sunPulse 6s ease-in-out infinite;
+}
+
+.paradise-sun::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  left: -30px;
+  right: -30px;
+  bottom: -30px;
+  background: 
+    radial-gradient(3px 3px at 25% 35%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(2px 3px at 65% 75%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(3px 2px at 85% 25%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(2px 2px at 45% 85%, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1px 2px at 15% 75%, rgba(255, 255, 255, 0.8), transparent);
+  border-radius: 50%;
+  animation: sunSparkles 4s ease-in-out infinite;
+}
+
+.paradise-sun::after {
+  content: '';
+  position: absolute;
+  top: -50px;
+  left: -50px;
+  right: -50px;
+  bottom: -50px;
+  background: 
+    conic-gradient(from 0deg,
+      transparent 0deg,
+      rgba(255, 215, 0, 0.1) 30deg,
+      transparent 60deg,
+      rgba(255, 215, 0, 0.1) 90deg,
+      transparent 120deg,
+      rgba(255, 215, 0, 0.1) 150deg,
+      transparent 180deg,
+      rgba(255, 215, 0, 0.1) 210deg,
+      transparent 240deg,
+      rgba(255, 215, 0, 0.1) 270deg,
+      transparent 300deg,
+      rgba(255, 215, 0, 0.1) 330deg,
+      transparent 360deg);
+  border-radius: 50%;
+  animation: sunRays 8s linear infinite;
+}
+
+@keyframes sunPulse {
+  0%, 100% { 
+    transform: scale(1) rotate(0deg);
+    box-shadow: 
+      0 0 60px rgba(255, 215, 0, 0.8),
+      0 0 120px rgba(255, 215, 0, 0.4),
+      0 0 180px rgba(255, 165, 0, 0.2);
+  }
+  50% { 
+    transform: scale(1.15) rotate(180deg);
+    box-shadow: 
+      0 0 80px rgba(255, 215, 0, 1),
+      0 0 140px rgba(255, 215, 0, 0.6),
+      0 0 200px rgba(255, 165, 0, 0.3);
+  }
+}
+
+@keyframes sunSparkles {
+  0%, 100% { opacity: 0.7; transform: rotate(0deg) scale(1); }
+  50% { opacity: 1; transform: rotate(180deg) scale(1.2); }
+}
+
+@keyframes sunRays {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 🌊 BEACH SCENE LAYERS 🌊 */
+.beach-layers {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 75%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* 🌊 Multi-Layered Realistic Ocean Waves */
+.ocean-layer-1,
+.ocean-layer-2,
+.ocean-layer-3 {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 30px;
+  opacity: 0.6;
+}
+
+.ocean-layer-1 {
+  bottom: 35%;
+  background: 
+    linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(255, 255, 255, 0.7) 20%, 
+      rgba(255, 255, 255, 0.9) 50%, 
+      rgba(255, 255, 255, 0.7) 80%, 
+      transparent 100%);
+  animation: oceanWave1 4s ease-in-out infinite;
+  filter: blur(1px);
+}
+
+.ocean-layer-2 {
+  bottom: 32%;
+  background: 
+    linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(255, 255, 255, 0.5) 25%, 
+      rgba(255, 255, 255, 0.8) 50%, 
+      rgba(255, 255, 255, 0.5) 75%, 
+      transparent 100%);
+  animation: oceanWave2 5.5s ease-in-out infinite reverse;
+  filter: blur(0.5px);
+}
+
+.ocean-layer-3 {
+  bottom: 29%;
+  background: 
+    linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(255, 255, 255, 0.4) 30%, 
+      rgba(255, 255, 255, 0.6) 50%, 
+      rgba(255, 255, 255, 0.4) 70%, 
+      transparent 100%);
+  animation: oceanWave3 7s ease-in-out infinite;
+  filter: blur(1.5px);
+}
+
+@keyframes oceanWave1 {
+  0%, 100% { transform: translateX(-150px) scaleY(1); opacity: 0.6; }
+  25% { transform: translateX(-50px) scaleY(1.3); opacity: 0.8; }
+  50% { transform: translateX(100px) scaleY(0.8); opacity: 0.9; }
+  75% { transform: translateX(50px) scaleY(1.2); opacity: 0.7; }
+}
+
+@keyframes oceanWave2 {
+  0%, 100% { transform: translateX(80px) scaleY(0.9); opacity: 0.5; }
+  33% { transform: translateX(-30px) scaleY(1.1); opacity: 0.7; }
+  66% { transform: translateX(-120px) scaleY(1.4); opacity: 0.8; }
+}
+
+@keyframes oceanWave3 {
+  0%, 100% { transform: translateX(-40px) scaleY(1.2); opacity: 0.4; }
+  20% { transform: translateX(60px) scaleY(0.7); opacity: 0.6; }
+  40% { transform: translateX(-90px) scaleY(1.5); opacity: 0.5; }
+  60% { transform: translateX(120px) scaleY(0.9); opacity: 0.7; }
+  80% { transform: translateX(-20px) scaleY(1.1); opacity: 0.4; }
+}
+
+/* 🏖️ Realistic Beach Sand */
+.beach-sand {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30%;
+  background: 
+    linear-gradient(180deg,
+      rgba(244, 164, 96, 0.9) 0%,
+      rgba(218, 165, 32, 0.95) 30%,
+      rgba(210, 180, 140, 1) 70%,
+      rgba(255, 248, 220, 1) 100%);
+  position: relative;
+}
+
+.beach-sand::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: 
+    repeating-linear-gradient(90deg,
+      transparent 0px,
+      rgba(255, 255, 255, 0.1) 2px,
+      transparent 4px,
+      rgba(255, 255, 255, 0.05) 8px,
+      transparent 10px);
+  animation: sandShimmer 8s ease-in-out infinite;
+}
+
+@keyframes sandShimmer {
+  0%, 100% { opacity: 0.3; transform: translateX(0px); }
+  50% { opacity: 0.6; transform: translateX(20px); }
+}
+
+/* 🌴 MAJESTIC SWAYING PALM TREES 🌴 */
+.palm-tree-1,
+.palm-tree-2,
+.palm-tree-3 {
+  position: absolute;
+  bottom: 18%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  transform-origin: bottom center;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.2));
+}
+
+.palm-tree-1 {
+  left: 8%;
+  width: 80px;
+  height: 180px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 180"><defs><linearGradient id="trunk1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="%23654321"/><stop offset="50%" stop-color="%238B4513"/><stop offset="100%" stop-color="%23A0522D"/></linearGradient><radialGradient id="palm1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%2332CD32"/><stop offset="70%" stop-color="%23228B22"/><stop offset="100%" stop-color="%23006400"/></radialGradient></defs><ellipse cx="40" cy="160" rx="6" ry="20" fill="url(%23trunk1)"/><path fill="url(%23palm1)" d="M40 140c-20-8-35-20-30-35 5 12 12 18 22 22-15-12-22-30-12-35 3 15 12 22 20 25V140z"/><path fill="url(%23palm1)" d="M40 140c20-8 35-20 30-35-5 12-12 18-22 22 15-12 22-30 12-35-3 15-12 22-20 25V140z"/><path fill="url(%23palm1)" d="M40 140c0-25-15-40-30-35 12 5 18 12 22 22-12-15-30-22-35-12 15 3 22 12 25 20h18z"/><path fill="url(%23palm1)" d="M40 140c0-25 15-40 30-35-12 5-18 12-22 22 12-15 30-22 35-12-15 3-22 12-25 20H40z"/></svg>');
+  animation: palmSway1 8s ease-in-out infinite;
+}
+
+.palm-tree-2 {
+  right: 6%;
+  width: 70px;
+  height: 150px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 150"><defs><linearGradient id="trunk2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="%23654321"/><stop offset="50%" stop-color="%238B4513"/><stop offset="100%" stop-color="%23A0522D"/></linearGradient><radialGradient id="palm2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%2332CD32"/><stop offset="70%" stop-color="%23228B22"/><stop offset="100%" stop-color="%23006400"/></radialGradient></defs><ellipse cx="35" cy="130" rx="5" ry="20" fill="url(%23trunk2)"/><path fill="url(%23palm2)" d="M35 110c-18-6-30-18-25-30 4 10 10 15 18 18-12-10-18-25-10-30 2 12 10 18 17 22V110z"/><path fill="url(%23palm2)" d="M35 110c18-6 30-18 25-30-4 10-10 15-18 18 12-10 18-25 10-30-2 12-10 18-17 22V110z"/><path fill="url(%23palm2)" d="M35 110c0-20-12-32-25-28 10 4 15 10 18 18-10-12-25-18-28-10 12 2 18 10 20 16h15z"/><path fill="url(%23palm2)" d="M35 110c0-20 12-32 25-28-10 4-15 10-18 18 10-12 25-18 28-10-12 2-18 10-20 16H35z"/></svg>');
+  animation: palmSway2 10s ease-in-out infinite reverse;
+}
+
+.palm-tree-3 {
+  right: 22%;
+  width: 60px;
+  height: 120px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 120"><defs><linearGradient id="trunk3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="%23654321"/><stop offset="50%" stop-color="%238B4513"/><stop offset="100%" stop-color="%23A0522D"/></linearGradient><radialGradient id="palm3" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%2332CD32"/><stop offset="70%" stop-color="%23228B22"/><stop offset="100%" stop-color="%23006400"/></radialGradient></defs><ellipse cx="30" cy="105" rx="4" ry="15" fill="url(%23trunk3)"/><path fill="url(%23palm3)" d="M30 90c-15-5-25-15-20-25 3 8 8 12 15 15-10-8-15-20-8-25 2 10 8 15 13 18V90z"/><path fill="url(%23palm3)" d="M30 90c15-5 25-15 20-25-3 8-8 12-15 15 10-8 15-20 8-25-2 10-8 15-13 18V90z"/><path fill="url(%23palm3)" d="M30 90c0-18-10-28-20-23 8 3 12 8 15 15-8-10-20-15-23-8 10 2 15 8 18 13h10z"/><path fill="url(%23palm3)" d="M30 90c0-18 10-28 20-23-8 3-12 8-15 15 8-10 20-15 23-8-10 2-15 8-18 13H30z"/></svg>');
+  animation: palmSway3 9s ease-in-out infinite;
+}
+
+@keyframes palmSway1 {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(4deg); }
+  40% { transform: rotate(-2deg); }
+  60% { transform: rotate(5deg); }
+  80% { transform: rotate(-3deg); }
+}
+
+@keyframes palmSway2 {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  50% { transform: rotate(3deg); }
+  75% { transform: rotate(-2deg); }
+}
+
+@keyframes palmSway3 {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(3deg); }
+  35% { transform: rotate(-4deg); }
+  55% { transform: rotate(2deg); }
+  75% { transform: rotate(-3deg); }
+  90% { transform: rotate(1deg); }
+}
+
+/* 🎨 PREMIUM PARADISE BUTTONS 🎨 */
+.btn-paradise {
+  background: linear-gradient(135deg, 
+    #FF6B6B 0%, 
+    #4ECDC4 25%, 
+    #45B7D1 50%, 
+    #96CEB4 75%, 
+    #FECA57 100%);
+  background-size: 400% 400%;
+  animation: paradiseGlow 6s ease-in-out infinite;
+  border: none;
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 
+    0 10px 30px rgba(255, 107, 107, 0.4),
+    0 0 50px rgba(78, 205, 196, 0.2);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-paradise::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transform: rotate(45deg);
+  animation: paradiseShine 3s linear infinite;
+}
+
+.btn-paradise:hover {
+  transform: translateY(-5px) scale(1.08);
+  box-shadow: 
+    0 20px 50px rgba(255, 107, 107, 0.6),
+    0 0 80px rgba(78, 205, 196, 0.4),
+    0 0 120px rgba(69, 183, 209, 0.2);
+  filter: brightness(1.2);
+}
+
+@keyframes paradiseGlow {
+  0% { background-position: 0% 50%; }
+  25% { background-position: 50% 0%; }
+  50% { background-position: 100% 50%; }
+  75% { background-position: 50% 100%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes paradiseShine {
+  0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+/* ✨ FLOATING ANIMATIONS ✨ */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+}
+
+@keyframes gentleFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-8px) rotate(1deg); }
+  66% { transform: translateY(-4px) rotate(-1deg); }
+}
+
+.floating {
+  animation: float 4s ease-in-out infinite;
+}
+
+.gentle-float {
+  animation: gentleFloat 6s ease-in-out infinite;
+}
+
+/* 🌅 TROPICAL SECTION GRADIENTS 🌅 */
+.tropical-gradient-1 {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.tropical-gradient-2 {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.tropical-gradient-3 {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.tropical-gradient-ocean {
+  background: linear-gradient(135deg, 
+    #0099ff 0%, 
+    #00ccff 25%, 
+    #33aaff 50%, 
+    #66ccff 75%, 
+    #99ddff 100%);
+}
+
+.tropical-gradient-sunset {
+  background: linear-gradient(135deg,
+    #ff6b6b 0%,
+    #ffa500 25%,
+    #ffd700 50%,
+    #ff8c42 75%,
+    #ff6b6b 100%);
+}
+
+/* 📱 RESPONSIVE PARADISE 📱 */
+@media (max-width: 1024px) {
+  .paradise-sun {
+    width: 80px;
+    height: 80px;
+    top: 10%;
+    right: 8%;
+  }
+  
+  .palm-tree-1 {
+    width: 60px;
+    height: 140px;
+  }
+  
+  .palm-tree-2 {
+    width: 55px;
+    height: 120px;
+  }
+  
+  .palm-tree-3 {
+    width: 45px;
+    height: 100px;
+  }
+}
+
+@media (max-width: 768px) {
+  .paradise-sun {
+    width: 60px;
+    height: 60px;
+    top: 8%;
+    right: 5%;
+  }
+  
+  .cloud-1, .cloud-2 {
+    width: 80px;
+    height: 30px;
+  }
+  
+  .palm-tree-1 {
+    width: 50px;
+    height: 120px;
+    left: 5%;
+  }
+  
+  .palm-tree-2 {
+    width: 45px;
+    height: 100px;
+    right: 3%;
+  }
+  
+  .palm-tree-3 {
+    width: 35px;
+    height: 80px;
+    right: 18%;
+  }
+  
+  .hero-glass {
+    border-radius: 20px;
+    border-width: 2px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bg-paradise-scene {
+    min-height: 100vh;
+  }
+  
+  .paradise-sun {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .palm-tree-1,
+  .palm-tree-2,
+  .palm-tree-3 {
+    width: 30px;
+    height: 70px;
+  }
+  
+  .flying-birds {
+    width: 150px;
+    height: 80px;
+  }
+}
+
+/* 🎭 SPECIAL EFFECTS 🎭 */
+.paradise-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.paradise-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: shimmerSlide 3s ease-in-out infinite;
+}
+
+@keyframes shimmerSlide {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* 🌺 PARADISE COMPLETE 🌺 */

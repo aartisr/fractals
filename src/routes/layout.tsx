@@ -1,0 +1,503 @@
+import { component$, Slot, useVisibleTask$, useSignal, $ } from '@builder.io/qwik';
+import { 
+  LuMenu, 
+  LuSearch, 
+  LuBell, 
+  LuX, 
+  LuChevronLeft, 
+  LuChevronRight, 
+  LuChevronDown,
+  LuHome, 
+  LuVideo, 
+  LuPlayCircle, 
+  LuListVideo, 
+  LuCompass, 
+  LuCalendar, 
+  LuSparkles, 
+  LuUsers, 
+  LuLogIn,
+  LuLogOut,
+  LuUser,
+  LuTwitter,
+  LuFacebook,
+  LuInstagram,
+  LuYoutube,
+  LuMessageCircle,
+  LuHistory,
+  LuBookmark,
+  LuBrain
+} from '@qwikest/icons/lucide';
+import { useUserContext } from './plugin@auth';
+
+export default component$(() => {
+  const sidebarOpen = useSignal(true); // Abierto por defecto
+  const askDropdownOpen = useSignal(false); // Estado del dropdown de Ask Nithyananda
+  const userContext = useUserContext(); // Auth context from plugin
+
+  // Handler para cerrar sidebar en mobile al hacer click en un link
+  const closeSidebarOnMobile = $(() => {
+    if (window.innerWidth <= 1024) {
+      sidebarOpen.value = false;
+    }
+  });
+
+  // Cerrar sidebar en mobile al cargar
+  useVisibleTask$(() => {
+    if (window.innerWidth <= 1024) {
+      sidebarOpen.value = false;
+    }
+  });
+
+  return (
+    <>
+      {/* Mobile Top Navbar */}
+      <nav class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/70 backdrop-blur-xl border-b border-orange-200/50 z-50 shadow-sm">
+        <div class="flex items-center justify-between h-full px-4">
+          <button
+            onClick$={$(() => {
+              sidebarOpen.value = !sidebarOpen.value;
+            })}
+            class="p-2 hover:bg-orange-50 rounded-xl transition-colors"
+          >
+            <LuMenu class="w-6 h-6 text-gray-700" />
+          </button>
+          
+          <a href="/" class="flex items-center gap-2">
+            <div class="relative w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg">
+              <span class="text-white text-sm font-semibold font-serif">ॐ</span>
+            </div>
+            <div class="text-lg font-serif font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+              Nithyananda TV
+            </div>
+          </a>
+
+          <div class="flex items-center gap-2">
+            <button class="p-2 hover:bg-orange-50 rounded-xl transition-colors">
+              <LuSearch class="w-5 h-5 text-gray-600" />
+            </button>
+            <button class="p-2 hover:bg-orange-50 rounded-xl transition-colors relative">
+              <LuBell class="w-5 h-5 text-gray-600" />
+              <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full"></span>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Overlay para cerrar sidebar en mobile */}
+      {sidebarOpen.value && (
+        <div
+          class="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+          onClick$={$(() => {
+            sidebarOpen.value = false;
+          })}
+        ></div>
+      )}
+
+      {/* Sidebar - Expandido/Mini en desktop, deslizable en mobile */}
+      <aside 
+        class={`fixed left-0 top-0 h-screen bg-gradient-to-br from-white via-orange-50/20 to-amber-50/30 border-r border-orange-200/50 backdrop-blur-xl z-50 flex flex-col shadow-2xl transition-all duration-300 ease-in-out 
+          ${sidebarOpen.value ? 'w-72 translate-x-0' : 'w-20 -translate-x-full lg:translate-x-0'}
+        `}
+      >
+        {/* Botón Toggle en el borde derecho - Solo desktop */}
+        <button
+          onClick$={$(() => {
+            sidebarOpen.value = !sidebarOpen.value;
+          })}
+          class="hidden lg:flex absolute -right-12 top-20 w-10 h-16 bg-gradient-to-r from-orange-500 to-amber-600 text-white items-center justify-center rounded-r-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-amber-700 transition-all duration-300 group"
+        >
+          {sidebarOpen.value ? (
+            <LuChevronLeft class="w-5 h-5 group-hover:scale-110 transition-transform" />
+          ) : (
+            <LuChevronRight class="w-5 h-5 group-hover:scale-110 transition-transform" />
+          )}
+        </button>
+        
+        {/* Logo Section */}
+        <div class="p-4 border-b border-orange-200/50 flex items-center justify-center">
+          <a href="/" class="flex items-center gap-3 group">
+            <div class="relative flex-shrink-0">
+              <div class="absolute inset-0 bg-orange-500 blur-2xl opacity-30 rounded-full group-hover:opacity-50 transition-opacity"></div>
+              <div class="relative w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform duration-300">
+                <span class="text-white text-xl font-semibold font-serif">ॐ</span>
+              </div>
+            </div>
+            {sidebarOpen.value && (
+              <div class="flex-1 overflow-hidden">
+                <div class="text-xl font-serif font-bold tracking-tight bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent whitespace-nowrap">
+                  Nithyananda TV
+                </div>
+                <div class="text-[10px] text-orange-600/70 tracking-widest uppercase font-medium whitespace-nowrap">
+                  Divine Streaming
+                </div>
+              </div>
+            )}
+          </a>
+          
+          {/* Botón de cerrar solo en mobile cuando está abierto */}
+          {sidebarOpen.value && (
+            <button
+              onClick$={$(() => {
+                sidebarOpen.value = false;
+              })}
+              class="lg:hidden p-2 hover:bg-orange-50 rounded-xl transition-colors flex-shrink-0 ml-auto"
+            >
+              <LuX class="w-5 h-5 text-gray-600" />
+            </button>
+          )}
+        </div>
+
+        {/* Search Bar - Solo cuando está expandido */}
+        {sidebarOpen.value && (
+          <div class="px-4 py-4">
+            <div class="flex items-center gap-2 bg-white/60 border border-orange-200/50 rounded-xl px-4 py-2.5 shadow-sm hover:shadow-md hover:border-orange-300/60 transition-all duration-300">
+              <LuSearch class="w-4 h-4 text-orange-400 flex-shrink-0" />
+              <input 
+                type="text" 
+                placeholder="Search divine wisdom..." 
+                class="bg-transparent text-sm outline-none w-full placeholder:text-gray-400"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Main Navigation */}
+        <nav class="flex-1 px-2 py-2 overflow-y-auto">
+          <div class="space-y-1">
+            {/* Home */}
+            <a 
+              href="/" 
+              onClick$={closeSidebarOnMobile} 
+              class="group flex items-center gap-3 px-3 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-200 hover:shadow-xl transition-all duration-300 justify-center lg:justify-start"
+              title="Home"
+            >
+              <div class="w-9 h-9 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                <LuHome class="w-5 h-5" />
+              </div>
+              {sidebarOpen.value && <span class="font-medium whitespace-nowrap">Home</span>}
+            </a>
+
+            {/* SPH LIVE */}
+            <a 
+              href="#live" 
+              onClick$={closeSidebarOnMobile} 
+              class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
+              title="SPH LIVE"
+            >
+              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-red-100 to-orange-100 flex items-center justify-center group-hover:scale-110 transition-transform relative flex-shrink-0">
+                <LuVideo class="w-5 h-5 text-red-600" />
+                <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+              </div>
+              {sidebarOpen.value && (
+                <div class="flex-1">
+                  <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors">SPH LIVE</span>
+                  <div class="text-xs text-red-500 font-medium">● Live Now</div>
+                </div>
+              )}
+            </a>
+
+            {/* Watch */}
+            <a 
+              href="#watch" 
+              onClick$={closeSidebarOnMobile} 
+              class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
+              title="Watch"
+            >
+              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                <LuPlayCircle class="w-5 h-5 text-purple-600" />
+              </div>
+              {sidebarOpen.value && <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Watch</span>}
+            </a>
+
+            {/* Playlists */}
+            <a 
+              href="/playlists" 
+              onClick$={closeSidebarOnMobile} 
+              class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
+              title="Playlists"
+            >
+              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                <LuListVideo class="w-5 h-5 text-blue-600" />
+              </div>
+              {sidebarOpen.value && <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Playlists</span>}
+            </a>
+
+            {/* Explore Categories */}
+            <a 
+              href="#explore" 
+              onClick$={closeSidebarOnMobile} 
+              class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
+              title="Explore"
+            >
+              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                <LuCompass class="w-5 h-5 text-emerald-600" />
+              </div>
+              {sidebarOpen.value && <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Explore</span>}
+            </a>
+
+            {/* Divider - Solo cuando está expandido */}
+            {sidebarOpen.value && (
+              <div class="py-3">
+                <div class="border-t border-orange-200/50"></div>
+              </div>
+            )}
+
+            {/* Sacred Content Section - Solo cuando está expandido */}
+            {sidebarOpen.value && (
+              <div class="px-4 py-2">
+                <h3 class="text-xs font-serif font-semibold text-orange-600/70 uppercase tracking-wider mb-3">Sacred Content</h3>
+              </div>
+            )}
+
+            {/* Event Schedule */}
+            <a 
+              href="#schedule" 
+              onClick$={closeSidebarOnMobile} 
+              class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
+              title="Event Schedule"
+            >
+              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-yellow-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                <LuCalendar class="w-5 h-5 text-amber-600" />
+              </div>
+              {sidebarOpen.value && <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Event Schedule</span>}
+            </a>
+
+            {/* Ask Nithyananda - Dropdown */}
+            <div>
+              <button 
+                onClick$={$(() => {
+                  askDropdownOpen.value = !askDropdownOpen.value;
+                })}
+                class="group w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
+                title="Ask Nithyananda"
+              >
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                  <LuSparkles class="w-5 h-5 text-indigo-600" />
+                </div>
+                {sidebarOpen.value && (
+                  <>
+                    <span class="flex-1 text-left font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Ask Nithyananda</span>
+                    <LuChevronDown class={`w-4 h-4 text-gray-500 transition-transform duration-300 ${askDropdownOpen.value ? 'rotate-180' : ''}`} />
+                  </>
+                )}
+              </button>
+              
+              {/* Dropdown Items - Solo visible cuando está expandido */}
+              {sidebarOpen.value && askDropdownOpen.value && (
+                <div class="mt-1 ml-3 pl-9 space-y-1 border-l-2 border-indigo-200">
+                  <a 
+                    href="/ask" 
+                    onClick$={closeSidebarOnMobile}
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors text-sm text-gray-600 hover:text-indigo-600"
+                  >
+                    <LuMessageCircle class="w-4 h-4 flex-shrink-0" />
+                    <span>New Chat</span>
+                  </a>
+                  <a 
+                    href="/models" 
+                    onClick$={closeSidebarOnMobile}
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors text-sm text-gray-600 hover:text-indigo-600"
+                  >
+                    <LuBrain class="w-4 h-4 flex-shrink-0" />
+                    <span>Models (45)</span>
+                  </a>
+                  <a 
+                    href="/ask/history" 
+                    onClick$={closeSidebarOnMobile}
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors text-sm text-gray-600 hover:text-indigo-600"
+                  >
+                    <LuHistory class="w-4 h-4 flex-shrink-0" />
+                    <span>Past Chats</span>
+                  </a>
+                
+                </div>
+              )}
+            </div>
+
+            {/* Global Community */}
+            <a 
+              href="#community" 
+              onClick$={closeSidebarOnMobile} 
+              class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
+              title="Community"
+            >
+              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-rose-100 to-pink-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                <LuUsers class="w-5 h-5 text-rose-600" />
+              </div>
+              {sidebarOpen.value && <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Community</span>}
+            </a>
+          </div>
+        </nav>
+
+        {/* Bottom Section */}
+        <div class="p-2 border-t border-orange-200/50 space-y-2">
+          {/* Notifications */}
+          <button 
+            class="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 relative group justify-center lg:justify-start"
+            title="Notifications"
+          >
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0 relative">
+              <LuBell class="w-5 h-5 text-orange-600" />
+              <span class="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full"></span>
+            </div>
+            {sidebarOpen.value && <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Notifications</span>}
+          </button>
+
+          {/* Auth Section */}
+          {userContext.value.isAuthenticated ? (
+            <div class="space-y-2">
+              {/* User Profile Button */}
+              <button 
+                class="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 relative group justify-center lg:justify-start"
+                title={userContext.value.user?.email}
+              >
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                  <LuUser class="w-5 h-5 text-white" />
+                </div>
+                {sidebarOpen.value && (
+                  <div class="flex-1 min-w-0 text-left">
+                    <div class="font-medium text-gray-900 truncate">
+                      {userContext.value.user?.first_name} {userContext.value.user?.last_name}
+                    </div>
+                    <div class="text-xs text-gray-500 truncate">
+                      {userContext.value.user?.email}
+                    </div>
+                  </div>
+                )}
+              </button>
+
+              {/* Sign Out Button */}
+              <a 
+                href="/auth/logout" 
+                onClick$={closeSidebarOnMobile}
+                class="w-full flex items-center justify-center gap-2 px-3 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-medium rounded-xl hover:shadow-2xl hover:shadow-gray-300/50 hover:scale-105 transition-all duration-300"
+                title="Sign Out"
+              >
+                <LuLogOut class="w-5 h-5 flex-shrink-0" />
+                {sidebarOpen.value && <span class="font-serif whitespace-nowrap">Sign Out</span>}
+              </a>
+            </div>
+          ) : (
+            <a 
+              href="/auth/login" 
+              onClick$={closeSidebarOnMobile}
+              class="w-full flex items-center justify-center gap-2 px-3 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium rounded-xl hover:shadow-2xl hover:shadow-orange-300/50 hover:scale-105 transition-all duration-300"
+              style="animation: pulse-glow 3s ease-in-out infinite;"
+              title="Sign In"
+            >
+              <LuLogIn class="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen.value && <span class="font-serif whitespace-nowrap">Sign In</span>}
+            </a>
+          )}
+        </div>
+      </aside>
+  
+      {/* Main Content - Responsive con transición suave */}
+      <main 
+        class={`min-h-screen pt-16 lg:pt-0 transition-all duration-300 ${
+          sidebarOpen.value ? 'lg:ml-72' : 'lg:ml-20'
+        }`}
+      >
+        <Slot />
+      </main>
+
+      {/* Footer - Responsive con transición suave */}
+      <footer 
+        class={`relative border-t border-orange-200/50 bg-gradient-to-br from-white to-orange-50/30 py-16 transition-all duration-300 ${
+          sidebarOpen.value ? 'lg:ml-72' : 'lg:ml-20'
+        }`}
+      >
+        {/* CHAKRA RINGS CSS ILLUSTRATION */}
+        <div class="pointer-events-none absolute -z-10 -bottom-24 -right-20 w-[420px] h-[420px] opacity-40">
+          <div class="absolute inset-0 rounded-full border border-orange-200" style="box-shadow: 0 0 0 18px rgba(251,146,60,0.08), 0 0 0 42px rgba(251,146,60,0.06), 0 0 0 70px rgba(251,146,60,0.04); background: radial-gradient(circle at 60% 40%, rgba(253,186,116,0.2), rgba(255,255,255,0) 55%);"></div>
+          <div class="absolute inset-10 rounded-full border border-amber-200" style="background: radial-gradient(circle at 40% 60%, rgba(251,191,36,0.18), rgba(255,255,255,0) 60%);"></div>
+          <div class="absolute inset-20 rounded-full border border-orange-200/70"></div>
+          <div class="absolute inset-32 rounded-full border border-orange-300/60"></div>
+          <div class="absolute inset-40 rounded-full border border-orange-300/40"></div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="grid md:grid-cols-4 gap-12 mb-12">
+            <div>
+              <div class="flex items-center gap-3 mb-6">
+                <div class="relative">
+                  <div class="absolute inset-0 bg-orange-500 blur-xl opacity-20 rounded-full"></div>
+                  <div class="relative w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center shadow-lg">
+                    <span class="text-white text-lg font-semibold font-serif">ॐ</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="text-xl font-serif font-semibold tracking-tight bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Nithyananda TV</div>
+                </div>
+              </div>
+              <p class="text-sm text-gray-600 mb-6 leading-relaxed">
+                Your gateway to divine consciousness and spiritual enlightenment through sacred teachings.
+              </p>
+              <div class="flex items-center gap-2">
+                <a href="#" class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 hover:from-orange-200 hover:to-amber-200 border border-orange-200 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110">
+                  <LuTwitter class="w-4 h-4 text-orange-600" />
+                </a>
+                <a href="#" class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 hover:from-orange-200 hover:to-amber-200 border border-orange-200 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110">
+                  <LuFacebook class="w-4 h-4 text-orange-600" />
+                </a>
+                <a href="#" class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 hover:from-orange-200 hover:to-amber-200 border border-orange-200 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110">
+                  <LuInstagram class="w-4 h-4 text-orange-600" />
+                </a>
+                <a href="#" class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 hover:from-orange-200 hover:to-amber-200 border border-orange-200 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110">
+                  <LuYoutube class="w-4 h-4 text-orange-600" />
+                </a>
+              </div>
+            </div>
+            <div>
+              <h4 class="font-serif font-medium text-gray-900 mb-4">Sacred Content</h4>
+              <ul class="space-y-3 text-sm">
+                {['SPH LIVE Darshan', 'Playlists', 'Sacred Categories', 'Event Schedule'].map((item) => (
+                  <li key={item}>
+                    <a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                      <span class="w-1 h-1 bg-orange-400 rounded-full"></span>{item}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 class="font-serif font-medium text-gray-900 mb-4">Divine Resources</h4>
+              <ul class="space-y-3 text-sm">
+                {['About KAILASA', 'Support Center', 'Global Community', 'Wisdom Blog'].map((item) => (
+                  <li key={item}>
+                    <a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                      <span class="w-1 h-1 bg-orange-400 rounded-full"></span>{item}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 class="font-serif font-medium text-gray-900 mb-4">Legal</h4>
+              <ul class="space-y-3 text-sm">
+                {['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Contact Us'].map((item) => (
+                  <li key={item}>
+                    <a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
+                      <span class="w-1 h-1 bg-orange-400 rounded-full"></span>{item}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div class="border-t border-orange-200/50 pt-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+              <p class="text-sm text-gray-600">© 2024 Nithyananda TV. All rights reserved. Blessed with divine grace.</p>
+              <div class="flex items-center gap-2 text-sm text-gray-600">
+                <span>Powered by</span>
+                <span class="font-serif font-medium text-orange-600">KAILASA</span>
+                <span class="text-orange-400">•</span>
+                <span class="font-serif">नित्यानंद</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </>
+  );
+});
