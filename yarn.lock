@@ -2110,6 +2110,11 @@ hast-util-whitespace@^3.0.0:
   dependencies:
     "@types/hast" "^3.0.0"
 
+hls.js@^1.6.13:
+  version "1.6.13"
+  resolved "https://registry.yarnpkg.com/hls.js/-/hls.js-1.6.13.tgz#fcf2823f17aaf9127b9011ef135cae5d2520ab75"
+  integrity sha512-hNEzjZNHf5bFrUNvdS4/1RjIanuJ6szpWNfTaX5I6WfGynWXGT7K/YQLYtemSvFExzeMdgdE4SsyVLJbd5PcZA==
+
 http-errors@2.0.0, http-errors@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/http-errors/-/http-errors-2.0.0.tgz#b7774a1486ef73cf7667ac9ae0858c012c57b9d3"

@@ -51,6 +51,7 @@
     "@qwikest/icons": "^0.0.13",
     "bcryptjs": "latest",
     "express": "latest",
+    "hls.js": "^1.6.13",
     "lucide-static": "latest"
   }
 }

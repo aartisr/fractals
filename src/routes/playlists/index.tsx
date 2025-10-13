@@ -1,6 +1,7 @@
 import { component$, useSignal, $ } from '@builder.io/qwik';
 import { DocumentHead, Link } from '@builder.io/qwik-city';
 import { LuSearch, LuFilter, LuX, LuPlay, LuClock, LuEye, LuLogIn, LuShield } from '@qwikest/icons/lucide';
+import { VideoPlayer } from '~/components/ui/VideoPlayer';
 import { useUserContext } from '~/routes/plugin@auth';
 
 interface Video {
@@ -424,16 +425,15 @@ export default component$(() => {
               <div class="p-6">
                 {/* Video Player */}
                 <div class="aspect-video bg-black rounded-lg mb-6">
-                  <video
-                    controls
-                    class="w-full h-full"
+                  <VideoPlayer
                     poster={selectedVideo.value.thumbnail}
-                  >
-                    <source src={selectedVideo.value.url1080p} type="application/x-mpegURL" />
-                    <source src={selectedVideo.value.url720p} type="application/x-mpegURL" />
-                    <source src={selectedVideo.value.masterUrl} type="application/x-mpegURL" />
-                    Your browser does not support the video tag.
-                  </video>
+                    sources={[
+                      selectedVideo.value.masterUrl,
+                      selectedVideo.value.url1080p,
+                      selectedVideo.value.url720p,
+                    ]}
+                    autoplay
+                  />
                 </div>
 
                 {/* Video Info */}
