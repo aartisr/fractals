@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(while read item)",
+      "Bash(do mv \"$item\" web/)",
+      "Bash(done)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

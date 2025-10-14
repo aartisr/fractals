@@ -140,3 +140,7 @@ vite.config.ts.timestamp-*
 # Cloudflare
 functions/**/*.js
 dist
+
+.env
+.env.local
+.claude/
