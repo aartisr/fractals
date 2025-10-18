@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ntv-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DATABASE:-nithyananda-tv}
+      POSTGRES_USER: ${DB_USER:-ntv}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - nithyananda-tv-network
+    
+  cms:
+    build:
+      context: ./cms
+      dockerfile: Dockerfile
+      target: runner
+    container_name: ntv-cms
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    environment:
+      # Override to use internal Postgres service
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}
+      PORT: 3000
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+    volumes:
+      # Persist Payload uploads (default upload dir is ./media)
+      - cms_media:/app/media
+    ports:
+      # Expose CMS on host :3001 -> container :3000
+      - "3001:3000"
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+  cms-migrate:
+    build:
+      context: ./cms
+      dockerfile: Dockerfile
+      target: cli
+    container_name: ntv-cms-migrate
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+    command: ["payload", "migrate"]
+    restart: "no"
+    networks:
+      - nithyananda-tv-network
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: ntv-web
+    depends_on:
+      - cms
+    env_file:
+      - .env
+    environment:
+      # Ensure server-side API calls hit the internal CMS hostname
+      CMS_URL: http://cms:3000
+      PORT: 3000
+      NODE_ENV: production
+      ORIGIN: ${ORIGIN:-http://localhost:3000}
+      # Enable Node's experimental built-in sqlite module used by web runtime
+      NODE_OPTIONS: --experimental-sqlite
+      # Optionally set ORIGIN to your public URL in production
+      # ORIGIN: https://your-domain.example
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+volumes:
+  pgdata:
+  cms_media:
+
+networks:
+  nithyananda-tv-network:
+    external: true

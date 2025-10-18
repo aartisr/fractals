@@ -11,6 +11,12 @@
   "trustedDependencies": [
     "sharp"
   ],
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "esbuild"
+    ]
+  },
   "scripts": {
     "build": "qwik build",
     "build.client": "vite build",
@@ -46,7 +52,6 @@
     "vite-tsconfig-paths": "latest"
   },
   "dependencies": {
-    "@libsql/client": "latest",
     "@modular-forms/qwik": "latest",
     "@qwikest/icons": "^0.0.13",
     "bcryptjs": "latest",

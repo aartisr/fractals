@@ -8,15 +8,14 @@ Dockerfile.*
 # Node
 node_modules
 npm-debug.log*
-# Keep pnpm lockfile in context for deterministic installs
+# Keep lockfiles in build context to enable deterministic installs
 # yarn.lock
-!pnpm-lock.yaml
+# pnpm-lock.yaml
 
-# Qwik / build outputs
+# Next.js
+.next
+out
 dist
-server/assets
-.cache
-.vite
 coverage
 
 # Editor / OS
