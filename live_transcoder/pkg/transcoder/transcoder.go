@@ -1,0 +1,680 @@
+package transcoder
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"live_transcoder/pkg/config"
+	"live_transcoder/pkg/storage"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/rs/zerolog/log"
+)
+
+var (
+	segmentVariantRegex = regexp.MustCompile(`^segment_([^_]+)_`)
+	streamVariantRegex  = regexp.MustCompile(`^stream_(.+)\.m3u8$`)
+)
+
+type Transcoder struct {
+	ctx          context.Context
+	cfg          *config.Config
+	r2Client     *storage.R2Client
+	streamKey    string
+	rtmpURL      string
+	workDir      string
+	processLock  sync.Mutex
+	processes    []*exec.Cmd
+	variants     map[string]string
+	uploadCtx    context.Context
+	uploadCancel context.CancelFunc
+	stopOnce     sync.Once
+	stopped      bool
+}
+
+func NewTranscoder(ctx context.Context, cfg *config.Config, r2Client *storage.R2Client, streamKey string, rtmpURL string) *Transcoder {
+	variants := make(map[string]string, len(cfg.Qualities))
+	for _, quality := range cfg.Qualities {
+		variants[quality.Name] = quality.Name
+	}
+
+	// Create separate context for upload watcher that won't be canceled when FFmpeg ends
+	uploadCtx, uploadCancel := context.WithCancel(context.Background())
+
+	return &Transcoder{
+		ctx:          ctx,
+		cfg:          cfg,
+		r2Client:     r2Client,
+		streamKey:    streamKey,
+		rtmpURL:      rtmpURL,
+		processes:    make([]*exec.Cmd, 0),
+		variants:     variants,
+		uploadCtx:    uploadCtx,
+		uploadCancel: uploadCancel,
+	}
+}
+
+func (t *Transcoder) Start() error {
+	// Create working directory
+	workDir := filepath.Join(t.cfg.Server.TempDir, t.streamKey)
+	if err := os.MkdirAll(workDir, 0755); err != nil {
+		return fmt.Errorf("failed to create work directory: %w", err)
+	}
+	t.workDir = workDir
+
+	// Start HLS transcoding
+	hlsDir := filepath.Join(workDir, "hls")
+	if err := os.MkdirAll(hlsDir, 0755); err != nil {
+		return fmt.Errorf("failed to create HLS directory: %w", err)
+	}
+
+	// Start segment upload watcher
+	uploadDone := make(chan struct{})
+	go func() {
+		t.watchAndUploadSegments()
+		close(uploadDone)
+	}()
+
+	// Start FFmpeg transcoding process
+	cmd := t.buildFFmpegCommand(hlsDir)
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	log.Info().
+		Str("stream_key", t.streamKey).
+		Str("rtmp_url", t.rtmpURL).
+		Int("qualities", len(t.cfg.Qualities)).
+		Int("segment_duration", t.cfg.HLS.SegmentDuration).
+		Msg("🎬 Starting FFmpeg transcoding")
+
+	if err := cmd.Run(); err != nil {
+		log.Warn().Err(err).Msg("FFmpeg process ended with error (stream may have stopped)")
+	}
+
+	// FFmpeg ended (either error or manual stop) - perform graceful shutdown
+	log.Info().Str("stream_key", t.streamKey).Msg("Performing graceful shutdown...")
+	t.gracefulShutdown(uploadDone)
+
+	return nil
+}
+
+// Stop gracefully stops the transcoder (called by server on shutdown)
+func (t *Transcoder) Stop() {
+	t.stopOnce.Do(func() {
+		log.Info().Str("stream_key", t.streamKey).Msg("Stopping transcoder - sending quit signal to FFmpeg...")
+		t.stopped = true
+
+		// Send 'q' to FFmpeg stdin to quit gracefully (lets it finish current segment)
+		// Don't use Kill() as it terminates immediately and corrupts in-progress segments
+		t.processLock.Lock()
+		defer t.processLock.Unlock()
+
+		for _, cmd := range t.processes {
+			if cmd.Process != nil {
+				// On Unix, send SIGTERM for graceful shutdown
+				// FFmpeg will finish writing current segment before exiting
+				cmd.Process.Signal(os.Interrupt)
+			}
+		}
+	})
+}
+
+func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
+	log.Info().
+		Str("stream_key", t.streamKey).
+		Msg("🛑 FFmpeg stopped - starting graceful shutdown...")
+
+	// Upload any remaining segments (with retries for in-progress writes)
+	hlsDir := filepath.Join(t.workDir, "hls")
+	uploadedFiles := make(map[string]bool)
+
+	log.Info().
+		Str("stream_key", t.streamKey).
+		Msg("📤 Uploading final segments (retrying 5 times)...")
+
+	// Try multiple times to catch any segments still being written
+	for i := 0; i < 5; i++ {
+		log.Debug().
+			Str("stream_key", t.streamKey).
+			Int("attempt", i+1).
+			Msg("Scanning for remaining segments...")
+		t.uploadDirectory(hlsDir, "", uploadedFiles)
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	log.Info().
+		Str("stream_key", t.streamKey).
+		Int("total_uploaded", len(uploadedFiles)).
+		Msg("✓ Final segment upload completed")
+
+	// Finalize playlists by adding EXT-X-ENDLIST (marks stream as VOD)
+	log.Info().Str("stream_key", t.streamKey).Msg("📝 Finalizing playlists with EXT-X-ENDLIST...")
+	t.finalizePlaylists()
+
+	// Signal upload watcher to stop and wait for it
+	log.Debug().Str("stream_key", t.streamKey).Msg("Stopping upload watcher...")
+	t.uploadCancel()
+	<-uploadDone
+	log.Debug().Str("stream_key", t.streamKey).Msg("✓ Upload watcher stopped")
+
+	// Clean up temp directory
+	log.Info().Str("stream_key", t.streamKey).Msg("🧹 Cleaning up temp directory...")
+	if t.workDir != "" {
+		os.RemoveAll(t.workDir)
+	}
+
+	log.Info().
+		Str("stream_key", t.streamKey).
+		Msg("✅ Graceful shutdown completed - stream available as VOD")
+}
+
+func (t *Transcoder) buildFFmpegCommand(hlsDir string) *exec.Cmd {
+	// Build FFmpeg command for multi-quality HLS with RTMP input
+	args := []string{
+		"-i", t.rtmpURL,
+		"-c:a", "aac",
+		"-ar", "48000",
+		"-c:v", "libx264",
+		"-preset", "veryfast",
+		"-tune", "zerolatency",
+		"-g", "60",
+		"-sc_threshold", "0",
+	}
+
+	// Add video quality variants
+	for i, quality := range t.cfg.Qualities {
+		args = append(args,
+			"-map", "0:v:0",
+			"-map", "0:a:0",
+			fmt.Sprintf("-s:v:%d", i), fmt.Sprintf("%dx%d", quality.Width, quality.Height),
+			fmt.Sprintf("-b:v:%d", i), quality.VideoBitrate,
+			fmt.Sprintf("-b:a:%d", i), quality.AudioBitrate,
+		)
+	}
+
+	// HLS output settings for DVR support
+	args = append(args,
+		"-f", "hls",
+		"-hls_time", fmt.Sprintf("%d", t.cfg.HLS.SegmentDuration),
+		"-hls_list_size", "0", // Keep all segments in playlist for DVR
+		"-hls_flags", "append_list+omit_endlist", // Keep growing, don't end playlist
+		"-hls_segment_filename", filepath.Join(hlsDir, "segment_%v_%03d.ts"),
+		"-master_pl_name", "master.m3u8",
+		"-hls_playlist_type", "event", // Event type for DVR
+	)
+
+	// Add variant stream mapping
+	var variantStreams []string
+	for i, quality := range t.cfg.Qualities {
+		variantStreams = append(variantStreams, fmt.Sprintf("v:%d,a:%d,name:%s", i, i, quality.Name))
+	}
+	args = append(args,
+		"-var_stream_map", strings.Join(variantStreams, " "),
+		filepath.Join(hlsDir, "stream_%v.m3u8"),
+	)
+
+	cmd := exec.CommandContext(t.ctx, "ffmpeg", args...)
+
+	t.processLock.Lock()
+	t.processes = append(t.processes, cmd)
+	t.processLock.Unlock()
+
+	return cmd
+}
+
+func (t *Transcoder) watchAndUploadSegments() {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	uploadedFiles := make(map[string]bool)
+	fileSizes := make(map[string]int64)
+
+	for {
+		select {
+		case <-t.uploadCtx.Done():
+			return
+		case <-ticker.C:
+			// Upload HLS segments
+			hlsDir := filepath.Join(t.workDir, "hls")
+			t.uploadDirectoryWithStabilityCheck(hlsDir, "", uploadedFiles, fileSizes)
+		}
+	}
+}
+
+func (t *Transcoder) uploadDirectoryWithStabilityCheck(dir, prefix string, uploadedFiles map[string]bool, fileSizes map[string]int64) {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Error().Err(err).Str("dir", dir).Msg("Failed to read directory")
+		}
+		return
+	}
+
+	// Separate files into segments and playlists
+	var segments []os.DirEntry
+	var playlists []os.DirEntry
+
+	for _, file := range files {
+		if file.IsDir() || strings.HasSuffix(file.Name(), ".tmp") {
+			continue
+		}
+
+		if strings.HasSuffix(file.Name(), ".m3u8") {
+			playlists = append(playlists, file)
+		} else {
+			segments = append(segments, file)
+		}
+	}
+
+	// Collect stable segments ready for upload
+	var readyToUpload []struct {
+		filePath    string
+		fileName    string
+		r2Key       string
+		contentType string
+		size        int64
+	}
+
+	// Upload segments first (with stability check)
+	for _, file := range segments {
+		filePath := filepath.Join(dir, file.Name())
+
+		// Skip if already uploaded
+		if uploadedFiles[filePath] {
+			continue
+		}
+
+		// Check file stability - only upload if size hasn't changed
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			continue
+		}
+
+		currentSize := fileInfo.Size()
+		lastSize, exists := fileSizes[filePath]
+
+		if exists && lastSize == currentSize && currentSize > 0 {
+			// File is stable, ready to upload
+			log.Debug().
+				Str("file", file.Name()).
+				Int64("size", currentSize).
+				Msg("✓ Segment stable, queuing for upload...")
+
+			r2Key := t.buildR2Key(prefix, file.Name())
+			contentType := storage.GetContentType(file.Name())
+
+			readyToUpload = append(readyToUpload, struct {
+				filePath    string
+				fileName    string
+				r2Key       string
+				contentType string
+				size        int64
+			}{filePath, file.Name(), r2Key, contentType, currentSize})
+		} else {
+			// File is still being written, track size for next check
+			if exists {
+				log.Debug().
+					Str("file", file.Name()).
+					Int64("prev_size", lastSize).
+					Int64("curr_size", currentSize).
+					Msg("⏳ Segment still being written")
+			} else {
+				log.Debug().
+					Str("file", file.Name()).
+					Int64("size", currentSize).
+					Msg("📝 New segment detected")
+			}
+			fileSizes[filePath] = currentSize
+		}
+	}
+
+	// Upload all stable segments in parallel
+	var uploadWg sync.WaitGroup
+	for _, seg := range readyToUpload {
+		uploadWg.Add(1)
+		go func(s struct {
+			filePath    string
+			fileName    string
+			r2Key       string
+			contentType string
+			size        int64
+		}) {
+			defer uploadWg.Done()
+
+			fileReader, err := os.Open(s.filePath)
+			if err != nil {
+				log.Error().Err(err).Str("file", s.filePath).Msg("Failed to open file")
+				return
+			}
+			defer fileReader.Close()
+
+			if err := t.r2Client.UploadFile(t.uploadCtx, s.r2Key, fileReader, s.contentType); err != nil {
+				log.Error().Err(err).Str("file", s.filePath).Msg("Failed to upload file")
+				return
+			}
+
+			uploadedFiles[s.filePath] = true
+			log.Info().
+				Str("file", s.fileName).
+				Str("key", s.r2Key).
+				Int64("size", s.size).
+				Msg("✓ Segment uploaded successfully")
+		}(seg)
+	}
+
+	// Wait for all uploads to complete before continuing
+	uploadWg.Wait()
+
+	// Upload playlists after segments (always re-upload playlists)
+	for _, file := range playlists {
+		filePath := filepath.Join(dir, file.Name())
+		r2Key := t.buildR2Key(prefix, file.Name())
+		contentType := storage.GetContentType(file.Name())
+
+		// Handle playlists specially - rewrite paths
+		if file.Name() == "master.m3u8" {
+			rewritten, err := t.rewriteMasterPlaylist(filePath)
+			if err != nil {
+				log.Error().Err(err).Str("file", filePath).Msg("Failed to rewrite master playlist")
+				continue
+			}
+
+			if err := t.r2Client.UploadPlaylist(t.uploadCtx, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
+				log.Error().Err(err).Str("file", filePath).Msg("Failed to upload file")
+				continue
+			}
+		} else if strings.HasPrefix(file.Name(), "stream_") {
+			// Rewrite quality playlists
+			rewritten, err := t.rewriteQualityPlaylist(filePath)
+			if err != nil {
+				log.Error().Err(err).Str("file", filePath).Msg("Failed to rewrite quality playlist")
+				continue
+			}
+
+			if err := t.r2Client.UploadPlaylist(t.uploadCtx, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
+				log.Error().Err(err).Str("file", filePath).Msg("Failed to upload file")
+				continue
+			}
+		}
+
+		uploadedFiles[filePath] = true
+		log.Debug().Str("file", file.Name()).Str("key", r2Key).Msg("Uploaded playlist")
+	}
+}
+
+func (t *Transcoder) uploadDirectory(dir, prefix string, uploadedFiles map[string]bool) {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Error().Err(err).Str("dir", dir).Msg("Failed to read directory")
+		}
+		return
+	}
+
+	// Separate files into segments and playlists
+	var segments []os.DirEntry
+	var playlists []os.DirEntry
+
+	for _, file := range files {
+		if file.IsDir() || strings.HasSuffix(file.Name(), ".tmp") {
+			continue
+		}
+
+		if strings.HasSuffix(file.Name(), ".m3u8") {
+			playlists = append(playlists, file)
+		} else {
+			segments = append(segments, file)
+		}
+	}
+
+	// Upload segments first
+	for _, file := range segments {
+		filePath := filepath.Join(dir, file.Name())
+
+		// Skip if already uploaded
+		if uploadedFiles[filePath] {
+			continue
+		}
+
+		r2Key := t.buildR2Key(prefix, file.Name())
+		contentType := storage.GetContentType(file.Name())
+
+		// Open file
+		fileReader, err := os.Open(filePath)
+		if err != nil {
+			log.Error().Err(err).Str("file", filePath).Msg("Failed to open file")
+			continue
+		}
+
+		// Pass the file handle so the AWS SDK can seek for checksum calculations.
+		if err := t.r2Client.UploadFile(t.ctx, r2Key, fileReader, contentType); err != nil {
+			fileReader.Close()
+			log.Error().Err(err).Str("file", filePath).Msg("Failed to upload file")
+			continue
+		}
+		fileReader.Close()
+
+		uploadedFiles[filePath] = true
+		log.Debug().Str("file", file.Name()).Str("key", r2Key).Msg("Uploaded segment")
+	}
+
+	// Upload playlists after segments (always re-upload playlists)
+	for _, file := range playlists {
+		filePath := filepath.Join(dir, file.Name())
+		r2Key := t.buildR2Key(prefix, file.Name())
+		contentType := storage.GetContentType(file.Name())
+
+		// Handle playlists specially - rewrite paths
+		if file.Name() == "master.m3u8" {
+			rewritten, err := t.rewriteMasterPlaylist(filePath)
+			if err != nil {
+				log.Error().Err(err).Str("file", filePath).Msg("Failed to rewrite master playlist")
+				continue
+			}
+
+			if err := t.r2Client.UploadPlaylist(t.ctx, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
+				log.Error().Err(err).Str("file", filePath).Msg("Failed to upload file")
+				continue
+			}
+		} else if strings.HasPrefix(file.Name(), "stream_") {
+			// Rewrite quality playlists
+			rewritten, err := t.rewriteQualityPlaylist(filePath)
+			if err != nil {
+				log.Error().Err(err).Str("file", filePath).Msg("Failed to rewrite quality playlist")
+				continue
+			}
+
+			if err := t.r2Client.UploadPlaylist(t.ctx, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
+				log.Error().Err(err).Str("file", filePath).Msg("Failed to upload file")
+				continue
+			}
+		}
+
+		uploadedFiles[filePath] = true
+		log.Debug().Str("file", file.Name()).Str("key", r2Key).Msg("Uploaded playlist")
+	}
+}
+
+func (t *Transcoder) finalizePlaylists() {
+	hlsDir := filepath.Join(t.workDir, "hls")
+
+	files, err := os.ReadDir(hlsDir)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to read HLS directory for finalization")
+		return
+	}
+
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".m3u8") {
+			continue
+		}
+
+		filePath := filepath.Join(hlsDir, file.Name())
+
+		// Read playlist content
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			log.Error().Err(err).Str("file", filePath).Msg("Failed to read playlist")
+			continue
+		}
+
+		lines := strings.Split(string(content), "\n")
+
+		// Check if already has ENDLIST
+		hasEndlist := false
+		for _, line := range lines {
+			if strings.TrimSpace(line) == "#EXT-X-ENDLIST" {
+				hasEndlist = true
+				break
+			}
+		}
+
+		if !hasEndlist {
+			// Remove any trailing empty lines
+			for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
+				lines = lines[:len(lines)-1]
+			}
+
+			// Add ENDLIST tag
+			lines = append(lines, "#EXT-X-ENDLIST")
+			content = []byte(strings.Join(lines, "\n") + "\n")
+		}
+
+		// Upload finalized playlist
+		r2Key := t.buildR2Key("", file.Name())
+		contentType := storage.GetContentType(file.Name())
+
+		// Rewrite paths based on playlist type
+		if file.Name() == "master.m3u8" {
+			content, err = t.rewriteMasterPlaylistContent(content)
+			if err != nil {
+				log.Error().Err(err).Str("file", filePath).Msg("Failed to rewrite master playlist")
+				continue
+			}
+		} else if strings.HasPrefix(file.Name(), "stream_") {
+			content, err = t.rewriteQualityPlaylistContent(content)
+			if err != nil {
+				log.Error().Err(err).Str("file", filePath).Msg("Failed to rewrite quality playlist")
+				continue
+			}
+		}
+
+		if err := t.r2Client.UploadPlaylist(t.uploadCtx, r2Key, bytes.NewReader(content), contentType); err != nil {
+			log.Error().Err(err).Str("file", filePath).Msg("Failed to upload finalized playlist")
+			continue
+		}
+
+		log.Info().
+			Str("file", file.Name()).
+			Str("key", r2Key).
+			Msg("✓ Playlist finalized with EXT-X-ENDLIST")
+	}
+}
+
+func (t *Transcoder) buildR2Key(defaultPrefix, filename string) string {
+	if qualityName, ok := t.extractVariantName(filename); ok {
+		if _, exists := t.variants[qualityName]; exists {
+			cleanedFilename := t.cleanFilename(filename)
+			return path.Join(t.streamKey, qualityName, cleanedFilename)
+		}
+	}
+
+	if defaultPrefix != "" {
+		return path.Join(t.streamKey, defaultPrefix, filename)
+	}
+
+	return path.Join(t.streamKey, filename)
+}
+
+func (t *Transcoder) extractVariantName(filename string) (string, bool) {
+	if matches := segmentVariantRegex.FindStringSubmatch(filename); len(matches) == 2 {
+		return matches[1], true
+	}
+
+	if matches := streamVariantRegex.FindStringSubmatch(filename); len(matches) == 2 {
+		return matches[1], true
+	}
+
+	return "", false
+}
+
+func (t *Transcoder) cleanFilename(filename string) string {
+	// Convert segment_1080p_001.ts -> segment_001.ts
+	if segmentVariantRegex.MatchString(filename) {
+		return segmentVariantRegex.ReplaceAllString(filename, "segment_")
+	}
+
+	// Convert stream_1080p.m3u8 -> playlist.m3u8
+	if streamVariantRegex.MatchString(filename) {
+		return "playlist.m3u8"
+	}
+
+	return filename
+}
+
+func (t *Transcoder) rewriteMasterPlaylist(filePath string) ([]byte, error) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return t.rewriteMasterPlaylistContent(content)
+}
+
+func (t *Transcoder) rewriteMasterPlaylistContent(content []byte) ([]byte, error) {
+	lines := strings.Split(string(content), "\n")
+	for i, line := range lines {
+		// Rewrite stream_<quality>.m3u8 to <quality>/playlist.m3u8
+		if strings.HasPrefix(line, "stream_") && strings.HasSuffix(line, ".m3u8") {
+			if matches := streamVariantRegex.FindStringSubmatch(line); len(matches) == 2 {
+				qualityName := matches[1]
+				if _, exists := t.variants[qualityName]; exists {
+					lines[i] = qualityName + "/playlist.m3u8"
+				}
+			}
+		}
+	}
+
+	return []byte(strings.Join(lines, "\n")), nil
+}
+
+func (t *Transcoder) rewriteQualityPlaylist(filePath string) ([]byte, error) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return t.rewriteQualityPlaylistContent(content)
+}
+
+func (t *Transcoder) rewriteQualityPlaylistContent(content []byte) ([]byte, error) {
+	lines := strings.Split(string(content), "\n")
+	var filtered []string
+
+	for _, line := range lines {
+		// Skip discontinuity tags
+		if line == "#EXT-X-DISCONTINUITY" {
+			continue
+		}
+
+		// Rewrite segment_<quality>_<num>.ts to segment_<num>.ts
+		if strings.HasPrefix(line, "segment_") && strings.HasSuffix(line, ".ts") {
+			if matches := segmentVariantRegex.FindStringSubmatch(line); len(matches) == 2 {
+				qualityName := matches[1]
+				if _, exists := t.variants[qualityName]; exists {
+					line = segmentVariantRegex.ReplaceAllString(line, "segment_")
+				}
+			}
+		}
+
+		filtered = append(filtered, line)
+	}
+
+	return []byte(strings.Join(filtered, "\n")), nil
+}

@@ -1,0 +1,25 @@
+# Binaries
+transcoder
+transcoder.exe
+*.exe
+
+# Temp files
+temp/
+logs/
+*.tmp
+*.log
+
+# Development files
+.git/
+.gitignore
+*.md
+player.html
+repomix-output.xml
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

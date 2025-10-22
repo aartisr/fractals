@@ -1,0 +1,66 @@
+# Live Transcoder Configuration
+
+# RTMP Server Settings
+rtmp:
+  port: 1935
+  chunk_size: 4096
+
+# R2/S3 Storage Settings
+# NOTE: These are defaults. Override with environment variables:
+# R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY, R2_SECRET_KEY, R2_PUBLIC_URL, R2_REGION
+storage:
+  endpoint: "https://your-account-id.r2.cloudflarestorage.com"
+  bucket: "ntv-ott"
+  access_key: "your-access-key"
+  secret_key: "your-secret-key"
+  region: "auto"
+  public_url: "https://ntv-cdn.nithyananda.ai"
+
+# Transcoding Quality Presets
+qualities:
+  - name: "1080p"
+    width: 1920
+    height: 1080
+    video_bitrate: "5000k"
+    audio_bitrate: "192k"
+  - name: "720p"
+    width: 1280
+    height: 720
+    video_bitrate: "3000k"
+    audio_bitrate: "128k"
+  - name: "480p"
+    width: 854
+    height: 480
+    video_bitrate: "1500k"
+    audio_bitrate: "128k"
+  - name: "360p"
+    width: 640
+    height: 360
+    video_bitrate: "800k"
+    audio_bitrate: "96k"
+  - name: "240p"
+    width: 426
+    height: 240
+    video_bitrate: "400k"
+    audio_bitrate: "64k"
+  - name: "144p"
+    width: 256
+    height: 144
+    video_bitrate: "200k"
+    audio_bitrate: "64k"
+
+# HLS Settings
+hls:
+  segment_duration: 4  # seconds
+  playlist_length: 10  # number of segments to keep in playlist
+  dvr_enabled: true
+
+# DASH Settings
+dash:
+  enabled: true
+  segment_duration: 4  # seconds
+
+# Server Settings
+server:
+  temp_dir: "./temp"
+  log_level: "info"  # debug, info, warn, error (use 'debug' for troubleshooting)
