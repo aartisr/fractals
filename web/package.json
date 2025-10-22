@@ -53,6 +53,7 @@
   },
   "dependencies": {
     "@modular-forms/qwik": "latest",
+    "@payloadcms/sdk": "^3.60.0",
     "@qwikest/icons": "^0.0.13",
     "bcryptjs": "latest",
     "express": "latest",
