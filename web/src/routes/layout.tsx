@@ -223,9 +223,9 @@ export default component$(() => {
             </a>
 
             {/* Explore Categories */}
-            <a 
-              href="#explore" 
-              onClick$={closeSidebarOnMobile} 
+            <a
+              href="/explore"
+              onClick$={closeSidebarOnMobile}
               class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
               title="Explore"
             >

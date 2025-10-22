@@ -65,13 +65,13 @@ export default component$(() => {
           
           {/* Email/Password Sign In */}
           <div class="space-y-4">
-            <Link 
+            <a
               href="/auth/login"
               class="w-full flex justify-center items-center gap-3 py-4 px-4 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium rounded-xl hover:shadow-2xl hover:scale-105 transition-all duration-300"
             >
               <LuMail class="w-5 h-5" />
               <span class="font-serif">Sign In with Email</span>
-            </Link>
+            </a>
             
             <p class="text-center text-sm text-gray-500">
               Sign in with your sacred credentials through our secure authentication service
@@ -92,8 +92,8 @@ export default component$(() => {
 
           {/* Social Sign In */}
           <div class="space-y-3">
-            <Link 
-              href="/auth/login/google"
+            <a
+              href="/auth/login"
               class="w-full inline-flex justify-center items-center gap-3 py-4 px-4 border-2 border-orange-200 rounded-xl bg-white hover:bg-orange-50 hover:border-orange-400 transition-all duration-300"
             >
               <svg class="w-5 h-5" viewBox="0 0 24 24">
@@ -103,7 +103,7 @@ export default component$(() => {
                 <path fill="#FBBC05" d="M5.27698177,14.2678769 C5.03832634,13.556323 4.90909091,12.7937589 4.90909091,12 C4.90909091,11.2182781 5.03443647,10.4668121 5.26620003,9.76452941 L1.23999023,6.65002441 C0.43658717,8.26043162 0,10.0753848 0,12 C0,13.9195484 0.444780743,15.7301709 1.23746264,17.3349879 L5.27698177,14.2678769 Z"/>
               </svg>
               <span class="text-sm font-medium text-gray-700">Continue with Google</span>
-            </Link>
+            </a>
 
             <p class="text-center text-xs text-gray-400 px-4">
               Secure authentication powered by auth.kailasa.ai
@@ -113,9 +113,9 @@ export default component$(() => {
           {/* Sign Up Link */}
           <p class="mt-6 text-center text-sm text-gray-600">
             New to divine wisdom?{' '}
-            <Link href="/auth/login" class="font-medium text-orange-600 hover:text-orange-700 transition-colors font-serif">
+            <a href="/auth/login" class="font-medium text-orange-600 hover:text-orange-700 transition-colors font-serif">
               Create sacred account
-            </Link>
+            </a>
           </p>
         </div>
 

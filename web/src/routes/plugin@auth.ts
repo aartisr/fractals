@@ -16,19 +16,10 @@ export interface UserContext {
  * Usage: const user = useUserContext();
  */
 export const useUserContext = routeLoader$<UserContext>(async ({ cookie, env }) => {
-  const sessionToken = cookie.get('app_session_token')?.value;
-  const expiresAt = cookie.get('app_session_expires')?.value;
+  const sessionToken = cookie.get('nandi_session_token')?.value;
 
   // No session token = not authenticated
   if (!sessionToken) {
-    return { isAuthenticated: false, user: null };
-  }
-
-  // Check expiration
-  if (expiresAt && isSessionExpired(parseInt(expiresAt))) {
-    // Clean up expired cookies
-    cookie.delete('app_session_token', { path: '/' });
-    cookie.delete('app_session_expires', { path: '/' });
     return { isAuthenticated: false, user: null };
   }
 
@@ -45,11 +36,10 @@ export const useUserContext = routeLoader$<UserContext>(async ({ cookie, env }) 
     return { isAuthenticated: true, user };
   } catch (err) {
     console.error('Auth plugin error:', err);
-    
+
     // Clear invalid session
-    cookie.delete('app_session_token', { path: '/' });
-    cookie.delete('app_session_expires', { path: '/' });
-    
+    cookie.delete('nandi_session_token', { path: '/' });
+
     return { isAuthenticated: false, user: null };
   }
 });

@@ -1,6 +1,6 @@
 /**
  * Auth Callback Route - Handles successful authentication from auth.kailasa.ai
- * GET /auth/return?auth_code=...&session_token=...
+ * GET /auth/return?auth_code=...
  *
  * Flow:
  * 1. Receive auth_code from auth service
@@ -10,7 +10,7 @@
  */
 
 import type { RequestHandler } from "@builder.io/qwik-city";
-import { exchangeAuthCode, calculateCookieMaxAge } from "~/utils/auth-service";
+import { exchangeAuthCode } from "~/utils/auth-service";
 
 export const onGet: RequestHandler = async ({ url, cookie, redirect, env, error }) => {
     const authCode = url.searchParams.get("auth_code");
@@ -29,34 +29,21 @@ export const onGet: RequestHandler = async ({ url, cookie, redirect, env, error 
     }
 
     let sessionToken: string;
-    let expiresAt: number;
 
     try {
         const exchangeResult = await exchangeAuthCode(authCode, clientId, clientSecret, authBase);
         sessionToken = exchangeResult.session_token;
-        expiresAt = exchangeResult.expires_at;
     } catch (err) {
         console.error("Auth callback error:", err);
         throw error(500, `Authentication failed: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
 
-    const isProduction = env.get("PUBLIC_PRODUCTION") === "true";
-    const maxAge = calculateCookieMaxAge(expiresAt);
-
-    cookie.set("app_session_token", sessionToken, {
+    cookie.set("nandi_session_token", sessionToken, {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: "lax",
+        secure: true,
+        sameSite: "strict",
         path: "/",
-        maxAge,
-    });
-
-    cookie.set("app_session_expires", expiresAt.toString(), {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: "lax",
-        path: "/",
-        maxAge,
+        maxAge: 60 * 60 * 24, // 1 day
     });
 
     throw redirect(302, redirectTo);
