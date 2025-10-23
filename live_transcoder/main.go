@@ -9,9 +9,11 @@ import (
 	"strings"
 	"syscall"
 
+	"live_transcoder/pkg/api"
 	"live_transcoder/pkg/config"
 	"live_transcoder/pkg/server"
 	"live_transcoder/pkg/storage"
+	"net/http"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -56,6 +58,31 @@ func main() {
 	// Otherwise run as server
 	srv := server.NewServer(cfg, r2Client)
 
+	// Set up HTTP API
+	apiHandler := api.NewAPI(srv, cfg)
+	mux := http.NewServeMux()
+
+	// API routes
+	mux.HandleFunc("/api/streams/start", apiHandler.StartStreamHandler)
+	mux.HandleFunc("/api/streams/stop", apiHandler.StopStreamHandler)
+	mux.HandleFunc("/health", apiHandler.HealthHandler)
+
+	// Enable CORS
+	handler := enableCORS(mux)
+
+	// Start HTTP API server
+	apiPort := cfg.Server.APIPort
+	if apiPort == 0 {
+		apiPort = 8080
+	}
+
+	go func() {
+		log.Info().Msgf("Starting HTTP API server on port %d", apiPort)
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", apiPort), handler); err != nil {
+			log.Fatal().Err(err).Msg("HTTP API server failed")
+		}
+	}()
+
 	// Start server in a goroutine
 	go func() {
 		if err := srv.Start(); err != nil {
@@ -64,7 +91,7 @@ func main() {
 	}()
 
 	// Print usage instructions
-	printUsageInstructions(cfg)
+	printUsageInstructions(cfg, apiPort)
 
 	// Wait for termination signal
 	sigChan := make(chan os.Signal, 1)
@@ -95,10 +122,13 @@ func runManualMode(ctx context.Context, cfg *config.Config, r2Client *storage.R2
 	srv.Stop()
 }
 
-func printUsageInstructions(cfg *config.Config) {
+func printUsageInstructions(cfg *config.Config, apiPort int) {
 	fmt.Println("\n" + strings.Repeat("=", 70))
 	fmt.Println("  LIVE TRANSCODER - RTMP Streaming Server")
 	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("\n🌐 HTTP API Server:")
+	fmt.Printf("   Port: %d\n", apiPort)
+	fmt.Printf("   Health: http://localhost:%d/health\n", apiPort)
 	fmt.Println("\n📡 RTMP Server Configuration:")
 	fmt.Printf("   Port: %d\n", cfg.RTMP.Port)
 	fmt.Println("\n🎥 To stream from OBS/FFmpeg, use:")
@@ -108,10 +138,30 @@ func printUsageInstructions(cfg *config.Config) {
 	fmt.Printf("   ffmpeg -re -i input.mp4 -c copy -f flv rtmp://localhost:%d/live/test\n", cfg.RTMP.Port)
 	fmt.Println("\n🎬 To manually start a stream transcoder:")
 	fmt.Printf("   ./live_transcoder -stream YOUR_KEY -rtmp rtmp://source-url/live/stream\n")
+	fmt.Println("\n📡 API Endpoints:")
+	fmt.Printf("   Start Stream: POST http://localhost:%d/api/streams/start\n", apiPort)
+	fmt.Printf("   Stop Stream:  POST http://localhost:%d/api/streams/stop\n", apiPort)
 	fmt.Println("\n📦 Output:")
 	fmt.Printf("   R2 Bucket: %s\n", cfg.Storage.Bucket)
-	fmt.Printf("   Public URL: %s/STREAM_KEY/hls/master.m3u8\n", cfg.Storage.PublicURL)
+	fmt.Printf("   Public URL: %s/STREAM_KEY/master.m3u8\n", cfg.Storage.PublicURL)
 	fmt.Println("\n" + strings.Repeat("=", 70) + "\n")
+}
+
+// enableCORS wraps the handler with CORS headers
+func enableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle preflight requests
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 func setupLogger(level string) {

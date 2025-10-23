@@ -113,6 +113,24 @@ func (s *Server) StartStream(streamKey string, rtmpURL string) error {
 	return nil
 }
 
+// StopStream stops a specific stream by streamKey
+func (s *Server) StopStream(streamKey string) error {
+	s.mu.Lock()
+	session, exists := s.sessions[streamKey]
+	s.mu.Unlock()
+
+	if !exists {
+		return fmt.Errorf("stream %s is not active", streamKey)
+	}
+
+	log.Info().Str("stream_key", streamKey).Msg("Stopping stream")
+
+	// Stop the transcoder gracefully
+	session.transcoder.Stop()
+
+	return nil
+}
+
 func (s *Server) Stop() {
 	log.Info().Msg("Stopping server...")
 

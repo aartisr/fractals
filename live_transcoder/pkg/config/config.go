@@ -51,6 +51,7 @@ type DASHConfig struct {
 type ServerConfig struct {
 	TempDir  string `yaml:"temp_dir"`
 	LogLevel string `yaml:"log_level"`
+	APIPort  int    `yaml:"api_port"`
 }
 
 func Load(path string) (*Config, error) {
