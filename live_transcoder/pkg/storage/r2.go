@@ -147,6 +147,12 @@ func GetContentType(filename string) string {
 		return "application/dash+xml"
 	case ".m4s":
 		return "video/iso.segment"
+	case ".webp":
+		return "image/webp"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".png":
+		return "image/png"
 	default:
 		return "application/octet-stream"
 	}

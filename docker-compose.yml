@@ -22,6 +22,7 @@ services:
     container_name: ntv-cms
     depends_on:
       - postgres
+      - live-transcoder
     env_file:
       - .env
     environment:
@@ -29,6 +30,10 @@ services:
       DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}
       PORT: 3000
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      # Live Transcoder connection
+      LIVE_TRANSCODER_HOST: ${LIVE_TRANSCODER_HOST:-live-transcoder}
+      LIVE_TRANSCODER_PORT: ${LIVE_TRANSCODER_PORT:-8080}
+      MEDIA_BASE_URL: ${MEDIA_BASE_URL}
     volumes:
       # Persist Payload uploads (default upload dir is ./media)
       - cms_media:/app/media
@@ -61,6 +66,17 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      args:
+        # Server-side variables needed during build
+        - CMS_URL=${CMS_URL}
+        - CMS_API_KEY=${CMS_API_KEY}
+        - AUTH_BASE=${AUTH_BASE}
+        - AUTH_CLIENT_ID=${AUTH_CLIENT_ID}
+        - AUTH_CLIENT_SECRET=${AUTH_CLIENT_SECRET}
+        - AUTH_REDIRECT_URI=${AUTH_REDIRECT_URI}
+        - AUTH_ERROR_URL=${AUTH_ERROR_URL}
+        - MEDIA_BASE_URL=${MEDIA_BASE_URL}
+        - ORIGIN=${ORIGIN}
     container_name: ntv-web
     depends_on:
       - cms
@@ -82,9 +98,52 @@ services:
     networks:
       - nithyananda-tv-network
 
+  live-transcoder:
+    build:
+      context: ./live_transcoder
+      dockerfile: Dockerfile
+    container_name: ntv-live-transcoder
+    env_file:
+      - .env
+    environment:
+      # R2/S3 Storage Configuration
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      R2_BUCKET: ${R2_BUCKET}
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY}
+      R2_SECRET_KEY: ${R2_SECRET_KEY}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL:-${MEDIA_BASE_URL}}
+      R2_REGION: ${R2_REGION:-auto}
+      # Transcoder Settings
+      TRANSCODER_LOG_LEVEL: ${TRANSCODER_LOG_LEVEL:-info}
+      TRANSCODER_SEGMENT_DURATION: ${TRANSCODER_SEGMENT_DURATION:-4}
+      TRANSCODER_TEMP_DIR: ${TRANSCODER_TEMP_DIR:-/app/temp}
+    volumes:
+      # Mount config file
+      - ./live_transcoder/config.yaml:/app/config.yaml:ro
+      # Persist temp files for ongoing streams
+      - transcoder_temp:/app/temp
+      # Persist logs
+      - transcoder_logs:/app/logs
+    ports:
+      # RTMP ingestion port
+      - "1935:1935"
+      # HTTP API port
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
 volumes:
   pgdata:
   cms_media:
+  transcoder_temp:
+  transcoder_logs:
 
 networks:
   nithyananda-tv-network:

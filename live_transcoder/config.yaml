@@ -64,3 +64,4 @@ dash:
 server:
   temp_dir: "./temp"
   log_level: "info"  # debug, info, warn, error (use 'debug' for troubleshooting)
+  api_port: 8080     # HTTP API port for start/stop stream endpoints

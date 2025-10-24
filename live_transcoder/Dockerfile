@@ -23,7 +23,8 @@ FROM alpine:latest
 RUN apk add --no-cache \
     ffmpeg \
     ca-certificates \
-    tzdata
+    tzdata \
+    wget
 
 # Create non-root user
 RUN addgroup -g 1000 transcoder && \
@@ -40,12 +41,12 @@ RUN mkdir -p /app/temp /app/logs && chown -R transcoder:transcoder /app
 # Switch to non-root user
 USER transcoder
 
-# Expose RTMP port
-EXPOSE 1935
+# Expose RTMP port and HTTP API port
+EXPOSE 1935 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD pgrep -x transcoder || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Run the application
 ENTRYPOINT ["./transcoder"]

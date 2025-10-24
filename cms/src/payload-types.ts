@@ -68,9 +68,9 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
-    media: Media;
     categories: Category;
     videos: Video;
+    'live-streams': LiveStream;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -78,9 +78,9 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
-    media: MediaSelect<false> | MediaSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     videos: VideosSelect<false> | VideosSelect<true>;
+    'live-streams': LiveStreamsSelect<false> | LiveStreamsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -146,25 +146,6 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
- */
-export interface Media {
-  id: number;
-  alt: string;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "categories".
  */
 export interface Category {
@@ -195,6 +176,39 @@ export interface Video {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "live-streams".
+ */
+export interface LiveStream {
+  id: number;
+  /**
+   * Unique identifier for this stream. Use this as your stream key in OBS/streaming software.
+   */
+  streamKey: string;
+  title: string;
+  description?: string | null;
+  date: string;
+  visibility: 'public' | 'private';
+  /**
+   * Current status of the stream
+   */
+  status: 'idle' | 'live' | 'ended';
+  /**
+   * Optional RTMP source URL. Leave empty if streaming directly to this server.
+   */
+  rtmpUrl?: string | null;
+  /**
+   * HLS master playlist URL (generated automatically)
+   */
+  masterPlaylistUrl?: string | null;
+  /**
+   * Thumbnail URL (uploaded via the thumbnail uploader below)
+   */
+  thumbnailUrl?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
@@ -205,16 +219,16 @@ export interface PayloadLockedDocument {
         value: number | User;
       } | null)
     | ({
-        relationTo: 'media';
-        value: number | Media;
-      } | null)
-    | ({
         relationTo: 'categories';
         value: number | Category;
       } | null)
     | ({
         relationTo: 'videos';
         value: number | Video;
+      } | null)
+    | ({
+        relationTo: 'live-streams';
+        value: number | LiveStream;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -285,24 +299,6 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media_select".
- */
-export interface MediaSelect<T extends boolean = true> {
-  alt?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  focalX?: T;
-  focalY?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "categories_select".
  */
 export interface CategoriesSelect<T extends boolean = true> {
@@ -323,6 +319,23 @@ export interface VideosSelect<T extends boolean = true> {
   date?: T;
   category?: T;
   resolutions?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "live-streams_select".
+ */
+export interface LiveStreamsSelect<T extends boolean = true> {
+  streamKey?: T;
+  title?: T;
+  description?: T;
+  date?: T;
+  visibility?: T;
+  status?: T;
+  rtmpUrl?: T;
+  masterPlaylistUrl?: T;
+  thumbnailUrl?: T;
   updatedAt?: T;
   createdAt?: T;
 }

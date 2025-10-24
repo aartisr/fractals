@@ -59,12 +59,21 @@ func main() {
 	srv := server.NewServer(cfg, r2Client)
 
 	// Set up HTTP API
-	apiHandler := api.NewAPI(srv, cfg)
+	apiHandler := api.NewAPI(srv, cfg, r2Client)
 	mux := http.NewServeMux()
 
 	// API routes
 	mux.HandleFunc("/api/streams/start", apiHandler.StartStreamHandler)
 	mux.HandleFunc("/api/streams/stop", apiHandler.StopStreamHandler)
+	mux.HandleFunc("/api/streams/", func(w http.ResponseWriter, r *http.Request) {
+		// Check if it's a thumbnail upload
+		if strings.HasSuffix(r.URL.Path, "/thumbnail") {
+			apiHandler.UploadThumbnailHandler(w, r)
+			return
+		}
+		// Unknown stream route
+		http.NotFound(w, r)
+	})
 	mux.HandleFunc("/health", apiHandler.HealthHandler)
 
 	// Enable CORS

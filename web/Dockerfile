@@ -13,6 +13,29 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.pnpm-store \
  && pnpm i --no-lockfile
 
 FROM deps AS build
+
+# Accept build arguments from docker-compose
+ARG CMS_URL
+ARG CMS_API_KEY
+ARG AUTH_BASE
+ARG AUTH_CLIENT_ID
+ARG AUTH_CLIENT_SECRET
+ARG AUTH_REDIRECT_URI
+ARG AUTH_ERROR_URL
+ARG MEDIA_BASE_URL
+ARG ORIGIN
+
+# Make them available as environment variables during build
+ENV CMS_URL=${CMS_URL}
+ENV CMS_API_KEY=${CMS_API_KEY}
+ENV AUTH_BASE=${AUTH_BASE}
+ENV AUTH_CLIENT_ID=${AUTH_CLIENT_ID}
+ENV AUTH_CLIENT_SECRET=${AUTH_CLIENT_SECRET}
+ENV AUTH_REDIRECT_URI=${AUTH_REDIRECT_URI}
+ENV AUTH_ERROR_URL=${AUTH_ERROR_URL}
+ENV MEDIA_BASE_URL=${MEDIA_BASE_URL}
+ENV ORIGIN=${ORIGIN}
+
 COPY . .
 # Build client and server for the Express adapter
 RUN pnpm run build && pnpm run build.server

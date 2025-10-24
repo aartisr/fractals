@@ -1,24 +1,33 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"live_transcoder/pkg/config"
 	"live_transcoder/pkg/server"
+	"live_transcoder/pkg/storage"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 )
 
 type API struct {
-	server *server.Server
-	cfg    *config.Config
+	server   *server.Server
+	cfg      *config.Config
+	r2Client *storage.R2Client
 }
 
-func NewAPI(srv *server.Server, cfg *config.Config) *API {
+func NewAPI(srv *server.Server, cfg *config.Config, r2Client *storage.R2Client) *API {
 	return &API{
-		server: srv,
-		cfg:    cfg,
+		server:   srv,
+		cfg:      cfg,
+		r2Client: r2Client,
 	}
 }
 
@@ -115,6 +124,148 @@ func (a *API) StopStreamHandler(w http.ResponseWriter, r *http.Request) {
 	}, http.StatusOK)
 }
 
+// UploadThumbnailHandler handles POST /api/streams/:streamKey/thumbnail
+func (a *API) UploadThumbnailHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract streamKey from URL path
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/streams/"), "/")
+	if len(pathParts) < 2 {
+		sendJSONError(w, "Invalid URL format. Expected: /api/streams/:streamKey/thumbnail", http.StatusBadRequest)
+		return
+	}
+	streamKey := pathParts[0]
+
+	if streamKey == "" {
+		sendJSONError(w, "streamKey is required", http.StatusBadRequest)
+		return
+	}
+
+	log.Info().Str("stream_key", streamKey).Msg("Received thumbnail upload request")
+
+	// Parse multipart form (2MB max)
+	if err := r.ParseMultipartForm(2 << 20); err != nil {
+		log.Error().Err(err).Msg("Failed to parse multipart form")
+		sendJSONError(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
+
+	// Get the uploaded file
+	file, header, err := r.FormFile("thumbnail")
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get thumbnail file")
+		sendJSONError(w, "thumbnail file is required", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	log.Info().
+		Str("stream_key", streamKey).
+		Str("filename", header.Filename).
+		Int64("size", header.Size).
+		Msg("Processing thumbnail upload")
+
+	// Read file data
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to read file data")
+		sendJSONError(w, "Failed to read file", http.StatusInternalServerError)
+		return
+	}
+
+	// Convert image to WebP
+	webpData, err := a.convertToWebP(fileData)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to convert image to WebP")
+		sendJSONError(w, fmt.Sprintf("Failed to convert image: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Upload to R2 at streamKey/thumbnail.webp
+	r2Key := fmt.Sprintf("%s/thumbnail.webp", streamKey)
+	if err := a.r2Client.UploadFile(r.Context(), r2Key, bytes.NewReader(webpData), "image/webp"); err != nil {
+		log.Error().Err(err).Str("key", r2Key).Msg("Failed to upload thumbnail to R2")
+		sendJSONError(w, "Failed to upload thumbnail", http.StatusInternalServerError)
+		return
+	}
+
+	// Get public URL
+	thumbnailURL := a.r2Client.GetPublicURL(r2Key)
+
+	log.Info().
+		Str("stream_key", streamKey).
+		Str("url", thumbnailURL).
+		Int("webp_size", len(webpData)).
+		Msg("✓ Thumbnail uploaded successfully")
+
+	sendJSONResponse(w, map[string]interface{}{
+		"success":      true,
+		"message":      "Thumbnail uploaded successfully",
+		"thumbnailUrl": thumbnailURL,
+	}, http.StatusOK)
+}
+
+// convertToWebP converts an image (JPEG, PNG, etc.) to WebP format using FFmpeg
+func (a *API) convertToWebP(inputData []byte) ([]byte, error) {
+	// Create temp directory if it doesn't exist
+	tempDir := a.cfg.Server.TempDir
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create temp directory: %w", err)
+	}
+
+	// Create temp file for input
+	inputFile, err := os.CreateTemp(tempDir, "thumbnail-*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %w", err)
+	}
+	inputPath := inputFile.Name()
+	defer os.Remove(inputPath)
+
+	// Write input data
+	if _, err := inputFile.Write(inputData); err != nil {
+		inputFile.Close()
+		return nil, fmt.Errorf("failed to write input file: %w", err)
+	}
+	inputFile.Close()
+
+	// Create temp file for output
+	outputPath := filepath.Join(tempDir, "thumbnail-"+filepath.Base(inputPath)+".webp")
+	defer os.Remove(outputPath)
+
+	// Run FFmpeg to convert to WebP
+	// -q:v 80 = quality level (0-100, where 100 is best)
+	cmd := exec.Command("ffmpeg",
+		"-i", inputPath,
+		"-vcodec", "libwebp",
+		"-q:v", "80",
+		"-y", // Overwrite output file
+		outputPath,
+	)
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("ffmpeg conversion failed: %w (stderr: %s)", err, stderr.String())
+	}
+
+	// Read converted WebP file
+	webpData, err := os.ReadFile(outputPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read converted file: %w", err)
+	}
+
+	log.Debug().
+		Int("input_size", len(inputData)).
+		Int("output_size", len(webpData)).
+		Msg("Image converted to WebP")
+
+	return webpData, nil
+}
+
 // HealthHandler handles GET /health
 func (a *API) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	sendJSONResponse(w, Response{
@@ -137,6 +288,18 @@ func sendJSONError(w http.ResponseWriter, message string, status int) {
 	}, status)
 }
 
+// handleStreamsRoute routes dynamic /api/streams/:streamKey/* paths
+func (a *API) handleStreamsRoute(w http.ResponseWriter, r *http.Request) {
+	// Check if it's a thumbnail upload
+	if strings.HasSuffix(r.URL.Path, "/thumbnail") {
+		a.UploadThumbnailHandler(w, r)
+		return
+	}
+
+	// Unknown stream route
+	sendJSONError(w, "Not found", http.StatusNotFound)
+}
+
 // SetupRoutes sets up the HTTP API routes
 func (a *API) SetupRoutes(mux *http.ServeMux) {
 	// Enable CORS for all routes
@@ -145,6 +308,7 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	// API routes
 	mux.HandleFunc("/api/streams/start", a.StartStreamHandler)
 	mux.HandleFunc("/api/streams/stop", a.StopStreamHandler)
+	mux.HandleFunc("/api/streams/", a.handleStreamsRoute) // Handles /:streamKey/thumbnail
 	mux.HandleFunc("/health", a.HealthHandler)
 
 	log.Info().Msg("API routes configured")

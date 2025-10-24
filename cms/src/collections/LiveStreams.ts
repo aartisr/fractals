@@ -1,0 +1,367 @@
+import type { CollectionConfig, PayloadRequest } from 'payload'
+import type { LiveStream } from '../payload-types'
+
+// Handler to start a live stream
+const startStreamHandler = async (req: PayloadRequest) => {
+  const id = req.routeParams?.id as string
+
+  if (!id) {
+    return Response.json({ error: 'Stream ID is required' }, { status: 400 })
+  }
+
+  try {
+    // Get the stream document
+    const stream = await req.payload.findByID({
+      collection: 'live-streams',
+      id,
+    })
+
+    if (!stream) {
+      return Response.json({ error: 'Stream not found' }, { status: 404 })
+    }
+
+    if (stream.status === 'live') {
+      return Response.json({ error: 'Stream is already live' }, { status: 400 })
+    }
+
+    // Get live transcoder configuration from env
+    const transcoderHost = process.env.LIVE_TRANSCODER_HOST || 'localhost'
+    const transcoderPort = process.env.LIVE_TRANSCODER_PORT || '8080'
+    const transcoderUrl = `http://${transcoderHost}:${transcoderPort}`
+
+    // Construct RTMP URL if provided, otherwise use default
+    const rtmpUrl = stream.rtmpUrl || `rtmp://${transcoderHost}:1935/live/${stream.streamKey}`
+
+    // Call live transcoder API to start the stream
+    const response = await fetch(`${transcoderUrl}/api/streams/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        streamKey: stream.streamKey,
+        rtmpUrl: rtmpUrl,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Failed to start stream: ${error}`)
+    }
+
+    // Update stream status to live
+    const updatedStream = await req.payload.update({
+      collection: 'live-streams',
+      id,
+      data: {
+        status: 'live',
+      },
+    })
+
+    return Response.json({
+      success: true,
+      message: 'Stream started successfully',
+      stream: updatedStream,
+    })
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to start stream'
+    req.payload.logger.error(`Error starting stream: ${errorMessage}`)
+    return Response.json({ error: errorMessage }, { status: 500 })
+  }
+}
+
+// Handler to stop a live stream
+const stopStreamHandler = async (req: PayloadRequest) => {
+  const id = req.routeParams?.id as string
+
+  if (!id) {
+    return Response.json({ error: 'Stream ID is required' }, { status: 400 })
+  }
+
+  try {
+    // Get the stream document
+    const stream = await req.payload.findByID({
+      collection: 'live-streams',
+      id,
+    })
+
+    if (!stream) {
+      return Response.json({ error: 'Stream not found' }, { status: 404 })
+    }
+
+    if (stream.status !== 'live') {
+      return Response.json({ error: 'Stream is not currently live' }, { status: 400 })
+    }
+
+    // Get live transcoder configuration from env
+    const transcoderHost = process.env.LIVE_TRANSCODER_HOST || 'localhost'
+    const transcoderPort = process.env.LIVE_TRANSCODER_PORT || '8080'
+    const transcoderUrl = `http://${transcoderHost}:${transcoderPort}`
+
+    // Call live transcoder API to stop the stream
+    const response = await fetch(`${transcoderUrl}/api/streams/stop`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        streamKey: stream.streamKey,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Failed to stop stream: ${error}`)
+    }
+
+    // Update stream status to ended
+    const updatedStream = await req.payload.update({
+      collection: 'live-streams',
+      id,
+      data: {
+        status: 'ended',
+      },
+    })
+
+    return Response.json({
+      success: true,
+      message: 'Stream stopped successfully',
+      stream: updatedStream,
+    })
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to stop stream'
+    req.payload.logger.error(`Error stopping stream: ${errorMessage}`)
+    return Response.json({ error: errorMessage }, { status: 500 })
+  }
+}
+
+export const LiveStreams: CollectionConfig = {
+  slug: 'live-streams',
+  access: {
+    read: () => true,
+    create: ({ req: { user } }) => Boolean(user),
+    update: ({ req: { user } }) => Boolean(user),
+    delete: ({ req: { user } }) => Boolean(user),
+  },
+  admin: {
+    useAsTitle: 'title',
+    defaultColumns: ['title', 'status', 'visibility', 'date'],
+  },
+  fields: [
+    {
+      name: 'streamKey',
+      label: 'Stream Key',
+      type: 'text',
+      required: true,
+      unique: true,
+      admin: {
+        description: 'Unique identifier for this stream. Use this as your stream key in OBS/streaming software.',
+      },
+    },
+    {
+      name: 'title',
+      type: 'text',
+      required: true,
+    },
+    {
+      name: 'description',
+      type: 'textarea',
+    },
+    {
+      name: 'date',
+      type: 'date',
+      required: true,
+      defaultValue: () => new Date(),
+      admin: {
+        date: {
+          pickerAppearance: 'dayAndTime',
+        },
+      },
+    },
+    {
+      name: 'visibility',
+      type: 'select',
+      required: true,
+      defaultValue: 'private',
+      options: [
+        {
+          label: 'Public',
+          value: 'public',
+        },
+        {
+          label: 'Private',
+          value: 'private',
+        },
+      ],
+    },
+    {
+      name: 'status',
+      label: 'Stream Status',
+      type: 'select',
+      required: true,
+      defaultValue: 'idle',
+      options: [
+        {
+          label: 'Idle',
+          value: 'idle',
+        },
+        {
+          label: 'Live',
+          value: 'live',
+        },
+        {
+          label: 'Ended',
+          value: 'ended',
+        },
+      ],
+      admin: {
+        readOnly: true,
+        description: 'Current status of the stream (controlled by Start/Stop buttons)',
+      },
+    },
+    {
+      name: 'rtmpUrl',
+      label: 'RTMP Source URL',
+      type: 'text',
+      admin: {
+        description: 'Optional RTMP source URL. Leave empty if streaming directly to this server.',
+      },
+    },
+    {
+      name: 'masterPlaylistUrl',
+      label: 'Master Playlist URL',
+      type: 'text',
+      admin: {
+        readOnly: true,
+        description: 'HLS master playlist URL (generated automatically)',
+      },
+    },
+    {
+      name: 'thumbnailUrl',
+      label: 'Thumbnail URL',
+      type: 'text',
+      admin: {
+        readOnly: true,
+        description: 'Thumbnail URL (uploaded via the thumbnail uploader below)',
+      },
+    },
+    {
+      name: 'thumbnailUploader',
+      type: 'ui',
+      admin: {
+        components: {
+          Field: './collections/components/ThumbnailUploader#ThumbnailUploaderComponent',
+        },
+      },
+    },
+    {
+      name: 'streamControls',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field: './collections/components/StreamControls#StreamControlsComponent',
+        },
+      },
+    },
+  ],
+  endpoints: [
+    {
+      path: '/:id/start',
+      method: 'post',
+      handler: startStreamHandler,
+    },
+    {
+      path: '/:id/stop',
+      method: 'post',
+      handler: stopStreamHandler,
+    },
+    {
+      path: '/:id/thumbnail',
+      method: 'post',
+      handler: async (req: PayloadRequest) => {
+        const id = req.routeParams?.id as string
+
+        if (!id) {
+          return Response.json({ error: 'Stream ID is required' }, { status: 400 })
+        }
+
+        try {
+          // Get the stream document
+          const stream = await req.payload.findByID({
+            collection: 'live-streams',
+            id,
+          })
+
+          if (!stream) {
+            return Response.json({ error: 'Stream not found' }, { status: 404 })
+          }
+
+          // Get the uploaded file from the request
+          if (!req.formData) {
+            return Response.json({ error: 'Invalid request format' }, { status: 400 })
+          }
+
+          const formData = await req.formData()
+          const file = formData.get('thumbnail')
+
+          if (!file) {
+            return Response.json({ error: 'No file uploaded' }, { status: 400 })
+          }
+
+          // Get live transcoder configuration from env
+          const transcoderHost = process.env.LIVE_TRANSCODER_HOST || 'localhost'
+          const transcoderPort = process.env.LIVE_TRANSCODER_PORT || '8080'
+          const transcoderUrl = `http://${transcoderHost}:${transcoderPort}`
+
+          // Forward the file to the transcoder
+          const uploadFormData = new FormData()
+          uploadFormData.append('thumbnail', file)
+
+          const response = await fetch(`${transcoderUrl}/api/streams/${stream.streamKey}/thumbnail`, {
+            method: 'POST',
+            body: uploadFormData,
+          })
+
+          if (!response.ok) {
+            const error = await response.text()
+            throw new Error(`Failed to upload thumbnail: ${error}`)
+          }
+
+          const data = await response.json()
+
+          // Update the stream document with the new thumbnail URL
+          const updatedStream = await req.payload.update({
+            collection: 'live-streams',
+            id,
+            data: {
+              thumbnailUrl: data.thumbnailUrl,
+            },
+          })
+
+          return Response.json({
+            success: true,
+            thumbnailUrl: data.thumbnailUrl,
+            stream: updatedStream,
+          })
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to upload thumbnail'
+          req.payload.logger.error(`Error uploading thumbnail: ${errorMessage}`)
+          return Response.json({ error: errorMessage }, { status: 500 })
+        }
+      },
+    },
+  ],
+  hooks: {
+    beforeChange: [
+      async ({ data, req, operation }) => {
+        // Set master playlist URL when stream goes live
+        if (data.status === 'live' && !data.masterPlaylistUrl && data.streamKey) {
+          const mediaBaseUrl = req?.payload?.config?.custom?.mediaBaseUrl || process.env.MEDIA_BASE_URL || 'https://cdn.url'
+          data.masterPlaylistUrl = `${mediaBaseUrl}/${data.streamKey}/master.m3u8`
+        }
+        return data
+      },
+    ],
+  },
+}

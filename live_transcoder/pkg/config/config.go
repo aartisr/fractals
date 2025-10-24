@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -91,6 +92,13 @@ func Load(path string) (*Config, error) {
 	}
 	if tempDir := os.Getenv("TRANSCODER_TEMP_DIR"); tempDir != "" {
 		cfg.Server.TempDir = tempDir
+	}
+
+	// Override HLS segment duration from env
+	if segmentDuration := os.Getenv("TRANSCODER_SEGMENT_DURATION"); segmentDuration != "" {
+		if duration, err := strconv.Atoi(segmentDuration); err == nil {
+			cfg.HLS.SegmentDuration = duration
+		}
 	}
 
 	return &cfg, nil
