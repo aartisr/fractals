@@ -3,6 +3,7 @@ import { DocumentHead, Link, routeLoader$ } from '@builder.io/qwik-city';
 import { LuSearch, LuPlay, LuClock, LuEye, LuLogIn, LuShield, LuChevronRight } from '@qwikest/icons/lucide';
 import { useUserContext } from '~/routes/plugin@auth';
 import { payload } from '~/utils/payload-sdk';
+import { VideoJSPlayer } from '~/components/ui/VideoJSPlayer';
 
 interface Video {
   id: number;
@@ -25,37 +26,69 @@ interface Category {
   videos: Video[];
 }
 
-export const useCategories = routeLoader$(async () => {
-  // Fetch first 5 categories in ascending order
-  const categoriesRes = await payload.find({
-    collection: 'categories',
-    limit: 5,
-    sort: 'name',
-  });
+export const useCategories = routeLoader$(async ({ query }) => {
+  const page = parseInt(query.get('page') || '1');
+  const limit = 5; // Categories per page
 
-  const categories: Category[] = [];
+  try {
+    // Fetch categories with pagination
+    const categoriesRes = await payload.find({
+      collection: 'categories',
+      limit,
+      page,
+      sort: 'name',
+    });
 
-  // For each category, fetch first 4 videos
-  for (const category of categoriesRes.docs) {
-    const videosRes = await payload.find({
-      collection: 'videos',
-      where: {
-        category: {
-          equals: category.id,
+    const categories: Category[] = [];
+
+    // For each category, fetch first 4 videos
+    for (const category of categoriesRes.docs) {
+      const videosRes = await payload.find({
+        collection: 'videos',
+        where: {
+          category: {
+            equals: category.id,
+          },
         },
+        limit: 4,
+        depth: 2,
+        sort: '-date',
+      });
+
+      categories.push({
+        id: category.id,
+        name: category.name,
+        videos: videosRes.docs as unknown as Video[],
+      });
+    }
+
+    return {
+      categories,
+      pagination: {
+        page: categoriesRes.page,
+        totalPages: categoriesRes.totalPages,
+        hasNextPage: categoriesRes.hasNextPage,
+        hasPrevPage: categoriesRes.hasPrevPage,
+        nextPage: categoriesRes.nextPage,
+        prevPage: categoriesRes.prevPage,
+        totalDocs: categoriesRes.totalDocs,
       },
-      limit: 4,
-      depth: 2,
-    });
-
-    categories.push({
-      id: category.id,
-      name: category.name,
-      videos: videosRes.docs as unknown as Video[],
-    });
+    };
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    return {
+      categories: [],
+      pagination: {
+        page: 1,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+        nextPage: null,
+        prevPage: null,
+        totalDocs: 0,
+      },
+    };
   }
-
-  return categories;
 });
 
 export default component$(() => {
@@ -74,7 +107,7 @@ export default component$(() => {
             <div class="absolute inset-0 bg-orange-500 blur-2xl opacity-30 rounded-full"></div>
             <LuShield class="w-10 h-10 text-white relative z-10" />
           </div>
-          <h2 class="text-4xl font-serif font-semibold tracking-tight text-gray-900 mb-2">
+          <h2 class="text-4xl font-semibold tracking-tight text-gray-900 mb-2">
             Authentication Required
           </h2>
           <p class="text-gray-600 mb-8">
@@ -98,7 +131,8 @@ export default component$(() => {
     );
   }
 
-  const categories: Category[] = categoriesData.value ?? [];
+  const categories: Category[] = categoriesData.value?.categories ?? [];
+  const pagination = categoriesData.value?.pagination;
 
   const handleVideoClick = $((video: Video) => {
     selectedVideo.value = video;
@@ -142,9 +176,15 @@ export default component$(() => {
         <div class="bg-gradient-to-r from-orange-600 to-amber-600 text-white py-16">
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1 class="text-4xl md:text-5xl font-bold mb-4">Video Playlists</h1>
-            <p class="text-xl text-orange-100 max-w-3xl">
+            <p class="text-xl text-orange-100 max-w-3xl mb-4">
               Explore our curated collection of spiritual teachings, wisdom, and transformative practices organized by category
             </p>
+            {pagination && pagination.totalDocs > 0 && (
+              <div class="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg text-sm">
+                <span class="font-semibold">{pagination.totalDocs}</span>
+                <span>categories available</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -253,6 +293,70 @@ export default component$(() => {
               <p class="text-gray-500">Try adjusting your search query</p>
             </div>
           )}
+
+          {/* Pagination Controls */}
+          {pagination && pagination.totalPages > 1 && !searchQuery.value && (
+            <div class="mt-12 pt-8 border-t border-orange-200">
+              <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Page Info */}
+                <div class="text-gray-600 text-sm">
+                  Showing page {pagination.page} of {pagination.totalPages}
+                  <span class="hidden sm:inline"> ({pagination.totalDocs} categories total)</span>
+                </div>
+
+                {/* Navigation Buttons */}
+                <div class="flex items-center gap-3">
+                  {pagination.hasPrevPage && (
+                    <Link
+                      href={`/playlists?page=${pagination.prevPage}`}
+                      class="px-6 py-3 bg-white border-2 border-orange-300 text-orange-700 font-medium rounded-xl hover:bg-orange-50 hover:border-orange-400 hover:shadow-lg transition-all duration-300"
+                    >
+                      ← Previous
+                    </Link>
+                  )}
+
+                  {/* Page Numbers */}
+                  <div class="hidden md:flex items-center gap-2">
+                    {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
+                      let pageNum: number;
+                      if (pagination.totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (pagination.page <= 3) {
+                        pageNum = i + 1;
+                      } else if (pagination.page >= pagination.totalPages - 2) {
+                        pageNum = pagination.totalPages - 4 + i;
+                      } else {
+                        pageNum = pagination.page - 2 + i;
+                      }
+
+                      return (
+                        <Link
+                          key={pageNum}
+                          href={`/playlists?page=${pageNum}`}
+                          class={`w-10 h-10 flex items-center justify-center rounded-lg font-medium transition-all ${
+                            pageNum === pagination.page
+                              ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg'
+                              : 'bg-white border border-gray-300 text-gray-700 hover:border-orange-400 hover:bg-orange-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </Link>
+                      );
+                    })}
+                  </div>
+
+                  {pagination.hasNextPage && (
+                    <Link
+                      href={`/playlists?page=${pagination.nextPage}`}
+                      class="px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-300"
+                    >
+                      Next →
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Video Modal */}
@@ -279,15 +383,40 @@ export default component$(() => {
 
               <div class="p-6">
                 {/* Video Player */}
-                <div class="aspect-video bg-black rounded-lg mb-6">
-                  <video
-                    controls
-                    class="w-full h-full"
+                <div class="aspect-video bg-black rounded-lg mb-6 overflow-hidden">
+                  <VideoJSPlayer
+                    sources={(() => {
+                      const sources = [];
+
+                      // Add master playlist
+                      if (selectedVideo.value.masterUrl) {
+                        sources.push({
+                          src: selectedVideo.value.masterUrl,
+                          type: 'application/x-mpegURL',
+                          label: 'Auto'
+                        });
+                      }
+
+                      // Add quality-specific playlists
+                      if (selectedVideo.value.playlists) {
+                        for (const playlist of selectedVideo.value.playlists) {
+                          if (playlist?.url) {
+                            sources.push({
+                              src: playlist.url,
+                              type: 'application/x-mpegURL',
+                              label: playlist.resolution || 'Unknown',
+                              res: playlist.resolution ? parseInt(playlist.resolution) : undefined
+                            });
+                          }
+                        }
+                      }
+
+                      return sources;
+                    })()}
                     poster={selectedVideo.value.thumbnail}
-                  >
-                    <source src={selectedVideo.value.masterUrl} type="application/x-mpegURL" />
-                    Your browser does not support the video tag.
-                  </video>
+                    autoplay={true}
+                    muted={false}
+                  />
                 </div>
 
                 {/* Video Info */}

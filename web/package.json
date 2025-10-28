@@ -41,6 +41,7 @@
     "@types/compression": "latest",
     "@types/express": "latest",
     "@types/node": "latest",
+    "@types/video.js": "^7.3.58",
     "@vite-pwa/assets-generator": "latest",
     "compression": "latest",
     "ignore": "latest",
@@ -55,9 +56,12 @@
     "@modular-forms/qwik": "latest",
     "@payloadcms/sdk": "^3.60.0",
     "@qwikest/icons": "^0.0.13",
+    "@videojs/http-streaming": "^3.17.2",
     "bcryptjs": "latest",
     "express": "latest",
     "hls.js": "^1.6.13",
-    "lucide-static": "latest"
+    "lucide-static": "latest",
+    "undici": "latest",
+    "video.js": "^8.23.4"
   }
 }

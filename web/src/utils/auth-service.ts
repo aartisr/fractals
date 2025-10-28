@@ -126,7 +126,7 @@ export function buildSignInUrl(
     params.set('error_callback_url', errorCallbackUrl);
   }
 
-  return `${authBase}/auth/sign-in?${params.toString()}`;
+  return `${authBase}/auth/sign-in/email?${params.toString()}`;
 }
 
 /**

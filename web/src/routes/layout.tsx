@@ -1,37 +1,26 @@
 import { component$, Slot, useVisibleTask$, useSignal, $ } from '@builder.io/qwik';
-import { 
-  LuMenu, 
-  LuSearch, 
-  LuBell, 
-  LuX, 
-  LuChevronLeft, 
-  LuChevronRight, 
-  LuChevronDown,
-  LuHome, 
-  LuVideo, 
-  LuPlayCircle, 
-  LuListVideo, 
-  LuCompass, 
-  LuCalendar, 
-  LuSparkles, 
-  LuUsers, 
+import {
+  LuMenu,
+  LuSearch,
+  LuBell,
+  LuX,
+  LuChevronLeft,
+  LuChevronRight,
+  LuVideo,
+  LuPlayCircle,
+  LuListVideo,
   LuLogIn,
   LuLogOut,
   LuUser,
   LuTwitter,
   LuFacebook,
   LuInstagram,
-  LuYoutube,
-  LuMessageCircle,
-  LuHistory,
-  LuBookmark,
-  LuBrain
+  LuYoutube
 } from '@qwikest/icons/lucide';
 import { useUserContext } from './plugin@auth';
 
 export default component$(() => {
   const sidebarOpen = useSignal(true); // Abierto por defecto
-  const askDropdownOpen = useSignal(false); // Estado del dropdown de Ask Nithyananda
   const userContext = useUserContext(); // Auth context from plugin
 
   // Handler para cerrar sidebar en mobile al hacer click en un link
@@ -94,9 +83,9 @@ export default component$(() => {
       )}
 
       {/* Sidebar - Expandido/Mini en desktop, deslizable en mobile */}
-      <aside 
-        class={`fixed left-0 top-0 h-screen bg-gradient-to-br from-white via-orange-50/20 to-amber-50/30 border-r border-orange-200/50 backdrop-blur-xl z-50 flex flex-col shadow-2xl transition-all duration-300 ease-in-out 
-          ${sidebarOpen.value ? 'w-72 translate-x-0' : 'w-20 -translate-x-full lg:translate-x-0'}
+      <aside
+        class={`fixed left-0 top-0 h-screen bg-gradient-to-br from-white via-orange-50/20 to-amber-50/30 border-r border-orange-200/50 backdrop-blur-xl z-50 flex flex-col shadow-2xl transition-all duration-300 ease-in-out
+          ${sidebarOpen.value ? 'w-56 translate-x-0' : 'w-16 -translate-x-full lg:translate-x-0'}
         `}
       >
         {/* Botón Toggle en el borde derecho - Solo desktop */}
@@ -104,30 +93,29 @@ export default component$(() => {
           onClick$={$(() => {
             sidebarOpen.value = !sidebarOpen.value;
           })}
-          class="hidden lg:flex absolute -right-12 top-20 w-10 h-16 bg-gradient-to-r from-orange-500 to-amber-600 text-white items-center justify-center rounded-r-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-amber-700 transition-all duration-300 group"
+          class="hidden lg:flex absolute -right-10 top-16 w-8 h-12 bg-gradient-to-r from-orange-500 to-amber-600 text-white items-center justify-center rounded-r-lg shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-amber-700 transition-all duration-300 group"
         >
           {sidebarOpen.value ? (
-            <LuChevronLeft class="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <LuChevronLeft class="w-4 h-4 group-hover:scale-110 transition-transform" />
           ) : (
-            <LuChevronRight class="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <LuChevronRight class="w-4 h-4 group-hover:scale-110 transition-transform" />
           )}
         </button>
-        
+
         {/* Logo Section */}
-        <div class="p-4 border-b border-orange-200/50 flex items-center justify-center">
-          <a href="/" class="flex items-center gap-3 group">
+        <div class="p-3 border-b border-orange-200/50 flex items-center justify-center">
+          <a href="/" class="flex items-center gap-2 group">
             <div class="relative flex-shrink-0">
-              <div class="absolute inset-0 bg-orange-500 blur-2xl opacity-30 rounded-full group-hover:opacity-50 transition-opacity"></div>
-              <div class="relative w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform duration-300">
-                <span class="text-white text-xl font-semibold font-serif">ॐ</span>
+              <div class="relative w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-300">
+                <span class="text-white text-lg font-semibold">ॐ</span>
               </div>
             </div>
             {sidebarOpen.value && (
               <div class="flex-1 overflow-hidden">
-                <div class="text-xl font-serif font-bold tracking-tight bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent whitespace-nowrap">
+                <div class="text-base font-bold tracking-tight bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent whitespace-nowrap">
                   Nithyananda TV
                 </div>
-                <div class="text-[10px] text-orange-600/70 tracking-widest uppercase font-medium whitespace-nowrap">
+                <div class="text-[9px] text-orange-600/70 tracking-wider uppercase font-medium whitespace-nowrap">
                   Divine Streaming
                 </div>
               </div>
@@ -149,13 +137,13 @@ export default component$(() => {
 
         {/* Search Bar - Solo cuando está expandido */}
         {sidebarOpen.value && (
-          <div class="px-4 py-4">
-            <div class="flex items-center gap-2 bg-white/60 border border-orange-200/50 rounded-xl px-4 py-2.5 shadow-sm hover:shadow-md hover:border-orange-300/60 transition-all duration-300">
-              <LuSearch class="w-4 h-4 text-orange-400 flex-shrink-0" />
-              <input 
-                type="text" 
-                placeholder="Search divine wisdom..." 
-                class="bg-transparent text-sm outline-none w-full placeholder:text-gray-400"
+          <div class="px-3 py-2">
+            <div class="flex items-center gap-2 bg-white/60 border border-orange-200/50 rounded-lg px-3 py-2 shadow-sm hover:shadow-md hover:border-orange-300/60 transition-all duration-300">
+              <LuSearch class="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="Search..."
+                class="bg-transparent text-xs outline-none w-full placeholder:text-gray-400"
               />
             </div>
           </div>
@@ -164,202 +152,72 @@ export default component$(() => {
         {/* Main Navigation */}
         <nav class="flex-1 px-2 py-2 overflow-y-auto">
           <div class="space-y-1">
-            {/* Home */}
-            <a 
-              href="/" 
-              onClick$={closeSidebarOnMobile} 
-              class="group flex items-center gap-3 px-3 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-200 hover:shadow-xl transition-all duration-300 justify-center lg:justify-start"
-              title="Home"
-            >
-              <div class="w-9 h-9 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                <LuHome class="w-5 h-5" />
-              </div>
-              {sidebarOpen.value && <span class="font-medium whitespace-nowrap">Home</span>}
-            </a>
-
             {/* SPH LIVE */}
-            <a 
-              href="#live" 
-              onClick$={closeSidebarOnMobile} 
-              class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
+            <a
+              href="/live"
+              onClick$={closeSidebarOnMobile}
+              class="group flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-orange-50/50 hover:shadow-sm transition-all duration-300 justify-center lg:justify-start"
               title="SPH LIVE"
             >
-              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-red-100 to-orange-100 flex items-center justify-center group-hover:scale-110 transition-transform relative flex-shrink-0">
-                <LuVideo class="w-5 h-5 text-red-600" />
-                <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-red-100 to-orange-100 flex items-center justify-center group-hover:scale-105 transition-transform relative flex-shrink-0">
+                <LuVideo class="w-4 h-4 text-red-600" />
+                <span class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
               </div>
               {sidebarOpen.value && (
                 <div class="flex-1">
-                  <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors">SPH LIVE</span>
-                  <div class="text-xs text-red-500 font-medium">● Live Now</div>
+                  <span class="text-sm font-medium text-gray-700 group-hover:text-orange-600 transition-colors">SPH LIVE</span>
+                  <div class="text-[10px] text-red-500 font-medium">● Live Now</div>
                 </div>
               )}
-            </a>
-
-            {/* Watch */}
-            <a 
-              href="#watch" 
-              onClick$={closeSidebarOnMobile} 
-              class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
-              title="Watch"
-            >
-              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                <LuPlayCircle class="w-5 h-5 text-purple-600" />
-              </div>
-              {sidebarOpen.value && <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Watch</span>}
             </a>
 
             {/* Playlists */}
-            <a 
-              href="/playlists" 
-              onClick$={closeSidebarOnMobile} 
-              class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
+            <a
+              href="/playlists"
+              onClick$={closeSidebarOnMobile}
+              class="group flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-orange-50/50 hover:shadow-sm transition-all duration-300 justify-center lg:justify-start"
               title="Playlists"
             >
-              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                <LuListVideo class="w-5 h-5 text-blue-600" />
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0">
+                <LuListVideo class="w-4 h-4 text-blue-600" />
               </div>
-              {sidebarOpen.value && <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Playlists</span>}
+              {sidebarOpen.value && <span class="text-sm font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Playlists</span>}
             </a>
 
-            {/* Explore Categories */}
+            {/* All Videos */}
             <a
-              href="/explore"
+              href="/videos"
               onClick$={closeSidebarOnMobile}
-              class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
-              title="Explore"
+              class="group flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-orange-50/50 hover:shadow-sm transition-all duration-300 justify-center lg:justify-start"
+              title="All Videos"
             >
-              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                <LuCompass class="w-5 h-5 text-emerald-600" />
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0">
+                <LuPlayCircle class="w-4 h-4 text-purple-600" />
               </div>
-              {sidebarOpen.value && <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Explore</span>}
-            </a>
-
-            {/* Divider - Solo cuando está expandido */}
-            {sidebarOpen.value && (
-              <div class="py-3">
-                <div class="border-t border-orange-200/50"></div>
-              </div>
-            )}
-
-            {/* Sacred Content Section - Solo cuando está expandido */}
-            {sidebarOpen.value && (
-              <div class="px-4 py-2">
-                <h3 class="text-xs font-serif font-semibold text-orange-600/70 uppercase tracking-wider mb-3">Sacred Content</h3>
-              </div>
-            )}
-
-            {/* Event Schedule */}
-            <a 
-              href="#schedule" 
-              onClick$={closeSidebarOnMobile} 
-              class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
-              title="Event Schedule"
-            >
-              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-yellow-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                <LuCalendar class="w-5 h-5 text-amber-600" />
-              </div>
-              {sidebarOpen.value && <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Event Schedule</span>}
-            </a>
-
-            {/* Ask Nithyananda - Dropdown */}
-            <div>
-              <button 
-                onClick$={$(() => {
-                  askDropdownOpen.value = !askDropdownOpen.value;
-                })}
-                class="group w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
-                title="Ask Nithyananda"
-              >
-                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                  <LuSparkles class="w-5 h-5 text-indigo-600" />
-                </div>
-                {sidebarOpen.value && (
-                  <>
-                    <span class="flex-1 text-left font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Ask Nithyananda</span>
-                    <LuChevronDown class={`w-4 h-4 text-gray-500 transition-transform duration-300 ${askDropdownOpen.value ? 'rotate-180' : ''}`} />
-                  </>
-                )}
-              </button>
-              
-              {/* Dropdown Items - Solo visible cuando está expandido */}
-              {sidebarOpen.value && askDropdownOpen.value && (
-                <div class="mt-1 ml-3 pl-9 space-y-1 border-l-2 border-indigo-200">
-                  <a 
-                    href="/ask" 
-                    onClick$={closeSidebarOnMobile}
-                    class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors text-sm text-gray-600 hover:text-indigo-600"
-                  >
-                    <LuMessageCircle class="w-4 h-4 flex-shrink-0" />
-                    <span>New Chat</span>
-                  </a>
-                  <a 
-                    href="/models" 
-                    onClick$={closeSidebarOnMobile}
-                    class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors text-sm text-gray-600 hover:text-indigo-600"
-                  >
-                    <LuBrain class="w-4 h-4 flex-shrink-0" />
-                    <span>Models (45)</span>
-                  </a>
-                  <a 
-                    href="/ask/history" 
-                    onClick$={closeSidebarOnMobile}
-                    class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors text-sm text-gray-600 hover:text-indigo-600"
-                  >
-                    <LuHistory class="w-4 h-4 flex-shrink-0" />
-                    <span>Past Chats</span>
-                  </a>
-                
-                </div>
-              )}
-            </div>
-
-            {/* Global Community */}
-            <a 
-              href="#community" 
-              onClick$={closeSidebarOnMobile} 
-              class="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 justify-center lg:justify-start"
-              title="Community"
-            >
-              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-rose-100 to-pink-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                <LuUsers class="w-5 h-5 text-rose-600" />
-              </div>
-              {sidebarOpen.value && <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Community</span>}
+              {sidebarOpen.value && <span class="text-sm font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">All Videos</span>}
             </a>
           </div>
         </nav>
 
         {/* Bottom Section */}
-        <div class="p-2 border-t border-orange-200/50 space-y-2">
-          {/* Notifications */}
-          <button 
-            class="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 relative group justify-center lg:justify-start"
-            title="Notifications"
-          >
-            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0 relative">
-              <LuBell class="w-5 h-5 text-orange-600" />
-              <span class="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full"></span>
-            </div>
-            {sidebarOpen.value && <span class="font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Notifications</span>}
-          </button>
-
+        <div class="p-2 border-t border-orange-200/50 space-y-1.5">
           {/* Auth Section */}
           {userContext.value.isAuthenticated ? (
-            <div class="space-y-2">
+            <div class="space-y-1.5">
               {/* User Profile Button */}
-              <button 
-                class="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-orange-50/50 hover:shadow-md transition-all duration-300 relative group justify-center lg:justify-start"
+              <button
+                class="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-orange-50/50 hover:shadow-sm transition-all duration-300 relative group justify-center lg:justify-start"
                 title={userContext.value.user?.email}
               >
-                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                  <LuUser class="w-5 h-5 text-white" />
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0">
+                  <LuUser class="w-4 h-4 text-white" />
                 </div>
                 {sidebarOpen.value && (
                   <div class="flex-1 min-w-0 text-left">
-                    <div class="font-medium text-gray-900 truncate">
+                    <div class="text-xs font-medium text-gray-900 truncate">
                       {userContext.value.user?.first_name} {userContext.value.user?.last_name}
                     </div>
-                    <div class="text-xs text-gray-500 truncate">
+                    <div class="text-[10px] text-gray-500 truncate">
                       {userContext.value.user?.email}
                     </div>
                   </div>
@@ -367,44 +225,44 @@ export default component$(() => {
               </button>
 
               {/* Sign Out Button */}
-              <a 
-                href="/auth/logout" 
+              <a
+                href="/auth/logout"
                 onClick$={closeSidebarOnMobile}
-                class="w-full flex items-center justify-center gap-2 px-3 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-medium rounded-xl hover:shadow-2xl hover:shadow-gray-300/50 hover:scale-105 transition-all duration-300"
+                class="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-gradient-to-r from-gray-600 to-gray-700 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-gray-300/50 hover:scale-105 transition-all duration-300"
                 title="Sign Out"
               >
-                <LuLogOut class="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen.value && <span class="font-serif whitespace-nowrap">Sign Out</span>}
+                <LuLogOut class="w-4 h-4 flex-shrink-0" />
+                {sidebarOpen.value && <span class="whitespace-nowrap">Sign Out</span>}
               </a>
             </div>
           ) : (
-            <a 
-              href="/auth/login" 
+            <a
+              href="/auth/login"
               onClick$={closeSidebarOnMobile}
-              class="w-full flex items-center justify-center gap-2 px-3 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium rounded-xl hover:shadow-2xl hover:shadow-orange-300/50 hover:scale-105 transition-all duration-300"
+              class="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-orange-300/50 hover:scale-105 transition-all duration-300"
               style="animation: pulse-glow 3s ease-in-out infinite;"
               title="Sign In"
             >
-              <LuLogIn class="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen.value && <span class="font-serif whitespace-nowrap">Sign In</span>}
+              <LuLogIn class="w-4 h-4 flex-shrink-0" />
+              {sidebarOpen.value && <span class="whitespace-nowrap">Sign In</span>}
             </a>
           )}
         </div>
       </aside>
   
       {/* Main Content - Responsive con transición suave */}
-      <main 
+      <main
         class={`min-h-screen pt-16 lg:pt-0 transition-all duration-300 ${
-          sidebarOpen.value ? 'lg:ml-72' : 'lg:ml-20'
+          sidebarOpen.value ? 'lg:ml-56' : 'lg:ml-16'
         }`}
       >
         <Slot />
       </main>
 
       {/* Footer - Responsive con transición suave */}
-      <footer 
+      <footer
         class={`relative border-t border-orange-200/50 bg-gradient-to-br from-white to-orange-50/30 py-16 transition-all duration-300 ${
-          sidebarOpen.value ? 'lg:ml-72' : 'lg:ml-20'
+          sidebarOpen.value ? 'lg:ml-56' : 'lg:ml-16'
         }`}
       >
         {/* CHAKRA RINGS CSS ILLUSTRATION */}

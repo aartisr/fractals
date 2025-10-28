@@ -3,6 +3,7 @@ import { DocumentHead, Link, routeLoader$, useLocation } from '@builder.io/qwik-
 import { LuSearch, LuPlay, LuClock, LuEye, LuLogIn, LuShield, LuFilter, LuX } from '@qwikest/icons/lucide';
 import { useUserContext } from '~/routes/plugin@auth';
 import { payload } from '~/utils/payload-sdk';
+import { VideoJSPlayer } from '~/components/ui/VideoJSPlayer';
 
 interface Video {
   id: number;
@@ -72,7 +73,7 @@ export default component$(() => {
             <div class="absolute inset-0 bg-orange-500 blur-2xl opacity-30 rounded-full"></div>
             <LuShield class="w-10 h-10 text-white relative z-10" />
           </div>
-          <h2 class="text-4xl font-serif font-semibold tracking-tight text-gray-900 mb-2">
+            <h2 class="text-4xl font-semibold tracking-tight text-gray-900 mb-2">
             Authentication Required
           </h2>
           <p class="text-gray-600 mb-8">
@@ -313,15 +314,40 @@ export default component$(() => {
 
               <div class="p-6">
                 {/* Video Player */}
-                <div class="aspect-video bg-black rounded-lg mb-6">
-                  <video
-                    controls
-                    class="w-full h-full"
+                <div class="aspect-video bg-black rounded-lg mb-6 overflow-hidden">
+                  <VideoJSPlayer
+                    sources={(() => {
+                      const sources = [];
+
+                      // Add master playlist
+                      if (selectedVideo.value.masterUrl) {
+                        sources.push({
+                          src: selectedVideo.value.masterUrl,
+                          type: 'application/x-mpegURL',
+                          label: 'Auto'
+                        });
+                      }
+
+                      // Add quality-specific playlists
+                      if (selectedVideo.value.playlists) {
+                        for (const playlist of selectedVideo.value.playlists) {
+                          if (playlist?.url) {
+                            sources.push({
+                              src: playlist.url,
+                              type: 'application/x-mpegURL',
+                              label: playlist.resolution || 'Unknown',
+                              res: playlist.resolution ? parseInt(playlist.resolution) : undefined
+                            });
+                          }
+                        }
+                      }
+
+                      return sources;
+                    })()}
                     poster={selectedVideo.value.thumbnail}
-                  >
-                    <source src={selectedVideo.value.masterUrl} type="application/x-mpegURL" />
-                    Your browser does not support the video tag.
-                  </video>
+                    autoplay={true}
+                    muted={false}
+                  />
                 </div>
 
                 {/* Video Info */}

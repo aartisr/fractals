@@ -55,10 +55,10 @@ export default component$(() => {
 
               <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-100 to-amber-100 border border-orange-200 text-orange-700 text-xs font-medium rounded-full mb-8 shadow-sm">
                 <span class="w-2 h-2 bg-gradient-to-r from-orange-600 to-red-600 rounded-full animate-pulse"></span>
-                <span class="font-serif tracking-wide">LIVE DARSHAN NOW</span>
+                <span class="tracking-wide font-semibold">LIVE DARSHAN NOW</span>
               </div>
-              
-              <h1 class="text-5xl lg:text-6xl xl:text-7xl font-serif font-semibold tracking-tight text-transparent bg-gradient-to-br from-orange-800 via-orange-600 to-amber-600 bg-clip-text mb-6 leading-tight">
+
+              <h1 class="text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-transparent bg-gradient-to-br from-orange-800 via-orange-600 to-amber-600 bg-clip-text mb-6 leading-tight">
                 Experience Divine Consciousness
               </h1>
               
@@ -87,7 +87,7 @@ export default component$(() => {
               <div class="mt-12 flex items-center gap-8 text-sm">
                 <div class="flex items-center gap-2">
                   <div class="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center border border-orange-200">
-                    <span class="text-orange-700 font-semibold font-serif">2.4K</span>
+                    <span class="text-orange-700 font-bold">2.4K</span>
                   </div>
                   <div>
                     <div class="font-medium text-gray-900">Live Viewers</div>
@@ -96,7 +96,7 @@ export default component$(() => {
                 </div>
                 <div class="flex items-center gap-2">
                   <div class="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center border border-orange-200">
-                    <span class="text-orange-700 font-semibold font-serif">10K+</span>
+                    <span class="text-orange-700 font-bold">10K+</span>
                   </div>
                   <div>
                     <div class="font-medium text-gray-900">Sacred Videos</div>
@@ -126,10 +126,10 @@ export default component$(() => {
                 <div class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent backdrop-blur-sm">
                   <div class="flex items-center gap-3 text-white">
                     <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/50">
-                      <span class="text-lg font-serif">ॐ</span>
+                      <span class="text-lg font-medium">ॐ</span>
                     </div>
                     <div>
-                      <div class="font-serif font-medium">Morning Darshan</div>
+                      <div class="font-medium font-medium">Morning Darshan</div>
                       <div class="text-xs text-white/80">Day 342 • Live Now</div>
                     </div>
                   </div>
@@ -160,9 +160,9 @@ export default component$(() => {
 
             <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-100 to-orange-100 border border-red-200 text-red-700 text-xs font-medium rounded-full mb-4">
               <span class="w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>
-              <span class="font-serif tracking-wide">SACRED LIVE STREAMS</span>
+              <span class="font-medium tracking-wide">SACRED LIVE STREAMS</span>
             </div>
-            <h2 class="text-4xl font-serif font-semibold tracking-tight text-gray-900 mb-3">SPH LIVE Darshan</h2>
+            <h2 class="text-4xl font-medium font-semibold tracking-tight text-gray-900 mb-3">SPH LIVE Darshan</h2>
             <p class="text-gray-600 max-w-2xl mx-auto">Connect with divine consciousness through live spiritual sessions</p>
           </div>
           
@@ -204,7 +204,7 @@ export default component$(() => {
                     height={338}
                   />
                   <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                  <div class={`absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r ${session.statusColor} text-white text-xs font-medium rounded-lg ${session.status === 'LIVE NOW' ? 'flex items-center gap-2' : ''} shadow-lg font-serif`}>
+                  <div class={`absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r ${session.statusColor} text-white text-xs font-medium rounded-lg ${session.status === 'LIVE NOW' ? 'flex items-center gap-2' : ''} shadow-lg font-medium`}>
                     {session.status === 'LIVE NOW' && <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>}
                     {session.status}
                   </div>
@@ -217,10 +217,10 @@ export default component$(() => {
                   <div class="absolute bottom-4 left-4 right-4">
                     <div class="flex items-center gap-2 text-white">
                       <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/50">
-                        <span class="text-sm font-serif">ॐ</span>
+                        <span class="text-sm font-medium">ॐ</span>
                       </div>
                       <div class="flex-1">
-                        <div class="text-xs text-white/80 font-serif">SPH Nithyananda</div>
+                        <div class="text-xs text-white/80 font-medium">SPH Nithyananda</div>
                         <div class="text-sm font-medium">{session.title}</div>
                       </div>
                     </div>
@@ -250,9 +250,9 @@ export default component$(() => {
           <div class="text-center mb-12">
             <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 border border-amber-200 text-amber-700 text-xs font-medium rounded-full mb-4">
               <LuSparkles class="w-3 h-3" />
-              <span class="font-serif tracking-wide">CURATED COLLECTIONS</span>
+              <span class="font-medium tracking-wide">CURATED COLLECTIONS</span>
             </div>
-            <h2 class="text-4xl font-serif font-semibold tracking-tight text-gray-900 mb-3">Sacred Playlists</h2>
+            <h2 class="text-4xl font-medium font-semibold tracking-tight text-gray-900 mb-3">Sacred Playlists</h2>
             <p class="text-gray-600 max-w-2xl mx-auto">Journey through curated paths of spiritual awakening</p>
           </div>
           
@@ -281,11 +281,11 @@ export default component$(() => {
                       <div class="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/50">
                         <LuPlay class="w-4 h-4" />
                       </div>
-                      <span class="text-xs font-serif">Video Series</span>
+                      <span class="text-xs font-medium">Video Series</span>
                     </div>
                   </div>
                 </div>
-                <h3 class="font-serif font-medium text-gray-900 mb-1 group-hover:text-orange-600 transition-colors">{playlist.title}</h3>
+                <h3 class="font-medium font-medium text-gray-900 mb-1 group-hover:text-orange-600 transition-colors">{playlist.title}</h3>
                 <p class="text-sm text-gray-600">{playlist.desc}</p>
               </Link>
             ))}
@@ -304,7 +304,7 @@ export default component$(() => {
           <div class="inline-flex w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl items-center justify-center mx-auto mb-8 border-2 border-white/50 shadow-2xl">
             <LuMessageCircle class="w-10 h-10 text-white" />
           </div>
-          <h2 class="text-4xl lg:text-5xl font-serif font-semibold tracking-tight text-white mb-6">Ask Nithyananda</h2>
+          <h2 class="text-4xl lg:text-5xl font-medium font-semibold tracking-tight text-white mb-6">Ask Nithyananda</h2>
           <p class="text-lg text-white/90 mb-10 max-w-2xl mx-auto leading-relaxed">
             Dive deeper into spiritual wisdom with our divine AI assistant. Get instant insights and guidance about the teachings you're exploring.
           </p>
@@ -313,21 +313,21 @@ export default component$(() => {
             class="px-8 py-4 bg-white text-orange-700 font-medium rounded-xl hover:bg-orange-50 hover:shadow-2xl hover:scale-105 transition-all duration-300 inline-flex items-center gap-2"
           >
             <LuSparkles class="w-5 h-5" />
-            <span class="font-serif">Begin Sacred Dialogue</span>
+            <span class="font-medium">Begin Sacred Dialogue</span>
           </Link>
           <div class="mt-12 flex items-center justify-center gap-12 text-white/90">
             <div>
-              <div class="text-3xl font-serif font-semibold">10K+</div>
+              <div class="text-3xl font-medium font-semibold">10K+</div>
               <div class="text-sm text-white/70">Questions Answered</div>
             </div>
             <div class="w-px h-12 bg-white/30"></div>
             <div>
-              <div class="text-3xl font-serif font-semibold">24/7</div>
+              <div class="text-3xl font-medium font-semibold">24/7</div>
               <div class="text-sm text-white/70">Always Available</div>
             </div>
             <div class="w-px h-12 bg-white/30"></div>
             <div>
-              <div class="text-3xl font-serif font-semibold">∞</div>
+              <div class="text-3xl font-medium font-semibold">∞</div>
               <div class="text-sm text-white/70">Divine Wisdom</div>
             </div>
           </div>
@@ -340,9 +340,9 @@ export default component$(() => {
           <div class="text-center mb-12">
             <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-100 to-amber-100 border border-orange-200 text-orange-700 text-xs font-medium rounded-full mb-4">
               <LuCompass class="w-3 h-3" />
-              <span class="font-serif tracking-wide">SACRED PATHS</span>
+              <span class="font-medium tracking-wide">SACRED PATHS</span>
             </div>
-            <h2 class="text-4xl font-serif font-semibold tracking-tight text-gray-900 mb-3">Explore & Discover</h2>
+            <h2 class="text-4xl font-medium font-semibold tracking-tight text-gray-900 mb-3">Explore & Discover</h2>
             <p class="text-gray-600 max-w-2xl mx-auto">Find teachings that resonate with your spiritual journey</p>
           </div>
           
@@ -359,10 +359,10 @@ export default component$(() => {
                 <div class={`w-14 h-14 bg-gradient-to-br from-${category.color}-600 to-${category.color}-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg`}>
                   <category.IconComponent class="w-7 h-7 text-white" />
                 </div>
-                <h3 class="text-xl font-serif font-medium text-gray-900 mb-2">{category.title}</h3>
+                <h3 class="text-xl font-medium font-medium text-gray-900 mb-2">{category.title}</h3>
                 <p class="text-sm text-gray-600 mb-4">{category.count}</p>
                 <div class={`flex items-center gap-2 text-${category.color}-600 text-sm font-medium`}>
-                  <span class="font-serif">Explore Path</span>
+                  <span class="font-medium">Explore Path</span>
                   <LuArrowRight class="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>
