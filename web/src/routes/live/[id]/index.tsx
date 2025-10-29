@@ -1,39 +1,69 @@
-import { component$, useStyles$ } from '@builder.io/qwik';
-import { routeLoader$, DocumentHead, Link } from '@builder.io/qwik-city';
+import { component$, $,useStyles$, useSignal, useTask$ } from '@builder.io/qwik';
+import { server$ } from '@builder.io/qwik-city';
+import { routeLoader$, type DocumentHead, Link } from '@builder.io/qwik-city';
 import { payload } from '~/utils/payload-sdk';
 import { VideoJSPlayer } from '~/components/ui/VideoJSPlayer';
 import { LuArrowLeft, LuCalendar, LuShare2, LuHeart } from '@qwikest/icons/lucide';
 
+// --- Live Chat server$ ---
+export const chatServerQrl = server$(async function (args: { streamKey: string; text?: string; user?: string }) {
+  const { streamKey, text, user } = args;
+
+  // Si no hay texto, solo obtenemos los últimos mensajes
+  if (!text) {
+    const res = await payload.find({
+      collection: 'live-chat-messages',
+      where: { streamKey: { equals: streamKey } },
+      sort: '-createdAt',
+      limit: 50,
+    });
+    console.log('[Server$] Mensajes encontrados:', res?.docs);
+    return res?.docs || [];
+  }
+
+  // Crear un nuevo mensaje
+  await payload.create({
+    collection: 'live-chat-messages',
+    data: {
+      streamKey,
+      text,
+      user,
+    },
+  });
+  // Retornar la lista actualizada de mensajes
+  const res = await payload.find({
+    collection: 'live-chat-messages',
+    where: { streamKey: { equals: streamKey } },
+    sort: '-createdAt',
+    limit: 50,
+  });
+  console.log('[Server$] Mensajes encontrados tras crear:', res?.docs);
+  return res?.docs || [];
+});
+
 /**
- * Server-side data loader for individual live stream
+ * Server-side data loader para un live stream individual
  */
 export const useLiveStreamLoader = routeLoader$(async ({ params, status }) => {
   const streamKey = params.id;
 
-  try {
-    // Fetch stream by streamKey field from Payload CMS
-    const result = await payload.find({
-      collection: 'live-streams',
-      where: {
-        streamKey: {
-          equals: streamKey,
-        },
+  const result = await payload.find({
+    collection: 'live-streams',
+    where: {
+      streamKey: {
+        equals: streamKey,
       },
-      depth: 1,
-      limit: 1,
-    });
+    },
+    depth: 1,
+    limit: 1,
+  });
 
-    if (result.docs.length === 0) {
-      status(404);
-      return null;
-    }
-
-    return result.docs[0];
-  } catch (error) {
-    console.error('Error fetching live stream:', error);
+  if (!result.docs.length) {
     status(404);
     return null;
   }
+
+  return result.docs[0];
 });
 
 const styles = `
@@ -63,7 +93,57 @@ const styles = `
 
 export default component$(() => {
   useStyles$(styles);
+
+  // --- Datos del stream ---
   const stream = useLiveStreamLoader();
+
+  // --- Estado del Live Chat ---
+  const chatMessages = useSignal<any[]>([]);
+  const chatInput = useSignal('');
+  const chatLoading = useSignal(false);
+  const chatError = useSignal('');
+
+  // Cargar mensajes iniciales cuando cambia el streamKey
+  useTask$(async ({ track }) => {
+    const currentKey = track(() => stream.value?.streamKey);
+    if (!currentKey) return;
+
+    chatLoading.value = true;
+    try {
+      const msgs = await chatServerQrl({ streamKey: currentKey });
+      console.log('[LiveChat] Mensajes cargados:', msgs);
+      chatMessages.value = Array.isArray(msgs) ? (msgs as any[]).reverse() : [];
+      chatError.value = '';
+    } catch (e) {
+      console.error('[LiveChat] Error al cargar mensajes:', e);
+      chatError.value = 'Failed to load chat.';
+    } finally {
+      chatLoading.value = false;
+    }
+  });
+
+  // Enviar mensaje nuevo
+  const sendChatMessage = $(async () => {
+    const currentKey = stream.value?.streamKey;
+    if (!chatInput.value.trim() || !currentKey) return;
+
+    chatLoading.value = true;
+    try {
+      // For demo, user is 'Anonymous' (replace with auth if available)
+      console.log('[LiveChat] Enviando mensaje:', chatInput.value);
+      await chatServerQrl({ streamKey: currentKey, text: chatInput.value, user: 'Anonymous' });
+      // Recargar mensajes después de enviar
+      const msgs = await chatServerQrl({ streamKey: currentKey });
+      console.log('[LiveChat] Mensajes después de enviar:', msgs);
+      chatMessages.value = Array.isArray(msgs) ? (msgs as any[]).reverse() : [];
+      chatInput.value = '';
+      chatError.value = '';
+    } catch (e) {
+      console.error('[LiveChat] Error al enviar mensaje:', e);
+      chatError.value = 'Failed to send message.';
+    }
+    chatLoading.value = false;
+  });
 
   if (!stream.value) {
     return (
@@ -103,6 +183,55 @@ export default component$(() => {
       {/* Main Content */}
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="space-y-6">
+          {/* Live Chat */}
+          <div class="bg-white/70 rounded-xl shadow-md p-4 mb-6">
+            <h2 class="text-lg font-bold text-gray-900 mb-2">Live Chat</h2>
+            <div class="flex flex-col gap-2 max-h-80 overflow-y-auto mb-4">
+              {chatLoading.value && (
+                <div class="text-gray-500 text-sm">Loading chat...</div>
+              )}
+              {chatError.value && (
+                <div class="text-red-500 text-sm">{chatError.value}</div>
+              )}
+              {chatMessages.value.length === 0 && !chatLoading.value && (
+                <div class="text-gray-400 text-sm">No messages yet. Be the first to say something!</div>
+              )}
+              {chatMessages.value.map((msg, i) => (
+                <div key={(msg && (msg.id || msg._id)) ?? i} class="flex items-start gap-2">
+                  <div class="font-semibold text-orange-700">{msg?.user || 'Anonymous'}</div>
+                  <div class="bg-orange-50 rounded px-3 py-1 text-gray-900 text-sm">{msg?.text}</div>
+                  <div class="text-xs text-gray-400 ml-auto">
+                    {msg?.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <form
+              preventdefault:submit
+              class="flex gap-2"
+              onSubmit$={async (e) => {
+                e.preventDefault();
+                await sendChatMessage();
+              }}
+            >
+              <input
+                type="text"
+                class="flex-1 border border-orange-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="Type your message..."
+                bind:value={chatInput}
+                disabled={chatLoading.value}
+                maxLength={200}
+              />
+              <button
+                type="submit"
+                class="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold rounded-lg hover:scale-105 transition-all"
+                disabled={chatLoading.value || !chatInput.value.trim()}
+              >
+                Send
+              </button>
+            </form>
+          </div>
+
           {/* Video Player */}
           <div class="relative">
             {/* Live Badge */}
@@ -116,10 +245,12 @@ export default component$(() => {
             {stream.value.masterPlaylistUrl ? (
               <div class="aspect-video bg-black rounded-lg overflow-hidden">
                 <VideoJSPlayer
-                  sources={[{
-                    src: stream.value.masterPlaylistUrl,
-                    type: 'application/x-mpegURL'
-                  }]}
+                  sources={[
+                    {
+                      src: stream.value.masterPlaylistUrl,
+                      type: 'application/x-mpegURL',
+                    },
+                  ]}
                   poster={stream.value.thumbnailUrl}
                   autoplay={isLive}
                   muted={false}
@@ -146,22 +277,26 @@ export default component$(() => {
                   {stream.value.title}
                 </h1>
                 <div class="flex items-center gap-2">
-                  <span class={`inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full ${
-                    stream.value.status === 'live'
-                      ? 'bg-red-100 text-red-700'
-                      : stream.value.status === 'ended'
-                      ? 'bg-gray-100 text-gray-700'
-                      : 'bg-blue-100 text-blue-700'
-                  }`}>
+                  <span
+                    class={`inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full ${
+                      stream.value.status === 'live'
+                        ? 'bg-red-100 text-red-700'
+                        : stream.value.status === 'ended'
+                        ? 'bg-gray-100 text-gray-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}
+                  >
                     {stream.value.status === 'live' && <span class="w-2 h-2 bg-red-600 rounded-full animate-pulse" />}
-                    {stream.value.status.toUpperCase()}
+                    {String(stream.value.status).toUpperCase()}
                   </span>
                   {stream.value.visibility && (
-                    <span class={`px-3 py-1 text-sm font-semibold rounded-full ${
-                      stream.value.visibility === 'public'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}>
+                    <span
+                      class={`px-3 py-1 text-sm font-semibold rounded-full ${
+                        stream.value.visibility === 'public'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
                       {stream.value.visibility}
                     </span>
                   )}
@@ -208,12 +343,18 @@ export default component$(() => {
             <div class="mb-6 p-4 bg-white rounded-lg border border-orange-100">
               <h3 class="text-sm font-semibold text-gray-700 mb-2">Stream Details</h3>
               <div class="space-y-1 text-sm text-gray-600">
-                <div><span class="font-medium">Stream Key:</span> {stream.value.streamKey}</div>
+                <div>
+                  <span class="font-medium">Stream Key:</span> {stream.value.streamKey}
+                </div>
                 {stream.value.rtmpUrl && (
-                  <div class="break-all"><span class="font-medium">RTMP URL:</span> {stream.value.rtmpUrl}</div>
+                  <div class="break-all">
+                    <span class="font-medium">RTMP URL:</span> {stream.value.rtmpUrl}
+                  </div>
                 )}
                 {stream.value.masterPlaylistUrl && (
-                  <div class="break-all"><span class="font-medium">Playlist URL:</span> {stream.value.masterPlaylistUrl}</div>
+                  <div class="break-all">
+                    <span class="font-medium">Playlist URL:</span> {stream.value.masterPlaylistUrl}
+                  </div>
                 )}
               </div>
             </div>
