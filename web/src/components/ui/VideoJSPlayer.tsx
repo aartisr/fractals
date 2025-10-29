@@ -4,6 +4,7 @@ import {
   useVisibleTask$,
   $,
   useOnWindow,
+  noSerialize,
 } from "@builder.io/qwik";
 import videojs from "video.js";
 import type Player from "video.js/dist/types/player";
@@ -62,8 +63,8 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
     // Restore playback state
     player.one("loadedmetadata", () => {
       player.currentTime(currentTime);
-      if (!isPaused) {
-        player.play().catch(() => {});
+      if (!isPaused && typeof player.play === 'function') {
+        player.play()?.catch?.(() => {});
       }
     });
 
@@ -81,7 +82,9 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
       type: sortedSources[currentQuality.value].type,
     }]);
     player.load();
-    player.play().catch(() => {});
+    if (typeof player.play === 'function') {
+      player.play()?.catch?.(() => {});
+    }
   });
 
   // Initialize player
@@ -143,14 +146,15 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
         console.log("Could not check VHS availability");
       }
 
-      // Add mouse time display
+      // Add mouse time display (controlBar is not typed in Player, so use type assertion)
+      const controlBar = (player as any).controlBar;
       if (
-        player.controlBar &&
-        player.controlBar.progressControl &&
-        player.controlBar.progressControl.addChild
+        controlBar &&
+        controlBar.progressControl &&
+        typeof controlBar.progressControl.addChild === 'function'
       ) {
         try {
-          player.controlBar.progressControl.addChild("MouseTimeDisplay");
+          controlBar.progressControl.addChild("MouseTimeDisplay");
         } catch (_) {}
       }
 
@@ -189,7 +193,7 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
       }
     });
 
-    playerRef.value = player;
+  playerRef.value = noSerialize(player);
 
     cleanup(() => {
       if (player && !player.isDisposed()) {

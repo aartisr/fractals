@@ -319,14 +319,16 @@ export default component$(() => {
                   <div class="hidden md:flex items-center gap-2">
                     {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
                       let pageNum: number;
-                      if (pagination.totalPages <= 5) {
+                      const page = pagination.page ?? 1;
+                      const totalPages = pagination.totalPages ?? 1;
+                      if (totalPages <= 5) {
                         pageNum = i + 1;
-                      } else if (pagination.page <= 3) {
+                      } else if (page <= 3) {
                         pageNum = i + 1;
-                      } else if (pagination.page >= pagination.totalPages - 2) {
-                        pageNum = pagination.totalPages - 4 + i;
+                      } else if (page >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
                       } else {
-                        pageNum = pagination.page - 2 + i;
+                        pageNum = page - 2 + i;
                       }
 
                       return (
