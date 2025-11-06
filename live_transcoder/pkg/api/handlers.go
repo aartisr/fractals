@@ -289,15 +289,37 @@ func sendJSONError(w http.ResponseWriter, message string, status int) {
 }
 
 // handleStreamsRoute routes dynamic /api/streams/:streamKey/* paths
-func (a *API) handleStreamsRoute(w http.ResponseWriter, r *http.Request) {
-	// Check if it's a thumbnail upload
-	if strings.HasSuffix(r.URL.Path, "/thumbnail") {
-		a.UploadThumbnailHandler(w, r)
-		return
-	}
+func (a *API) HandleStreamsRoute(w http.ResponseWriter, r *http.Request) {
+    // URL format: /api/streams/:streamKey[/thumbnail]
+    path := strings.TrimPrefix(r.URL.Path, "/api/streams/")
+    parts := strings.Split(path, "/")
+    if len(parts) == 0 || parts[0] == "" {
+        sendJSONError(w, "Invalid URL format. Expected: /api/streams/:streamKey", http.StatusBadRequest)
+        return
+    }
 
-	// Unknown stream route
-	sendJSONError(w, "Not found", http.StatusNotFound)
+    streamKey := parts[0]
+
+    // Thumbnail route
+    if len(parts) > 1 && parts[1] == "thumbnail" {
+        a.UploadThumbnailHandler(w, r)
+        return
+    }
+
+    // Status route: GET /api/streams/:streamKey
+    if r.Method == http.MethodGet && len(parts) == 1 {
+        running := a.server.IsStreamRunning(streamKey)
+        sendJSONResponse(w, map[string]interface{}{
+            "success": true,
+            "streamKey": streamKey,
+            "status":    func() string { if running { return "running" } else { return "idle" } }(),
+            "running":   running,
+        }, http.StatusOK)
+        return
+    }
+
+    // Unknown stream route
+    sendJSONError(w, "Not found", http.StatusNotFound)
 }
 
 // SetupRoutes sets up the HTTP API routes
@@ -308,7 +330,7 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	// API routes
 	mux.HandleFunc("/api/streams/start", a.StartStreamHandler)
 	mux.HandleFunc("/api/streams/stop", a.StopStreamHandler)
-	mux.HandleFunc("/api/streams/", a.handleStreamsRoute) // Handles /:streamKey/thumbnail
+    mux.HandleFunc("/api/streams/", a.HandleStreamsRoute) // Handles /:streamKey and /:streamKey/thumbnail
 	mux.HandleFunc("/health", a.HealthHandler)
 
 	log.Info().Msg("API routes configured")

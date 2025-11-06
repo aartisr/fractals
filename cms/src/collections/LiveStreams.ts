@@ -139,7 +139,18 @@ const stopStreamHandler = async (req: PayloadRequest) => {
 export const LiveStreams: CollectionConfig = {
   slug: 'live-streams',
   access: {
-    read: () => true,
+    read: ({ req }) => {
+      // Public requests: hide private streams entirely
+      if (!req?.user) {
+        return {
+          visibility: {
+            not_equals: 'private',
+          },
+        }
+      }
+      // Authenticated (admin/cms) can read all
+      return true
+    },
     create: ({ req: { user } }) => Boolean(user),
     update: ({ req: { user } }) => Boolean(user),
     delete: ({ req: { user } }) => Boolean(user),
@@ -352,6 +363,60 @@ export const LiveStreams: CollectionConfig = {
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to upload thumbnail'
           req.payload.logger.error(`Error uploading thumbnail: ${errorMessage}`)
+          return Response.json({ error: errorMessage }, { status: 500 })
+        }
+      },
+    },
+    {
+      path: '/:id/sync-status',
+      method: 'get',
+      handler: async (req: PayloadRequest) => {
+        const id = req.routeParams?.id as string
+        if (!id) {
+          return Response.json({ error: 'Stream ID is required' }, { status: 400 })
+        }
+
+        try {
+          const stream = await req.payload.findByID({
+            collection: 'live-streams',
+            id,
+            overrideAccess: true,
+          })
+
+          if (!stream) {
+            return Response.json({ error: 'Stream not found' }, { status: 404 })
+          }
+
+          const transcoderHost = process.env.LIVE_TRANSCODER_HOST || 'localhost'
+          const transcoderPort = process.env.LIVE_TRANSCODER_PORT || '8080'
+          const transcoderUrl = `http://${transcoderHost}:${transcoderPort}`
+
+          // Ask transcoder for current status
+          const statusResp = await fetch(`${transcoderUrl}/api/streams/${stream.streamKey}`)
+          if (!statusResp.ok) {
+            const text = await statusResp.text()
+            throw new Error(`Transcoder status error: ${statusResp.status} ${text}`)
+          }
+          const statusJSON: any = await statusResp.json()
+
+          const running: boolean = Boolean(statusJSON?.running)
+          const nextStatus: 'idle' | 'live' | 'ended' = running ? 'live' : 'idle'
+          let updated = false
+
+          if (stream.status !== nextStatus) {
+            await req.payload.update({
+              collection: 'live-streams',
+              id,
+              data: { status: nextStatus },
+              overrideAccess: true,
+            })
+            updated = true
+          }
+
+          return Response.json({ success: true, running, status: nextStatus, updated })
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to sync status'
+          req.payload.logger.error(`Error syncing stream status: ${errorMessage}`)
           return Response.json({ error: errorMessage }, { status: 500 })
         }
       },

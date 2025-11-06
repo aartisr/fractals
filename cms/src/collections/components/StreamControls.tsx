@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useFormFields, useDocumentInfo } from '@payloadcms/ui'
 import { Button } from '@payloadcms/ui'
 import './StreamControls.css'
@@ -13,6 +13,31 @@ export const StreamControlsComponent: React.FC = () => {
 
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // On mount, sync status with live-transcoder and update record if out of sync
+  useEffect(() => {
+    const sync = async () => {
+      if (!id) return
+      try {
+        const resp = await fetch(`/api/live-streams/${id}/sync-status`)
+        const data = await resp.json()
+        if (!resp.ok || data?.error) {
+          // Non-fatal, just show a small note
+          setMessage({ type: 'error', text: data?.error || `Sync failed: ${resp.status}` })
+          setTimeout(() => setMessage(null), 2000)
+          return
+        }
+        if (data.updated) {
+          setMessage({ type: 'success', text: 'Status synced. Refreshing…' })
+          setTimeout(() => window.location.reload(), 1000)
+        }
+      } catch (e) {
+        setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Sync failed' })
+        setTimeout(() => setMessage(null), 2000)
+      }
+    }
+    sync()
+  }, [id])
 
   const handleStartStream = async () => {
     if (!id) {

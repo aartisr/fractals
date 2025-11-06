@@ -65,15 +65,7 @@ func main() {
 	// API routes
 	mux.HandleFunc("/api/streams/start", apiHandler.StartStreamHandler)
 	mux.HandleFunc("/api/streams/stop", apiHandler.StopStreamHandler)
-	mux.HandleFunc("/api/streams/", func(w http.ResponseWriter, r *http.Request) {
-		// Check if it's a thumbnail upload
-		if strings.HasSuffix(r.URL.Path, "/thumbnail") {
-			apiHandler.UploadThumbnailHandler(w, r)
-			return
-		}
-		// Unknown stream route
-		http.NotFound(w, r)
-	})
+	mux.HandleFunc("/api/streams/", apiHandler.HandleStreamsRoute)
 	mux.HandleFunc("/health", apiHandler.HealthHandler)
 
 	// Enable CORS

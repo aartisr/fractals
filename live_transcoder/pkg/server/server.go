@@ -25,9 +25,9 @@ type Server struct {
 }
 
 type Session struct {
-	streamKey  string
-	transcoder *transcoder.Transcoder
-	cancel     context.CancelFunc
+    streamKey  string
+    transcoder *transcoder.Transcoder
+    cancel     context.CancelFunc
 }
 
 func NewServer(cfg *config.Config, r2Client *storage.R2Client) *Server {
@@ -129,6 +129,14 @@ func (s *Server) StopStream(streamKey string) error {
 	session.transcoder.Stop()
 
 	return nil
+}
+
+// IsStreamRunning returns true if a session for the given streamKey exists
+func (s *Server) IsStreamRunning(streamKey string) bool {
+    s.mu.RLock()
+    defer s.mu.RUnlock()
+    _, exists := s.sessions[streamKey]
+    return exists
 }
 
 func (s *Server) Stop() {
