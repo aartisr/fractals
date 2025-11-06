@@ -11,9 +11,15 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ntv} -d ${DATABASE:-nithyananda-tv}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
     networks:
       - nithyananda-tv-network
-    
+
   cms:
     build:
       context: ./cms
@@ -21,8 +27,10 @@ services:
       target: runner
     container_name: ntv-cms
     depends_on:
-      - postgres
-      - live-transcoder
+      postgres:
+        condition: service_healthy
+      cms-migrate:
+        condition: service_completed_successfully
     env_file:
       - .env
     environment:
@@ -51,7 +59,8 @@ services:
       target: cli
     container_name: ntv-cms-migrate
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -85,15 +94,47 @@ services:
     environment:
       # Ensure server-side API calls hit the internal CMS hostname
       CMS_URL: http://cms:3000
+      CHAT_SERVICE_URL: http://chat-service:9000
       PORT: 3000
       NODE_ENV: production
       ORIGIN: ${ORIGIN:-http://localhost:3000}
       # Enable Node's experimental built-in sqlite module used by web runtime
       NODE_OPTIONS: --experimental-sqlite
+      # Auth service configuration (required at runtime)
+      AUTH_BASE: ${AUTH_BASE}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
+      AUTH_REDIRECT_URI: ${AUTH_REDIRECT_URI}
+      AUTH_ERROR_URL: ${AUTH_ERROR_URL}
       # Optionally set ORIGIN to your public URL in production
       # ORIGIN: https://your-domain.example
     ports:
       - "2007:3000"
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+  chat-service:
+    build:
+      context: ./chat_service
+      dockerfile: Dockerfile
+    container_name: ntv-chat-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cms-migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}
+      CHAT_SERVICE_LOG_LEVEL: ${CHAT_SERVICE_LOG_LEVEL:-info}
+      AUTH_BASE: ${AUTH_BASE}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+    ports:
+      - "1009:9000"
+    volumes:
+      - chat_logs:/app/logs
     restart: unless-stopped
     networks:
       - nithyananda-tv-network
@@ -141,9 +182,11 @@ services:
 
 volumes:
   pgdata:
+  redis_data:
   cms_media:
   transcoder_temp:
   transcoder_logs:
+  chat_logs:
 
 networks:
   nithyananda-tv-network:

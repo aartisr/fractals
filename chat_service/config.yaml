@@ -1,0 +1,15 @@
+database:
+  max_conns: 10
+  min_conns: 2
+  max_conn_lifetime: 1h
+  max_conn_idle_time: 30m
+
+rate_limit:
+  messages_per_window: 10
+  window_seconds: 10
+
+log_level: "info"
+
+chat:
+  max_message_length: 500
+  history_max_length: 50

@@ -14,6 +14,7 @@ const startStreamHandler = async (req: PayloadRequest) => {
     const stream = await req.payload.findByID({
       collection: 'live-streams',
       id,
+      overrideAccess: true,
     })
 
     if (!stream) {
@@ -223,6 +224,10 @@ export const LiveStreams: CollectionConfig = {
       name: 'rtmpUrl',
       label: 'RTMP Source URL',
       type: 'text',
+      access: {
+        // Allow authenticated users (admin UI, server handlers) to read; public cannot
+        read: ({ req }) => Boolean(req?.user),
+      },
       admin: {
         description: 'Optional RTMP source URL. Leave empty if streaming directly to this server.',
       },

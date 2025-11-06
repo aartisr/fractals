@@ -71,6 +71,7 @@ export interface Config {
     categories: Category;
     videos: Video;
     'live-streams': LiveStream;
+    'live-chat': LiveChat;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -81,6 +82,7 @@ export interface Config {
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     videos: VideosSelect<false> | VideosSelect<true>;
     'live-streams': LiveStreamsSelect<false> | LiveStreamsSelect<true>;
+    'live-chat': LiveChatSelect<false> | LiveChatSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -189,7 +191,7 @@ export interface LiveStream {
   date: string;
   visibility: 'public' | 'private';
   /**
-   * Current status of the stream
+   * Current status of the stream (controlled by Start/Stop buttons)
    */
   status: 'idle' | 'live' | 'ended';
   /**
@@ -204,6 +206,41 @@ export interface LiveStream {
    * Thumbnail URL (uploaded via the thumbnail uploader below)
    */
   thumbnailUrl?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Live chat messages for streams
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "live-chat".
+ */
+export interface LiveChat {
+  id: number;
+  /**
+   * Message content (max 500 characters)
+   */
+  content: string;
+  /**
+   * ID of the user who sent the message (from Nandi Auth)
+   */
+  userId: string;
+  /**
+   * Display name of the user
+   */
+  userName?: string | null;
+  /**
+   * The live stream this message belongs to
+   */
+  streamId: number | LiveStream;
+  /**
+   * Type of message
+   */
+  type: 'user' | 'system' | 'moderator';
+  /**
+   * Soft delete timestamp - set by moderators
+   */
+  deletedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -229,6 +266,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'live-streams';
         value: number | LiveStream;
+      } | null)
+    | ({
+        relationTo: 'live-chat';
+        value: number | LiveChat;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -336,6 +377,20 @@ export interface LiveStreamsSelect<T extends boolean = true> {
   rtmpUrl?: T;
   masterPlaylistUrl?: T;
   thumbnailUrl?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "live-chat_select".
+ */
+export interface LiveChatSelect<T extends boolean = true> {
+  content?: T;
+  userId?: T;
+  userName?: T;
+  streamId?: T;
+  type?: T;
+  deletedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

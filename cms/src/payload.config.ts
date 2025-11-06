@@ -9,6 +9,8 @@ import { Users } from './collections/Users'
 import { Categories } from './collections/Categories'
 import { Videos } from './collections/Videos'
 import { LiveStreams } from './collections/LiveStreams'
+import { LiveChat } from './collections/LiveChat'
+import { ECitizen } from './collections/ECitizen'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -23,7 +25,7 @@ export default buildConfig({
   custom: {
     mediaBaseUrl: process.env.MEDIA_BASE_URL || 'cdn.url',
   },
-  collections: [Users, Categories, Videos, LiveStreams],
+  collections: [Users, ECitizen, Categories, Videos, LiveStreams, LiveChat],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
