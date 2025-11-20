@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"database/sql"
+	"live_transcoder/pkg/chunker"
 	"live_transcoder/pkg/config"
 	"live_transcoder/pkg/storage"
 	"os"
@@ -27,8 +29,10 @@ type Transcoder struct {
 	ctx          context.Context
 	cfg          *config.Config
 	r2Client     *storage.R2Client
+	db           *sql.DB
 	streamKey    string
 	rtmpURL      string
+	streamID     int64
 	workDir      string
 	processLock  sync.Mutex
 	processes    []*exec.Cmd
@@ -39,7 +43,7 @@ type Transcoder struct {
 	stopped      bool
 }
 
-func NewTranscoder(ctx context.Context, cfg *config.Config, r2Client *storage.R2Client, streamKey string, rtmpURL string) *Transcoder {
+func NewTranscoder(ctx context.Context, cfg *config.Config, r2Client *storage.R2Client, db *sql.DB, streamKey string, rtmpURL string, streamID int64) *Transcoder {
 	variants := make(map[string]string, len(cfg.Qualities))
 	for _, quality := range cfg.Qualities {
 		variants[quality.Name] = quality.Name
@@ -52,8 +56,10 @@ func NewTranscoder(ctx context.Context, cfg *config.Config, r2Client *storage.R2
 		ctx:          ctx,
 		cfg:          cfg,
 		r2Client:     r2Client,
+		db:           db,
 		streamKey:    streamKey,
 		rtmpURL:      rtmpURL,
+		streamID:     streamID,
 		processes:    make([]*exec.Cmd, 0),
 		variants:     variants,
 		uploadCtx:    uploadCtx,
@@ -82,11 +88,68 @@ func (t *Transcoder) Start() error {
 		close(uploadDone)
 	}()
 
-	// Start FFmpeg transcoding process
+	// Start main FFmpeg transcoding process (HLS only)
 	cmd := t.buildFFmpegCommand(hlsDir)
-
-	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
+	// Configure analysis chunker (silence-based).
+	// Use a shared analysis volume so other services (live_translation) can read the same files.
+	chunkDir := filepath.Join("/analysis", t.streamKey)
+	if err := os.MkdirAll(chunkDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create analysis chunk dir: %w", err)
+	}
+	chCfg := chunker.Config{
+		SampleRate:    16000,
+		Channels:      1,
+		FrameMs:       20,
+		SilenceThresh: 800,
+		MinSilenceMs:  700,
+		MinChunkMs:    1500,
+		OutputDir:     chunkDir,
+	}
+
+	// Start analysis FFmpeg process (separate, so HLS is unaffected)
+	analysisCmd := t.buildAnalysisCommand()
+	analysisCmd.Stderr = os.Stderr
+	pcmReader, err := analysisCmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to get ffmpeg stdout for analysis: %w", err)
+	}
+
+	// Start both FFmpeg processes.
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start main ffmpeg: %w", err)
+	}
+	if err := analysisCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start analysis ffmpeg: %w", err)
+	}
+
+	// Run chunker in background; it will exit on EOF when analysis FFmpeg ends.
+	go func() {
+		if err := chunker.Run(pcmReader, chCfg, func(startMs, endMs int64, path string) {
+			log.Info().
+				Str("stream_key", t.streamKey).
+				Int64("start_ms", startMs).
+				Int64("end_ms", endMs).
+				Str("file", path).
+				Msg("analysis chunk detected")
+
+			// Insert into audio_chunks table if DB and streamID are configured.
+			if t.db != nil && t.streamID != 0 {
+				if _, err := t.db.Exec(
+					`INSERT INTO audio_chunks (stream_id, start_ms, end_ms, file_path) VALUES ($1, $2, $3, $4)`,
+					t.streamID, startMs, endMs, path,
+				); err != nil {
+					log.Error().Err(err).Str("stream_key", t.streamKey).Msg("failed to insert audio_chunk")
+				}
+			}
+		}); err != nil {
+			log.Error().Err(err).Str("stream_key", t.streamKey).Msg("analysis chunker error")
+		}
+		// After chunking is done (FFmpeg ended), best-effort upload of analysis chunks to R2 and
+		// update audio_chunks.file_path to use the R2 key instead of the local path.
+		t.uploadAnalysisChunks()
+	}()
 
 	log.Info().
 		Str("stream_key", t.streamKey).
@@ -95,7 +158,7 @@ func (t *Transcoder) Start() error {
 		Int("segment_duration", t.cfg.HLS.SegmentDuration).
 		Msg("🎬 Starting FFmpeg transcoding")
 
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Wait(); err != nil {
 		log.Warn().Err(err).Msg("FFmpeg process ended with error (stream may have stopped)")
 	}
 
@@ -219,8 +282,36 @@ func (t *Transcoder) buildFFmpegCommand(hlsDir string) *exec.Cmd {
 	args = append(args,
 		"-var_stream_map", strings.Join(variantStreams, " "),
 		filepath.Join(hlsDir, "stream_%v.m3u8"),
+		// Extra audio-only PCM output to stdout for analysis chunker
+		"-map", "0:a:0",
+		"-ac", "1",
+		"-ar", "16000",
+		"-c:a", "pcm_s16le",
+		"-f", "s16le",
+		"pipe:1",
 	)
 
+	cmd := exec.CommandContext(t.ctx, "ffmpeg", args...)
+
+	t.processLock.Lock()
+	t.processes = append(t.processes, cmd)
+	t.processLock.Unlock()
+
+	return cmd
+}
+
+// buildAnalysisCommand builds a separate FFmpeg command that reads the same RTMP
+// input and outputs mono 16k PCM to stdout for the analysis chunker.
+func (t *Transcoder) buildAnalysisCommand() *exec.Cmd {
+	args := []string{
+		"-i", t.rtmpURL,
+		"-map", "0:a:0",
+		"-ac", "1",
+		"-ar", "16000",
+		"-c:a", "pcm_s16le",
+		"-f", "s16le",
+		"pipe:1",
+	}
 	cmd := exec.CommandContext(t.ctx, "ffmpeg", args...)
 
 	t.processLock.Lock()
@@ -677,4 +768,49 @@ func (t *Transcoder) rewriteQualityPlaylistContent(content []byte) ([]byte, erro
 	}
 
 	return []byte(strings.Join(filtered, "\n")), nil
+}
+
+// uploadAnalysisChunks uploads local analysis WAVs to R2 and updates audio_chunks.file_path
+// from the local path to the R2 key for this stream.
+func (t *Transcoder) uploadAnalysisChunks() {
+	if t.r2Client == nil {
+		return
+	}
+	analysisDir := filepath.Join("/analysis", t.streamKey)
+	entries, err := os.ReadDir(analysisDir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Error().Err(err).Str("dir", analysisDir).Msg("failed to read analysis dir for upload")
+		}
+		return
+	}
+
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasSuffix(strings.ToLower(name), ".wav") {
+			continue
+		}
+		localPath := filepath.Join(analysisDir, name)
+		r2Key := path.Join(t.streamKey, "analysis", name)
+
+		f, err := os.Open(localPath)
+		if err != nil {
+			log.Error().Err(err).Str("file", localPath).Msg("failed to open analysis chunk for upload")
+			continue
+		}
+		contentType := storage.GetContentType(name)
+		if err := t.r2Client.UploadFile(context.Background(), r2Key, f, contentType); err != nil {
+			log.Error().Err(err).Str("file", localPath).Str("key", r2Key).Msg("failed to upload analysis chunk to R2")
+			_ = f.Close()
+			continue
+		}
+		_ = f.Close()
+		log.Info().Str("file", localPath).Str("key", r2Key).Msg("uploaded analysis chunk to R2")
+
+		// For now we keep audio_chunks.file_path pointing at the shared volume path so
+		// live_translation can read local files; R2 copy is for archival only.
+	}
 }
