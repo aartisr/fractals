@@ -88,7 +88,7 @@ func (t *Transcoder) Start() error {
 		close(uploadDone)
 	}()
 
-	// Start FFmpeg transcoding process
+	// Start main FFmpeg transcoding process (HLS only)
 	cmd := t.buildFFmpegCommand(hlsDir)
 
 	// Stdout will carry PCM for analysis chunker; logs remain on stderr.
@@ -277,8 +277,36 @@ func (t *Transcoder) buildFFmpegCommand(hlsDir string) *exec.Cmd {
 	args = append(args,
 		"-var_stream_map", strings.Join(variantStreams, " "),
 		filepath.Join(hlsDir, "stream_%v.m3u8"),
+		// Extra audio-only PCM output to stdout for analysis chunker
+		"-map", "0:a:0",
+		"-ac", "1",
+		"-ar", "16000",
+		"-c:a", "pcm_s16le",
+		"-f", "s16le",
+		"pipe:1",
 	)
 
+	cmd := exec.CommandContext(t.ctx, "ffmpeg", args...)
+
+	t.processLock.Lock()
+	t.processes = append(t.processes, cmd)
+	t.processLock.Unlock()
+
+	return cmd
+}
+
+// buildAnalysisCommand builds a separate FFmpeg command that reads the same RTMP
+// input and outputs mono 16k PCM to stdout for the analysis chunker.
+func (t *Transcoder) buildAnalysisCommand() *exec.Cmd {
+	args := []string{
+		"-i", t.rtmpURL,
+		"-map", "0:a:0",
+		"-ac", "1",
+		"-ar", "16000",
+		"-c:a", "pcm_s16le",
+		"-f", "s16le",
+		"pipe:1",
+	}
 	cmd := exec.CommandContext(t.ctx, "ffmpeg", args...)
 
 	t.processLock.Lock()
