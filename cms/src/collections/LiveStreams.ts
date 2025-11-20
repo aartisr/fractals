@@ -42,6 +42,7 @@ const startStreamHandler = async (req: PayloadRequest) => {
       body: JSON.stringify({
         streamKey: stream.streamKey,
         rtmpUrl: rtmpUrl,
+        streamId: stream.id,
       }),
     })
 
@@ -50,12 +51,13 @@ const startStreamHandler = async (req: PayloadRequest) => {
       throw new Error(`Failed to start stream: ${error}`)
     }
 
-    // Update stream status to live
+    // Update stream status to live and set startedAt if not already set
     const updatedStream = await req.payload.update({
       collection: 'live-streams',
       id,
       data: {
         status: 'live',
+        startedAt: stream.startedAt || new Date().toISOString(),
       },
     })
 
@@ -191,6 +193,18 @@ export const LiveStreams: CollectionConfig = {
       },
     },
     {
+      name: 'startedAt',
+      label: 'Started At',
+      type: 'date',
+      admin: {
+        readOnly: true,
+        date: {
+          pickerAppearance: 'dayAndTime',
+        },
+        description: 'Actual live start time; used as time zero for transcripts.',
+      },
+    },
+    {
       name: 'visibility',
       type: 'select',
       required: true,
@@ -229,6 +243,25 @@ export const LiveStreams: CollectionConfig = {
       admin: {
         readOnly: true,
         description: 'Current status of the stream (controlled by Start/Stop buttons)',
+      },
+    },
+    {
+      name: 'transcriptionEnabled',
+      label: 'Transcription Enabled',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        hidden: true,
+        description: 'Enable live transcription for this stream. Controlled via Stream Controls.',
+      },
+    },
+    {
+      name: 'transcriptionLanguage',
+      label: 'Transcription Language',
+      type: 'text',
+      defaultValue: 'en',
+      admin: {
+        description: 'Language code for live transcription (e.g. en, ta).',
       },
     },
     {
@@ -291,6 +324,56 @@ export const LiveStreams: CollectionConfig = {
       path: '/:id/stop',
       method: 'post',
       handler: stopStreamHandler,
+    },
+    {
+      path: '/:id/transcription/start',
+      method: 'post',
+      handler: async (req: PayloadRequest) => {
+        const id = req.routeParams?.id as string
+        if (!id) {
+          return Response.json({ error: 'Stream ID is required' }, { status: 400 })
+        }
+
+        try {
+          await req.payload.update({
+            collection: 'live-streams',
+            id,
+            data: { transcriptionEnabled: true },
+            overrideAccess: true,
+          })
+
+          return Response.json({ success: true }, { status: 200 })
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to enable transcription'
+          req.payload.logger.error(`Error enabling transcription: ${errorMessage}`)
+          return Response.json({ error: errorMessage }, { status: 500 })
+        }
+      },
+    },
+    {
+      path: '/:id/transcription/stop',
+      method: 'post',
+      handler: async (req: PayloadRequest) => {
+        const id = req.routeParams?.id as string
+        if (!id) {
+          return Response.json({ error: 'Stream ID is required' }, { status: 400 })
+        }
+
+        try {
+          await req.payload.update({
+            collection: 'live-streams',
+            id,
+            data: { transcriptionEnabled: false },
+            overrideAccess: true,
+          })
+
+          return Response.json({ success: true }, { status: 200 })
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to disable transcription'
+          req.payload.logger.error(`Error disabling transcription: ${errorMessage}`)
+          return Response.json({ error: errorMessage }, { status: 500 })
+        }
+      },
     },
     {
       path: '/:id/thumbnail',

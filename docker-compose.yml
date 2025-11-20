@@ -147,6 +147,8 @@ services:
     env_file:
       - .env
     environment:
+      # Database
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}?sslmode=disable
       # R2/S3 Storage Configuration
       R2_ENDPOINT: ${R2_ENDPOINT}
       R2_BUCKET: ${R2_BUCKET}
@@ -165,6 +167,8 @@ services:
       - transcoder_temp:/app/temp
       # Persist logs
       - transcoder_logs:/app/logs
+      # Shared analysis audio between transcoder and live_translation
+      - analysis_data:/analysis
     ports:
       # RTMP ingestion port
       - "1935:1935"
@@ -180,6 +184,52 @@ services:
       start_period: 5s
       retries: 3
 
+  live-translation-api:
+    build:
+      context: ./live_translation
+      dockerfile: Dockerfile
+    container_name: ntv-live-translation-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cms-migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}?sslmode=disable
+      API_PORT: 8090
+    volumes:
+      - analysis_data:/analysis
+    ports:
+      - "8090:8090"
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+  live-transcription-worker:
+    build:
+      context: ./live_translation
+      dockerfile: Dockerfile
+    container_name: ntv-live-translation-transcription
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cms-migrate:
+        condition: service_completed_successfully
+      live-transcoder:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}?sslmode=disable
+    volumes:
+      - analysis_data:/analysis
+    command: ["live-translation-transcription"]
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
 volumes:
   pgdata:
   redis_data:
@@ -187,6 +237,7 @@ volumes:
   transcoder_temp:
   transcoder_logs:
   chat_logs:
+  analysis_data:
 
 networks:
   nithyananda-tv-network:

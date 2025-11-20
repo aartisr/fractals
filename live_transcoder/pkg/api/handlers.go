@@ -34,6 +34,7 @@ func NewAPI(srv *server.Server, cfg *config.Config, r2Client *storage.R2Client) 
 type StartStreamRequest struct {
 	StreamKey string `json:"streamKey"`
 	RTMPURL   string `json:"rtmpUrl"`
+	StreamID  int64  `json:"streamId,omitempty"`
 }
 
 type StopStreamRequest struct {
@@ -76,7 +77,7 @@ func (a *API) StartStreamHandler(w http.ResponseWriter, r *http.Request) {
 		Msg("Received start stream request")
 
 	// Start the stream
-	if err := a.server.StartStream(req.StreamKey, req.RTMPURL); err != nil {
+	if err := a.server.StartStream(req.StreamKey, req.RTMPURL, req.StreamID); err != nil {
 		log.Error().Err(err).Str("stream_key", req.StreamKey).Msg("Failed to start stream")
 		sendJSONError(w, err.Error(), http.StatusInternalServerError)
 		return

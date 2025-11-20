@@ -24,9 +24,13 @@ type R2Client struct {
 }
 
 func NewR2Client(ctx context.Context, cfg *config.Config) (*R2Client, error) {
+	return NewR2ClientWithParams(ctx, cfg.Storage.Endpoint, cfg.Storage.Region, cfg.Storage.Bucket, cfg.Storage.AccessKey, cfg.Storage.SecretKey, cfg.Storage.PublicURL)
+}
+
+func NewR2ClientWithParams(ctx context.Context, endpoint, region, bucket, accessKey, secretKey, publicURL string) (*R2Client, error) {
 	resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
-			URL:               cfg.Storage.Endpoint,
+			URL:               endpoint,
 			HostnameImmutable: true,
 		}, nil
 	})
@@ -34,11 +38,11 @@ func NewR2Client(ctx context.Context, cfg *config.Config) (*R2Client, error) {
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
 		awsconfig.WithEndpointResolverWithOptions(resolver),
 		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-			cfg.Storage.AccessKey,
-			cfg.Storage.SecretKey,
+			accessKey,
+			secretKey,
 			"",
 		)),
-		awsconfig.WithRegion(cfg.Storage.Region),
+		awsconfig.WithRegion(region),
 	)
 	if err != nil {
 		return nil, err
@@ -48,8 +52,8 @@ func NewR2Client(ctx context.Context, cfg *config.Config) (*R2Client, error) {
 
 	return &R2Client{
 		client:    client,
-		bucket:    cfg.Storage.Bucket,
-		publicURL: cfg.Storage.PublicURL,
+		bucket:    bucket,
+		publicURL: publicURL,
 	}, nil
 }
 

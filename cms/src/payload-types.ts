@@ -68,10 +68,15 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
+    ecitizen: Ecitizen;
     categories: Category;
     videos: Video;
     'live-streams': LiveStream;
     'live-chat': LiveChat;
+    'live-stream-views': LiveStreamView;
+    transcripts: Transcript;
+    'transcript-segments': TranscriptSegment;
+    'audio-chunks': AudioChunk;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -79,10 +84,15 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
+    ecitizen: EcitizenSelect<false> | EcitizenSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     videos: VideosSelect<false> | VideosSelect<true>;
     'live-streams': LiveStreamsSelect<false> | LiveStreamsSelect<true>;
     'live-chat': LiveChatSelect<false> | LiveChatSelect<true>;
+    'live-stream-views': LiveStreamViewsSelect<false> | LiveStreamViewsSelect<true>;
+    transcripts: TranscriptsSelect<false> | TranscriptsSelect<true>;
+    'transcript-segments': TranscriptSegmentsSelect<false> | TranscriptSegmentsSelect<true>;
+    'audio-chunks': AudioChunksSelect<false> | AudioChunksSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -147,6 +157,21 @@ export interface User {
   password?: string | null;
 }
 /**
+ * Registered e-citizens allowed to participate in live chat
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ecitizen".
+ */
+export interface Ecitizen {
+  id: number;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  displayName?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "categories".
  */
@@ -189,11 +214,23 @@ export interface LiveStream {
   title: string;
   description?: string | null;
   date: string;
+  /**
+   * Actual live start time; used as time zero for transcripts.
+   */
+  startedAt?: string | null;
   visibility: 'public' | 'private';
   /**
    * Current status of the stream (controlled by Start/Stop buttons)
    */
   status: 'idle' | 'live' | 'ended';
+  /**
+   * Enable live transcription for this stream. Controlled via Stream Controls.
+   */
+  transcriptionEnabled?: boolean | null;
+  /**
+   * Language code for live transcription (e.g. en, ta).
+   */
+  transcriptionLanguage?: string | null;
   /**
    * Optional RTMP source URL. Leave empty if streaming directly to this server.
    */
@@ -222,17 +259,13 @@ export interface LiveChat {
    */
   content: string;
   /**
-   * ID of the user who sent the message (from Nandi Auth)
+   * E-citizen who sent the message
    */
-  userId: string;
-  /**
-   * Display name of the user
-   */
-  userName?: string | null;
+  ecitizen: number | Ecitizen;
   /**
    * The live stream this message belongs to
    */
-  streamId: number | LiveStream;
+  stream: number | LiveStream;
   /**
    * Type of message
    */
@@ -241,6 +274,129 @@ export interface LiveChat {
    * Soft delete timestamp - set by moderators
    */
   deletedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Live stream viewer sessions and analytics
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "live-stream-views".
+ */
+export interface LiveStreamView {
+  id: number;
+  /**
+   * Unique session identifier (UUID generated on client)
+   */
+  sessionId: string;
+  /**
+   * The live stream being viewed
+   */
+  stream: number | LiveStream;
+  /**
+   * Authenticated user (if logged in)
+   */
+  ecitizen?: (number | null) | Ecitizen;
+  /**
+   * Display name for anonymous viewers or authenticated user name
+   */
+  viewerName?: string | null;
+  /**
+   * Viewer IP address (for analytics)
+   */
+  ipAddress?: string | null;
+  /**
+   * Browser/device user agent
+   */
+  userAgent?: string | null;
+  /**
+   * Detected device type
+   */
+  deviceType?: ('desktop' | 'mobile' | 'tablet' | 'unknown') | null;
+  /**
+   * Country from IP geolocation (optional)
+   */
+  country?: string | null;
+  /**
+   * Video quality selected (e.g., 1080p, 720p, auto)
+   */
+  quality?: string | null;
+  /**
+   * When the viewer joined the stream
+   */
+  startedAt: string;
+  /**
+   * When the viewer left the stream
+   */
+  endedAt?: string | null;
+  /**
+   * Last time we received a heartbeat from this session
+   */
+  lastHeartbeatAt?: string | null;
+  /**
+   * Total watch time in seconds (calculated on session end)
+   */
+  watchDurationSeconds?: number | null;
+  /**
+   * Whether this session is currently active (receiving heartbeats)
+   */
+  isActive?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "transcripts".
+ */
+export interface Transcript {
+  id: number;
+  stream: number | LiveStream;
+  language: string;
+  /**
+   * Monotonically increasing version of this transcript.
+   */
+  version: number;
+  /**
+   * Mark when no further live updates will be applied.
+   */
+  isFinal?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "transcript-segments".
+ */
+export interface TranscriptSegment {
+  id: number;
+  transcript: number | Transcript;
+  startMs: number;
+  endMs: number;
+  text: string;
+  /**
+   * Per-segment revision counter.
+   */
+  rev: number;
+  /**
+   * Set when this segment is no longer expected to change.
+   */
+  isStable?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audio-chunks".
+ */
+export interface AudioChunk {
+  id: number;
+  stream: number | LiveStream;
+  startMs: number;
+  endMs: number;
+  /**
+   * Path or URL to the analysis chunk audio file.
+   */
+  filePath: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -254,6 +410,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'users';
         value: number | User;
+      } | null)
+    | ({
+        relationTo: 'ecitizen';
+        value: number | Ecitizen;
       } | null)
     | ({
         relationTo: 'categories';
@@ -270,6 +430,22 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'live-chat';
         value: number | LiveChat;
+      } | null)
+    | ({
+        relationTo: 'live-stream-views';
+        value: number | LiveStreamView;
+      } | null)
+    | ({
+        relationTo: 'transcripts';
+        value: number | Transcript;
+      } | null)
+    | ({
+        relationTo: 'transcript-segments';
+        value: number | TranscriptSegment;
+      } | null)
+    | ({
+        relationTo: 'audio-chunks';
+        value: number | AudioChunk;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -340,6 +516,18 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ecitizen_select".
+ */
+export interface EcitizenSelect<T extends boolean = true> {
+  email?: T;
+  firstName?: T;
+  lastName?: T;
+  displayName?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "categories_select".
  */
 export interface CategoriesSelect<T extends boolean = true> {
@@ -372,8 +560,11 @@ export interface LiveStreamsSelect<T extends boolean = true> {
   title?: T;
   description?: T;
   date?: T;
+  startedAt?: T;
   visibility?: T;
   status?: T;
+  transcriptionEnabled?: T;
+  transcriptionLanguage?: T;
   rtmpUrl?: T;
   masterPlaylistUrl?: T;
   thumbnailUrl?: T;
@@ -386,11 +577,70 @@ export interface LiveStreamsSelect<T extends boolean = true> {
  */
 export interface LiveChatSelect<T extends boolean = true> {
   content?: T;
-  userId?: T;
-  userName?: T;
-  streamId?: T;
+  ecitizen?: T;
+  stream?: T;
   type?: T;
   deletedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "live-stream-views_select".
+ */
+export interface LiveStreamViewsSelect<T extends boolean = true> {
+  sessionId?: T;
+  stream?: T;
+  ecitizen?: T;
+  viewerName?: T;
+  ipAddress?: T;
+  userAgent?: T;
+  deviceType?: T;
+  country?: T;
+  quality?: T;
+  startedAt?: T;
+  endedAt?: T;
+  lastHeartbeatAt?: T;
+  watchDurationSeconds?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "transcripts_select".
+ */
+export interface TranscriptsSelect<T extends boolean = true> {
+  stream?: T;
+  language?: T;
+  version?: T;
+  isFinal?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "transcript-segments_select".
+ */
+export interface TranscriptSegmentsSelect<T extends boolean = true> {
+  transcript?: T;
+  startMs?: T;
+  endMs?: T;
+  text?: T;
+  rev?: T;
+  isStable?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audio-chunks_select".
+ */
+export interface AudioChunksSelect<T extends boolean = true> {
+  stream?: T;
+  startMs?: T;
+  endMs?: T;
+  filePath?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"live_translation/internal/chunker"
@@ -30,11 +31,12 @@ type DeepgramConfig struct {
 	MinWindowStepMs int64
 }
 
-// TranscribeWindow builds a WAV for the given window and sends it to Deepgram.
-// It logs the top transcript line for quick inspection.
-func TranscribeWindow(job types.WindowJob, allChunks []types.Chunk, cfg DeepgramConfig) {
+// TranscribeWindow builds a WAV for the given window, sends it to Deepgram,
+// and returns the parsed response. It still writes a temp window WAV on disk.
+func TranscribeWindow(job types.WindowJob, allChunks []types.Chunk, cfg DeepgramConfig) (deepgramResponse, error) {
+	var empty deepgramResponse
 	if !cfg.Enabled || cfg.APIKey == "" {
-		return
+		return empty, nil
 	}
 
 	// Collect chunk paths for this window in time order.
@@ -53,7 +55,7 @@ func TranscribeWindow(job types.WindowJob, allChunks []types.Chunk, cfg Deepgram
 		paths = append(paths, ch.URI)
 	}
 	if len(paths) == 0 {
-		return
+		return empty, nil
 	}
 
 	winDir := cfg.WindowsDir
@@ -62,22 +64,25 @@ func TranscribeWindow(job types.WindowJob, allChunks []types.Chunk, cfg Deepgram
 	}
 	if err := os.MkdirAll(winDir, 0o755); err != nil {
 		log.Printf("deepgram: mkdir windows dir error: %v", err)
-		return
+		return empty, err
 	}
 
 	windowPath := filepath.Join(winDir, fmt.Sprintf("window_%s_%d.wav", safeName(job.SessionID), job.WindowEndMs))
 
 	if err := buildWindowWav(windowPath, paths); err != nil {
 		log.Printf("deepgram: build window wav error: %v", err)
-		return
+		return empty, err
 	}
 	if !cfg.KeepWindows {
 		defer os.Remove(windowPath)
 	}
 
-	if err := sendToDeepgram(windowPath, job, cfg); err != nil {
+	resp, err := sendToDeepgram(windowPath, job, cfg)
+	if err != nil {
 		log.Printf("deepgram: request error: %v", err)
+		return empty, err
 	}
+	return resp, nil
 }
 
 func buildWindowWav(outPath string, chunkPaths []string) error {
@@ -89,7 +94,7 @@ func buildWindowWav(outPath string, chunkPaths []string) error {
 
 	buf := make([]byte, 4096)
 	for _, p := range chunkPaths {
-		f, err := os.Open(p)
+		f, err := openChunkSource(p)
 		if err != nil {
 			return err
 		}
@@ -119,10 +124,74 @@ func buildWindowWav(outPath string, chunkPaths []string) error {
 	return nil
 }
 
-func sendToDeepgram(path string, job types.WindowJob, cfg DeepgramConfig) error {
+// openChunkSource opens a chunk path either from local disk or via HTTP based on configuration.
+// - If ANALYSIS_BASE_URL is set and p is not an absolute/relative path, p is treated as a key under that base URL.
+// - If p starts with http/https, it is used as-is.
+// - Otherwise, p is treated as a local filesystem path.
+func openChunkSource(p string) (*os.File, error) {
+	// HTTP URL explicitly provided
+	if strings.HasPrefix(p, "http://") || strings.HasPrefix(p, "https://") {
+		resp, err := http.Get(p)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+			return nil, fmt.Errorf("failed to fetch chunk %s: %s", p, string(body))
+		}
+		// Stream response into a temp file so we can Seek.
+		tmp, err := os.CreateTemp("", "chunk-*.wav")
+		if err != nil {
+			return nil, err
+		}
+		if _, err := io.Copy(tmp, resp.Body); err != nil {
+			_ = tmp.Close()
+			return nil, err
+		}
+		if _, err := tmp.Seek(0, io.SeekStart); err != nil {
+			_ = tmp.Close()
+			return nil, err
+		}
+		return tmp, nil
+	}
+
+	base := os.Getenv("ANALYSIS_BASE_URL")
+	if base != "" && !strings.HasPrefix(p, "/") && !strings.HasPrefix(p, ".") {
+		url := strings.TrimRight(base, "/") + "/" + strings.TrimLeft(p, "/")
+		resp, err := http.Get(url)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+			return nil, fmt.Errorf("failed to fetch chunk %s: %s", url, string(body))
+		}
+		tmp, err := os.CreateTemp("", "chunk-*.wav")
+		if err != nil {
+			return nil, err
+		}
+		if _, err := io.Copy(tmp, resp.Body); err != nil {
+			_ = tmp.Close()
+			return nil, err
+		}
+		if _, err := tmp.Seek(0, io.SeekStart); err != nil {
+			_ = tmp.Close()
+			return nil, err
+		}
+		return tmp, nil
+	}
+
+	// Fallback: treat as local path.
+	return os.Open(p)
+}
+
+func sendToDeepgram(path string, job types.WindowJob, cfg DeepgramConfig) (deepgramResponse, error) {
+	var dgResp deepgramResponse
 	f, err := os.Open(path)
 	if err != nil {
-		return err
+		return dgResp, err
 	}
 	defer f.Close()
 
@@ -150,7 +219,7 @@ func sendToDeepgram(path string, job types.WindowJob, cfg DeepgramConfig) error 
 
 	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
-		return err
+		return dgResp, err
 	}
 	req.Header.Set("Authorization", "Token "+cfg.APIKey)
 	req.Header.Set("Content-Type", "audio/wav")
@@ -158,29 +227,28 @@ func sendToDeepgram(path string, job types.WindowJob, cfg DeepgramConfig) error 
 	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return dgResp, err
 	}
 	defer resp.Body.Close()
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return dgResp, err
 	}
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("deepgram status %d: %s", resp.StatusCode, truncate(string(b), 512))
+		return dgResp, fmt.Errorf("deepgram status %d: %s", resp.StatusCode, truncate(string(b), 512))
 	}
 
-	var dgResp deepgramResponse
 	if err := json.Unmarshal(b, &dgResp); err != nil {
 		// Log raw body for debugging if JSON parsing fails.
 		log.Printf("deepgram: unmarshal error: %v body=%s", err, truncate(string(b), 512))
-		return nil
+		return dgResp, nil
 	}
 
 	transcript := dgResp.TopTranscript()
 	// Log full transcript for this window so you can see complete text.
 	log.Printf("deepgram window [%d-%d]ms: %s", job.WindowStartMs, job.WindowEndMs, transcript)
-	return nil
+	return dgResp, nil
 }
 
 type deepgramResponse struct {

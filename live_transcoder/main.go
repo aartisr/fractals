@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -13,8 +16,8 @@ import (
 	"live_transcoder/pkg/config"
 	"live_transcoder/pkg/server"
 	"live_transcoder/pkg/storage"
-	"net/http"
 
+	_ "github.com/lib/pq"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -40,10 +43,28 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Initialize R2 storage
+	// Initialize R2 storage for HLS (Cloudflare)
 	r2Client, err := storage.NewR2Client(ctx, cfg)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize R2 client")
+	}
+
+	// Initialize Postgres connection for audio_chunks etc.
+	dbURI := os.Getenv("DATABASE_URI")
+	if dbURI == "" {
+		log.Fatal().Msg("DATABASE_URI is required for live_transcoder")
+	}
+	db, err := sql.Open("postgres", dbURI)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to open database")
+	}
+	if err := db.Ping(); err != nil {
+		log.Fatal().Err(err).Msg("Failed to ping database")
+	}
+
+	// Cleanup orphaned analysis chunks from previous runs (best-effort).
+	if err := cleanupOrphanedAnalysis(db); err != nil {
+		log.Warn().Err(err).Msg("Startup analysis cleanup encountered errors")
 	}
 
 	// If stream key is provided, run in manual mode
@@ -51,12 +72,12 @@ func main() {
 		if *rtmpURL == "" {
 			log.Fatal().Msg("RTMP URL is required when using -stream flag")
 		}
-		runManualMode(ctx, cfg, r2Client, *streamKey, *rtmpURL)
+		runManualMode(ctx, cfg, r2Client, db, *streamKey, *rtmpURL)
 		return
 	}
 
 	// Otherwise run as server
-	srv := server.NewServer(cfg, r2Client)
+	srv := server.NewServer(cfg, r2Client, r2Client, db)
 
 	// Set up HTTP API
 	apiHandler := api.NewAPI(srv, cfg, r2Client)
@@ -103,15 +124,15 @@ func main() {
 	srv.Stop()
 }
 
-func runManualMode(ctx context.Context, cfg *config.Config, r2Client *storage.R2Client, streamKey, rtmpURL string) {
-	srv := server.NewServer(cfg, r2Client)
+func runManualMode(ctx context.Context, cfg *config.Config, r2Client *storage.R2Client, db *sql.DB, streamKey, rtmpURL string) {
+	srv := server.NewServer(cfg, r2Client, r2Client, db)
 
 	log.Info().
 		Str("stream_key", streamKey).
 		Str("rtmp_url", rtmpURL).
 		Msg("Running in manual mode")
 
-	if err := srv.StartStream(streamKey, rtmpURL); err != nil {
+	if err := srv.StartStream(streamKey, rtmpURL, 0); err != nil {
 		log.Fatal().Err(err).Msg("Failed to start stream")
 	}
 
@@ -146,6 +167,47 @@ func printUsageInstructions(cfg *config.Config, apiPort int) {
 	fmt.Printf("   R2 Bucket: %s\n", cfg.Storage.Bucket)
 	fmt.Printf("   Public URL: %s/STREAM_KEY/master.m3u8\n", cfg.Storage.PublicURL)
 	fmt.Println("\n" + strings.Repeat("=", 70) + "\n")
+}
+
+// cleanupOrphanedAnalysis removes leftover analysis audio directories for streams
+// that are no longer live (or no longer exist) to keep the shared volume tidy.
+func cleanupOrphanedAnalysis(db *sql.DB) error {
+	const analysisRoot = "/analysis"
+	entries, err := os.ReadDir(analysisRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read analysis root: %w", err)
+	}
+
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		streamKey := e.Name()
+
+		var status sql.NullString
+		err := db.QueryRow(`SELECT status FROM live_streams WHERE stream_key = $1 LIMIT 1`, streamKey).Scan(&status)
+		if err != nil && err != sql.ErrNoRows {
+			log.Warn().Err(err).Str("stream_key", streamKey).Msg("cleanup: failed to load stream status")
+			continue
+		}
+
+		// Keep directories for streams that are currently marked live.
+		if err == nil && status.Valid && status.String == "live" {
+			continue
+		}
+
+		dirPath := filepath.Join(analysisRoot, streamKey)
+		if rmErr := os.RemoveAll(dirPath); rmErr != nil {
+			log.Warn().Err(rmErr).Str("dir", dirPath).Msg("cleanup: failed to remove analysis dir")
+			continue
+		}
+		log.Info().Str("dir", dirPath).Msg("cleanup: removed orphaned analysis dir")
+	}
+
+	return nil
 }
 
 // enableCORS wraps the handler with CORS headers
