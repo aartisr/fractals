@@ -6,9 +6,11 @@ import (
 	"io"
 	"live_transcoder/pkg/config"
 	"net/http"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -30,8 +32,13 @@ func NewR2Client(ctx context.Context, cfg *config.Config) (*R2Client, error) {
 }
 
 func NewR2ClientWithParams(ctx context.Context, endpoint, region, bucket, accessKey, secretKey, publicURL string) (*R2Client, error) {
+	return NewR2ClientWithParams(ctx, cfg.Storage.Endpoint, cfg.Storage.Region, cfg.Storage.Bucket, cfg.Storage.AccessKey, cfg.Storage.SecretKey, cfg.Storage.PublicURL)
+}
+
+func NewR2ClientWithParams(ctx context.Context, endpoint, region, bucket, accessKey, secretKey, publicURL string) (*R2Client, error) {
 	resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
+			URL:               endpoint,
 			URL:               endpoint,
 			HostnameImmutable: true,
 		}, nil
@@ -40,6 +47,8 @@ func NewR2ClientWithParams(ctx context.Context, endpoint, region, bucket, access
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
 		awsconfig.WithEndpointResolverWithOptions(resolver),
 		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+			accessKey,
+			secretKey,
 			accessKey,
 			secretKey,
 			"",
@@ -65,6 +74,8 @@ func NewR2ClientWithParams(ctx context.Context, endpoint, region, bucket, access
 
 	return &R2Client{
 		client:    client,
+		bucket:    bucket,
+		publicURL: publicURL,
 		bucket:    bucket,
 		publicURL: publicURL,
 	}, nil
@@ -174,3 +185,4 @@ func GetContentType(filename string) string {
 		return "application/octet-stream"
 	}
 }
+

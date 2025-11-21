@@ -362,6 +362,9 @@ func (h *HTTPHandler) sendSSEEvent(w http.ResponseWriter, event string, data int
 	}
 
 	fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, dataJSON)
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 func (h *HTTPHandler) sendSSEError(w http.ResponseWriter, message string) {

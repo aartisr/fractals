@@ -71,18 +71,8 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
         userDisplayName.value = full;
       } catch {}
 
-      // Load chat history
-      const historyResponse = await fetch(`/api/chat/history?streamId=${encodeURIComponent(streamId)}`);
-      if (historyResponse.ok) {
-        const data = await historyResponse.json();
-        if (data.success && Array.isArray(data.messages)) {
-          messages.value = data.messages.reverse(); // Show oldest first
-          setTimeout(() => scrollToBottom(), 100);
-        }
-      }
     } catch (err) {
-      console.error('[LiveChat] Failed to load history:', err);
-      error.value = 'Failed to load chat history';
+      console.error('[LiveChat] Auth check failed:', err);
     }
 
     // Connect to SSE stream
@@ -299,9 +289,9 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
           <input
             type="text"
             class="flex-1 border border-orange-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-            placeholder="Type your message..."
+            placeholder={isAuthenticated.value === false ? "Sign in to chat" : "Type your message..."}
             bind:value={messageInput}
-            disabled={isLoading.value || !isConnected.value || isAuthenticated.value === false}
+            disabled={isLoading.value || isAuthenticated.value === false}
             maxLength={500}
           />
           <button

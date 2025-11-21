@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useFormFields, useDocumentInfo, Button } from '@payloadcms/ui'
+import { useFormFields, useDocumentInfo, Button } from '@payloadcms/ui'
 import './StreamControls.css'
 
 export const StreamControlsComponent: React.FC = () => {
@@ -9,6 +10,7 @@ export const StreamControlsComponent: React.FC = () => {
   const status = useFormFields(([fields]) => fields?.status?.value as string)
   const streamKey = useFormFields(([fields]) => fields?.streamKey?.value as string)
   const masterPlaylistUrl = useFormFields(([fields]) => fields?.masterPlaylistUrl?.value as string)
+  const transcriptionEnabled = useFormFields(([fields]) => fields?.transcriptionEnabled?.value as boolean)
 
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -62,6 +64,7 @@ export const StreamControlsComponent: React.FC = () => {
 
       setMessage({ type: 'success', text: 'Stream started successfully! Refreshing...' })
       setTimeout(() => window.location.reload(), 1500)
+      setTimeout(() => window.location.reload(), 1500)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to start stream'
       setMessage({ type: 'error', text: errorMessage })
@@ -99,8 +102,46 @@ export const StreamControlsComponent: React.FC = () => {
 
       setMessage({ type: 'success', text: 'Stream stopped successfully! Refreshing...' })
       setTimeout(() => window.location.reload(), 1500)
+      setTimeout(() => window.location.reload(), 1500)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to stop stream'
+      setMessage({ type: 'error', text: errorMessage })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const callTranscriptionEndpoint = async (action: 'start' | 'stop') => {
+    if (!id) {
+      setMessage({ type: 'error', text: 'Stream ID not found' })
+      return
+    }
+
+    setLoading(true)
+    setMessage(null)
+
+    try {
+      const response = await fetch(`/api/live-streams/${id}/transcription/${action}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to ${action} transcription`)
+      }
+
+      setMessage({
+        type: 'success',
+        text: action === 'start' ? 'Transcription started! Refreshing...' : 'Transcription stopped! Refreshing...',
+      })
+
+      setTimeout(() => window.location.reload(), 1500)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Failed to ${action} transcription`
       setMessage({ type: 'error', text: errorMessage })
     } finally {
       setLoading(false)
@@ -121,6 +162,7 @@ export const StreamControlsComponent: React.FC = () => {
         <span className="stream-controls__status-label">Status:</span>
         <span className={`stream-controls__status-badge stream-controls__status-badge--${status}`}>
           {status === 'live' ? 'Live' : status === 'ended' ? 'Ended' : 'Idle'}
+          {status === 'live' ? 'Live' : status === 'ended' ? 'Ended' : 'Idle'}
         </span>
       </div>
 
@@ -135,6 +177,7 @@ export const StreamControlsComponent: React.FC = () => {
               className="stream-controls__copy-btn"
               title="Copy to clipboard"
             >
+              Copy
               Copy
             </button>
           </div>
@@ -153,6 +196,7 @@ export const StreamControlsComponent: React.FC = () => {
               title="Copy to clipboard"
             >
               Copy
+              Copy
             </button>
           </div>
         </div>
@@ -166,6 +210,7 @@ export const StreamControlsComponent: React.FC = () => {
             buttonStyle="primary"
             size="medium"
           >
+            {loading ? 'Starting...' : 'Start Stream'}
             {loading ? 'Starting...' : 'Start Stream'}
           </Button>
         )}

@@ -217,8 +217,7 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
 
   return (
     <div class="video-js-player-wrapper" ref={containerRef}>
-      <style>
-        {`
+      <style dangerouslySetInnerHTML={`
           .video-js-player-wrapper {
             position: relative;
             width: 100%;
@@ -391,8 +390,7 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
             background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.08));
             transform: translateY(-1px);
           }
-        `}
-      </style>
+      `} />
 
       <div style={{ position: "relative" }}>
         {/* Video Element */}
