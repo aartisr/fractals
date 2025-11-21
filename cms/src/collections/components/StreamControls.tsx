@@ -216,6 +216,7 @@ export const StreamControlsComponent: React.FC = () => {
             size="medium"
           >
             {loading ? 'Stopping...' : 'Stop Stream'}
+<<<<<<< HEAD
           </Button>
         )}
       </div>
@@ -245,6 +246,8 @@ export const StreamControlsComponent: React.FC = () => {
             size="small"
           >
             {loading ? 'Stopping...' : 'Stop Transcription'}
+=======
+>>>>>>> origin/dev
           </Button>
         )}
       </div>

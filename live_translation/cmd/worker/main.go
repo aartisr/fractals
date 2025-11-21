@@ -24,6 +24,16 @@ type audioChunkRow struct {
 	FilePath string
 }
 
+<<<<<<< HEAD
+=======
+// streamState holds per-stream window manager and chunk history.
+type streamState struct {
+	mgr      *window.Manager
+	chunks   []types.Chunk
+	language string
+}
+
+>>>>>>> origin/dev
 func main() {
 	loadDotEnv(".env")
 
@@ -69,11 +79,15 @@ func main() {
 	log.Printf("transcription worker starting defaultLanguage=%s", defaultLanguage)
 
 	var lastID int64
+<<<<<<< HEAD
 	type streamState struct {
 		mgr      *window.Manager
 		chunks   []types.Chunk
 		language string
 	}
+=======
+	lastChunkByStream := make(map[int64]int64)
+>>>>>>> origin/dev
 	states := make(map[int64]*streamState)
 
 	pollInterval := time.Duration(envInt("POLL_INTERVAL_MS", 2000)) * time.Millisecond
@@ -105,6 +119,11 @@ func main() {
 					continue
 				}
 			}
+<<<<<<< HEAD
+=======
+			// Track per-stream last processed chunk ID.
+			lastChunkByStream[row.StreamID] = row.ID
+>>>>>>> origin/dev
 			st, ok := states[row.StreamID]
 			if !ok {
 				st = &streamState{
@@ -149,6 +168,15 @@ func main() {
 				lastID = row.ID
 			}
 		}
+<<<<<<< HEAD
+=======
+
+		// After processing new chunks, see if any ended streams are fully drained
+		// and can be finalized (mark transcripts.is_final and disable transcription).
+		if err := finalizeEndedStreams(db, states, lastChunkByStream); err != nil {
+			log.Printf("finalizeEndedStreams error: %v", err)
+		}
+>>>>>>> origin/dev
 	}
 }
 
@@ -229,10 +257,21 @@ func mergeWindow(db *sql.DB, streamID int64, language string, windowStartMs, win
 	}
 
 	// Delete overlapping segments in [windowStartMs, windowEndMs].
+<<<<<<< HEAD
 	if _, err := db.Exec(
 		`DELETE FROM transcript_segments
          WHERE transcript_id = $1
            AND NOT (end_ms <= $2 OR start_ms >= $3)`,
+=======
+	// Only delete segments whose *start* falls inside this window.
+	// This preserves earlier-prefix text (e.g. [0-10000]) when a later
+	// window only refines a suffix (e.g. [10000-20000]).
+	if _, err := db.Exec(
+		`DELETE FROM transcript_segments
+         WHERE transcript_id = $1
+           AND start_ms >= $2
+           AND start_ms < $3`,
+>>>>>>> origin/dev
 		trID, windowStartMs, windowEndMs,
 	); err != nil {
 		return err
@@ -275,7 +314,15 @@ func getOrCreateTranscript(db *sql.DB, streamID int64, language string) (trID in
 	return trID, version, err
 }
 
+<<<<<<< HEAD
 // loadEnabledStreams returns a set of stream IDs that have transcriptionEnabled = true.
+=======
+// loadEnabledStreams returns a set of stream IDs that should be processed
+// by the transcription worker. We include any streams with
+// transcriptionEnabled=true so that if a stream has ended but still has
+// pending audio_chunks, they will be processed and the transcript can be
+// finalized.
+>>>>>>> origin/dev
 func loadEnabledStreams(db *sql.DB) (map[int64]struct{}, error) {
 	rows, err := db.Query(`SELECT id FROM live_streams WHERE transcription_enabled = true`)
 	if err != nil {
@@ -294,6 +341,75 @@ func loadEnabledStreams(db *sql.DB) (map[int64]struct{}, error) {
 	return m, rows.Err()
 }
 
+<<<<<<< HEAD
+=======
+// finalizeEndedStreams checks for streams that have transcription enabled
+// but are marked as ended, and for which we've processed all known
+// audio_chunks. It then marks their transcripts as final and disables
+// transcription for those streams so they are no longer polled.
+func finalizeEndedStreams(db *sql.DB, states map[int64]*streamState, lastChunkByStream map[int64]int64) error {
+	for streamID, st := range states {
+		lastChunkID, ok := lastChunkByStream[streamID]
+		if !ok || lastChunkID == 0 {
+			continue
+		}
+
+		var status string
+		var enabled bool
+		err := db.QueryRow(
+			`SELECT status, transcription_enabled FROM live_streams WHERE id = $1`,
+			streamID,
+		).Scan(&status, &enabled)
+		if err == sql.ErrNoRows {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+
+		// Only consider streams that are ended and still transcription-enabled.
+		if !enabled || status != "ended" {
+			continue
+		}
+
+		// Check if there are any audio_chunks beyond the last processed ID.
+		var hasMore bool
+		if err := db.QueryRow(
+			`SELECT EXISTS(SELECT 1 FROM audio_chunks WHERE stream_id = $1 AND id > $2)`,
+			streamID, lastChunkID,
+		).Scan(&hasMore); err != nil {
+			return err
+		}
+		if hasMore {
+			continue
+		}
+
+		// Mark transcripts for this stream as final.
+		if _, err := db.Exec(
+			`UPDATE transcripts
+             SET is_final = true, updated_at = now()
+             WHERE stream_id = $1`,
+			streamID,
+		); err != nil {
+			return err
+		}
+
+		// Disable transcription for this stream so we stop polling it.
+		if _, err := db.Exec(
+			`UPDATE live_streams
+             SET transcription_enabled = false, updated_at = now()
+             WHERE id = $1`,
+			streamID,
+		); err != nil {
+			return err
+		}
+
+		log.Printf("finalized transcription for stream=%d lang=%s (no remaining audio_chunks)", streamID, st.language)
+	}
+	return nil
+}
+
+>>>>>>> origin/dev
 // loadStreamLanguage resolves the language for a given stream, falling back to def if unset.
 func loadStreamLanguage(db *sql.DB, streamID int64, def string) string {
 	var lang sql.NullString

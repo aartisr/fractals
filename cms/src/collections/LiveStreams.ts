@@ -20,7 +20,7 @@ const startStreamHandler = async (req: PayloadRequest) => {
     if (!stream) {
       return Response.json({ error: 'Stream not found' }, { status: 404 })
     }
-
+            description: 'Enable live transcription for this stream.',
     if (stream.status === 'live') {
       return Response.json({ error: 'Stream is already live' }, { status: 400 })
     }
@@ -251,8 +251,12 @@ export const LiveStreams: CollectionConfig = {
       type: 'checkbox',
       defaultValue: false,
       admin: {
+<<<<<<< HEAD
         hidden: true,
         description: 'Enable live transcription for this stream. Controlled via Stream Controls.',
+=======
+        description: 'Enable live transcription for this stream.',
+>>>>>>> origin/dev
       },
     },
     {

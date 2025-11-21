@@ -5,9 +5,11 @@ import (
 	"context"
 	"io"
 	"live_transcoder/pkg/config"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -43,6 +45,20 @@ func NewR2ClientWithParams(ctx context.Context, endpoint, region, bucket, access
 			"",
 		)),
 		awsconfig.WithRegion(region),
+<<<<<<< HEAD
+=======
+		awsconfig.WithHTTPClient(&http.Client{
+			Timeout: 60 * time.Second, // Global timeout for HTTP requests
+			Transport: &http.Transport{
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 10,
+				IdleConnTimeout:     90 * time.Second,
+				TLSHandshakeTimeout: 10 * time.Second,
+				ResponseHeaderTimeout: 30 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+			},
+		}),
+>>>>>>> origin/dev
 	)
 	if err != nil {
 		return nil, err
