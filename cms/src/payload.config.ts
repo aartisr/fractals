@@ -26,7 +26,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  serverURL: process.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3000',
+  serverURL: process.env.SERVER_URL || 'http://localhost:3000',
   custom: {
     mediaBaseUrl: process.env.MEDIA_BASE_URL || 'cdn.url',
   },

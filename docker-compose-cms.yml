@@ -23,6 +23,8 @@ services:
     build:
       context: ./cms
       dockerfile: Dockerfile
+      args:
+        SERVER_URL: ${SERVER_URL}
       target: runner
     container_name: ntv-cms
     depends_on:
@@ -34,7 +36,7 @@ services:
       DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}
       PORT: 3000
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
-      PAYLOAD_PUBLIC_SERVER_URL: ${PAYLOAD_PUBLIC_SERVER_URL}
+      SERVER_URL: ${SERVER_URL}
       LIVE_TRANSCODER_HOST: ${LIVE_TRANSCODER_HOST:-live-transcoder}
       LIVE_TRANSCODER_PORT: ${LIVE_TRANSCODER_PORT:-8080}
       MEDIA_BASE_URL: ${MEDIA_BASE_URL}
