@@ -1,0 +1,244 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ntv-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DATABASE:-nithyananda-tv}
+      POSTGRES_USER: ${DB_USER:-ntv}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ntv} -d ${DATABASE:-nithyananda-tv}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    networks:
+      - nithyananda-tv-network
+
+  cms:
+    build:
+      context: ./cms
+      dockerfile: Dockerfile
+      target: runner
+    container_name: ntv-cms
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cms-migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      # Override to use internal Postgres service
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}
+      PORT: 3000
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      # Live Transcoder connection
+      LIVE_TRANSCODER_HOST: ${LIVE_TRANSCODER_HOST:-live-transcoder}
+      LIVE_TRANSCODER_PORT: ${LIVE_TRANSCODER_PORT:-8080}
+      MEDIA_BASE_URL: ${MEDIA_BASE_URL}
+    volumes:
+      # Persist Payload uploads (default upload dir is ./media)
+      - cms_media:/app/media
+    ports:
+      # Expose CMS on host :3001 -> container :3000
+      - "2008:3000"
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+  cms-migrate:
+    build:
+      context: ./cms
+      dockerfile: Dockerfile
+      target: cli
+    container_name: ntv-cms-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+    command: ["payload", "migrate"]
+    restart: "no"
+    networks:
+      - nithyananda-tv-network
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        # Server-side variables needed during build
+        - CMS_URL=${CMS_URL}
+        - CMS_API_KEY=${CMS_API_KEY}
+        - AUTH_BASE=${AUTH_BASE}
+        - AUTH_CLIENT_ID=${AUTH_CLIENT_ID}
+        - AUTH_CLIENT_SECRET=${AUTH_CLIENT_SECRET}
+        - AUTH_REDIRECT_URI=${AUTH_REDIRECT_URI}
+        - AUTH_ERROR_URL=${AUTH_ERROR_URL}
+        - MEDIA_BASE_URL=${MEDIA_BASE_URL}
+        - ORIGIN=${ORIGIN}
+    container_name: ntv-web
+    depends_on:
+      - cms
+    env_file:
+      - .env
+    environment:
+      # Ensure server-side API calls hit the internal CMS hostname
+      CMS_URL: http://cms:3000
+      CHAT_SERVICE_URL: http://chat-service:9000
+      PORT: 3000
+      NODE_ENV: production
+      ORIGIN: ${ORIGIN:-http://localhost:3000}
+      # Enable Node's experimental built-in sqlite module used by web runtime
+      NODE_OPTIONS: --experimental-sqlite
+      # Auth service configuration (required at runtime)
+      AUTH_BASE: ${AUTH_BASE}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
+      AUTH_REDIRECT_URI: ${AUTH_REDIRECT_URI}
+      AUTH_ERROR_URL: ${AUTH_ERROR_URL}
+      # Optionally set ORIGIN to your public URL in production
+      # ORIGIN: https://your-domain.example
+    ports:
+      - "2007:3000"
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+  chat-service:
+    build:
+      context: ./chat_service
+      dockerfile: Dockerfile
+    container_name: ntv-chat-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cms-migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}
+      CHAT_SERVICE_LOG_LEVEL: ${CHAT_SERVICE_LOG_LEVEL:-info}
+      AUTH_BASE: ${AUTH_BASE}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+    ports:
+      - "1009:9000"
+    volumes:
+      - chat_logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+  live-transcoder:
+    build:
+      context: ./live_transcoder
+      dockerfile: Dockerfile
+    container_name: ntv-live-transcoder
+    env_file:
+      - .env
+    environment:
+      # Database
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}?sslmode=disable
+      # R2/S3 Storage Configuration
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      R2_BUCKET: ${R2_BUCKET}
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY}
+      R2_SECRET_KEY: ${R2_SECRET_KEY}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL:-${MEDIA_BASE_URL}}
+      R2_REGION: ${R2_REGION:-auto}
+      # Transcoder Settings
+      TRANSCODER_LOG_LEVEL: ${TRANSCODER_LOG_LEVEL:-info}
+      TRANSCODER_SEGMENT_DURATION: ${TRANSCODER_SEGMENT_DURATION:-4}
+      TRANSCODER_TEMP_DIR: ${TRANSCODER_TEMP_DIR:-/app/temp}
+    volumes:
+      # Mount config file
+      - ./live_transcoder/config.yaml:/app/config.yaml:ro
+      # Persist temp files for ongoing streams
+      - transcoder_temp:/app/temp
+      # Persist logs
+      - transcoder_logs:/app/logs
+      # Shared analysis audio between transcoder and live_translation
+      - analysis_data:/analysis
+    ports:
+      # RTMP ingestion port
+      - "1935:1935"
+      # HTTP API port
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  live-translation-api:
+    build:
+      context: ./live_translation
+      dockerfile: Dockerfile
+    container_name: ntv-live-translation-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cms-migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}?sslmode=disable
+      API_PORT: 8090
+    volumes:
+      - analysis_data:/analysis
+    ports:
+      - "8090:8090"
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+  live-transcription-worker:
+    build:
+      context: ./live_translation
+      dockerfile: Dockerfile
+    container_name: ntv-live-translation-transcription
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cms-migrate:
+        condition: service_completed_successfully
+      live-transcoder:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}?sslmode=disable
+    volumes:
+      - analysis_data:/analysis
+    command: ["live-translation-transcription"]
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+volumes:
+  pgdata:
+  redis_data:
+  cms_media:
+  transcoder_temp:
+  transcoder_logs:
+  chat_logs:
+  analysis_data:
+
+networks:
+  nithyananda-tv-network:
+    external: true

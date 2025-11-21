@@ -47,7 +47,6 @@ services:
 
 volumes:
   cms_media:
-    driver: local
 
 networks:
   nithyananda-tv-network:

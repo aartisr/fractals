@@ -25,7 +25,6 @@ services:
 
 volumes:
   pgdata:
-    driver: local
 
 networks:
   nithyananda-tv-network:

@@ -23,7 +23,6 @@ services:
 
 volumes:
   chat_logs:
-    driver: local
 
 networks:
   nithyananda-tv-network:

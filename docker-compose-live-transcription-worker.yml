@@ -21,7 +21,6 @@ services:
 
 volumes:
   analysis_data:
-    driver: local
 
 networks:
   nithyananda-tv-network:

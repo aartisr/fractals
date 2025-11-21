@@ -5,7 +5,7 @@
 # Or use individual service files:
 #   docker-compose -f docker-compose-postgres.yml up -d
 #   docker-compose -f docker-compose-cms.yml up -d
-#   docker-compose -f docker-compose-web.yml up -d
+#   docker-compose-f docker-compose-web.yml up -d
 #   etc.
 
 include:
@@ -17,14 +17,8 @@ include:
   - docker-compose-live-translation-api.yml
   - docker-compose-live-transcription-worker.yml
 
-# Global volumes (referenced by individual compose files)
-volumes:
-  pgdata:
-  cms_media:
-  transcoder_temp:
-  transcoder_logs:
-  chat_logs:
-  analysis_data:
+# Note: Volumes are declared in individual compose files
+# This allows each service to be deployed independently
 
 # Global network (must be created before running: docker network create nithyananda-tv-network)
 networks:

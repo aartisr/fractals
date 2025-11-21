@@ -41,11 +41,8 @@ services:
 
 volumes:
   transcoder_temp:
-    driver: local
   transcoder_logs:
-    driver: local
   analysis_data:
-    driver: local
 
 networks:
   nithyananda-tv-network:
