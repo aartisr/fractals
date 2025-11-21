@@ -5,9 +5,11 @@ import (
 	"context"
 	"io"
 	"live_transcoder/pkg/config"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -24,9 +26,13 @@ type R2Client struct {
 }
 
 func NewR2Client(ctx context.Context, cfg *config.Config) (*R2Client, error) {
+	return NewR2ClientWithParams(ctx, cfg.Storage.Endpoint, cfg.Storage.Region, cfg.Storage.Bucket, cfg.Storage.AccessKey, cfg.Storage.SecretKey, cfg.Storage.PublicURL)
+}
+
+func NewR2ClientWithParams(ctx context.Context, endpoint, region, bucket, accessKey, secretKey, publicURL string) (*R2Client, error) {
 	resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
-			URL:               cfg.Storage.Endpoint,
+			URL:               endpoint,
 			HostnameImmutable: true,
 		}, nil
 	})
@@ -34,11 +40,22 @@ func NewR2Client(ctx context.Context, cfg *config.Config) (*R2Client, error) {
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
 		awsconfig.WithEndpointResolverWithOptions(resolver),
 		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-			cfg.Storage.AccessKey,
-			cfg.Storage.SecretKey,
+			accessKey,
+			secretKey,
 			"",
 		)),
-		awsconfig.WithRegion(cfg.Storage.Region),
+		awsconfig.WithRegion(region),
+		awsconfig.WithHTTPClient(&http.Client{
+			Timeout: 60 * time.Second, // Global timeout for HTTP requests
+			Transport: &http.Transport{
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 10,
+				IdleConnTimeout:     90 * time.Second,
+				TLSHandshakeTimeout: 10 * time.Second,
+				ResponseHeaderTimeout: 30 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+			},
+		}),
 	)
 	if err != nil {
 		return nil, err
@@ -48,8 +65,8 @@ func NewR2Client(ctx context.Context, cfg *config.Config) (*R2Client, error) {
 
 	return &R2Client{
 		client:    client,
-		bucket:    cfg.Storage.Bucket,
-		publicURL: cfg.Storage.PublicURL,
+		bucket:    bucket,
+		publicURL: publicURL,
 	}, nil
 }
 

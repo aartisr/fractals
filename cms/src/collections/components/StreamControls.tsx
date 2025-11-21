@@ -1,8 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useFormFields, useDocumentInfo } from '@payloadcms/ui'
-import { Button } from '@payloadcms/ui'
+import { useFormFields, useDocumentInfo, Button } from '@payloadcms/ui'
 import './StreamControls.css'
 
 export const StreamControlsComponent: React.FC = () => {
@@ -22,7 +21,6 @@ export const StreamControlsComponent: React.FC = () => {
         const resp = await fetch(`/api/live-streams/${id}/sync-status`)
         const data = await resp.json()
         if (!resp.ok || data?.error) {
-          // Non-fatal, just show a small note
           setMessage({ type: 'error', text: data?.error || `Sync failed: ${resp.status}` })
           setTimeout(() => setMessage(null), 2000)
           return
@@ -63,11 +61,7 @@ export const StreamControlsComponent: React.FC = () => {
       }
 
       setMessage({ type: 'success', text: 'Stream started successfully! Refreshing...' })
-
-      // Reload the page to update the form with new data
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
+      setTimeout(() => window.location.reload(), 1500)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to start stream'
       setMessage({ type: 'error', text: errorMessage })
@@ -104,11 +98,7 @@ export const StreamControlsComponent: React.FC = () => {
       }
 
       setMessage({ type: 'success', text: 'Stream stopped successfully! Refreshing...' })
-
-      // Reload the page to update the form with new data
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
+      setTimeout(() => window.location.reload(), 1500)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to stop stream'
       setMessage({ type: 'error', text: errorMessage })
@@ -130,7 +120,7 @@ export const StreamControlsComponent: React.FC = () => {
       <div className="stream-controls__status">
         <span className="stream-controls__status-label">Status:</span>
         <span className={`stream-controls__status-badge stream-controls__status-badge--${status}`}>
-          {status === 'live' ? '🔴 Live' : status === 'ended' ? '⏹️ Ended' : '⏸️ Idle'}
+          {status === 'live' ? 'Live' : status === 'ended' ? 'Ended' : 'Idle'}
         </span>
       </div>
 
@@ -145,7 +135,7 @@ export const StreamControlsComponent: React.FC = () => {
               className="stream-controls__copy-btn"
               title="Copy to clipboard"
             >
-              📋
+              Copy
             </button>
           </div>
         </div>
@@ -162,7 +152,7 @@ export const StreamControlsComponent: React.FC = () => {
               className="stream-controls__copy-btn"
               title="Copy to clipboard"
             >
-              📋
+              Copy
             </button>
           </div>
         </div>
@@ -176,7 +166,7 @@ export const StreamControlsComponent: React.FC = () => {
             buttonStyle="primary"
             size="medium"
           >
-            {loading ? 'Starting...' : '▶️ Start Stream'}
+            {loading ? 'Starting...' : 'Start Stream'}
           </Button>
         )}
 
@@ -187,7 +177,7 @@ export const StreamControlsComponent: React.FC = () => {
             buttonStyle="secondary"
             size="medium"
           >
-            {loading ? 'Stopping...' : '⏹️ Stop Stream'}
+            {loading ? 'Stopping...' : 'Stop Stream'}
           </Button>
         )}
       </div>

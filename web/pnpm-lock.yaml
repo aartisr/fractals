@@ -32,6 +32,9 @@ importers:
       lucide-static:
         specifier: latest
         version: 0.546.0
+      undici:
+        specifier: latest
+        version: 7.16.0
       video.js:
         specifier: ^8.23.4
         version: 8.23.4

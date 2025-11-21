@@ -1,0 +1,52 @@
+# Live Transcoder Service (RTMP to HLS)
+# Usage: docker-compose -f docker-compose.live-transcoder.yml up -d
+# Note: Requires postgres to be running
+
+services:
+  live-transcoder:
+    build:
+      context: ./live_transcoder
+      dockerfile: Dockerfile
+    container_name: ntv-live-transcoder
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}?sslmode=disable
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      R2_BUCKET: ${R2_BUCKET}
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY}
+      R2_SECRET_KEY: ${R2_SECRET_KEY}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL:-${MEDIA_BASE_URL}}
+      R2_REGION: ${R2_REGION:-auto}
+      TRANSCODER_LOG_LEVEL: ${TRANSCODER_LOG_LEVEL:-info}
+      TRANSCODER_SEGMENT_DURATION: ${TRANSCODER_SEGMENT_DURATION:-4}
+      TRANSCODER_TEMP_DIR: ${TRANSCODER_TEMP_DIR:-/app/temp}
+    volumes:
+      - ./live_transcoder/config.yaml:/app/config.yaml:ro
+      - transcoder_temp:/app/temp
+      - transcoder_logs:/app/logs
+      - analysis_data:/analysis
+#    ports:
+#      - "1935:1935"
+#      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+#    healthcheck:
+#      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+#      interval: 30s
+#      timeout: 10s
+#      start_period: 5s
+#      retries: 3
+
+volumes:
+  transcoder_temp:
+    driver: local
+  transcoder_logs:
+    driver: local
+  analysis_data:
+    driver: local
+
+networks:
+  nithyananda-tv-network:
+    external: true

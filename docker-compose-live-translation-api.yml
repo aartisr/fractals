@@ -1,0 +1,28 @@
+# Live Translation API Service
+# Usage: docker-compose -f docker-compose.live-translation-api.yml up -d
+# Note: Requires postgres and cms-migrate to have run
+
+services:
+  live-translation-api:
+    build:
+      context: ./live_translation
+      dockerfile: Dockerfile
+    container_name: ntv-live-translation-api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}?sslmode=disable
+      API_PORT: 8090
+    volumes:
+      - analysis_data:/analysis
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+volumes:
+  analysis_data:
+    driver: local
+
+networks:
+  nithyananda-tv-network:
+    external: true

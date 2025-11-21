@@ -1,9 +1,33 @@
-import { component$, useStyles$ } from '@builder.io/qwik';
+import { component$, useStyles$, useSignal, useVisibleTask$, $ } from '@builder.io/qwik';
 import { routeLoader$, type DocumentHead, Link } from '@builder.io/qwik-city';
 import { payload } from '~/utils/payload-sdk';
 import { VideoJSPlayer } from '~/components/ui/VideoJSPlayer';
 import { LiveChat } from '~/components/ui/LiveChat';
 import { LuArrowLeft, LuCalendar, LuShare2, LuHeart } from '@qwikest/icons/lucide';
+
+type TranscriptSegment = {
+  id: number;
+  startMs: number;
+  endMs: number;
+  text: string;
+  rev: number;
+  isStable: boolean;
+};
+
+type TranscriptResponse = {
+  segments: TranscriptSegment[];
+};
+
+type TranscriptLanguageMeta = {
+  language: string;
+  version: number;
+  isFinal: boolean;
+};
+
+type TranscriptLanguagesResponse = {
+  streamId: number;
+  languages: TranscriptLanguageMeta[];
+};
 
 /**
  * Server-side data loader para un live stream individual
@@ -101,7 +125,7 @@ export default component$(() => {
       {/* Main Content */}
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column: Video Player and Info */}
+          {/* Left Column: Video Player, Transcript, and Info */}
           <div class="lg:col-span-2 space-y-6">
             {/* Video Player */}
             <div class="relative">
@@ -139,6 +163,9 @@ export default component$(() => {
                 </div>
               )}
             </div>
+
+            {/* Transcript Snapshot */}
+            {stream.value.id && <TranscriptSnapshot streamId={stream.value.id} />}
 
             {/* Stream Info */}
             <div class="p-6 bg-white/50 rounded-xl">
@@ -246,6 +273,238 @@ export default component$(() => {
     </div>
   );
 });
+
+const TranscriptSnapshot = component$<{ streamId: number }>(({ streamId }) => {
+  const segments = useSignal<TranscriptSegment[]>([]);
+  const isLoading = useSignal(true);
+  const isConnected = useSignal(false);
+  const error = useSignal('');
+  const transcriptContainerRef = useSignal<HTMLDivElement>();
+  const availableLanguages = useSignal<TranscriptLanguageMeta[]>([]);
+  const selectedLanguage = useSignal('en');
+  const eventSourceRef = useSignal<EventSource | null>(null);
+
+  // Auto-scroll to bottom when new segments arrive
+  const scrollToBottom = $(() => {
+    if (transcriptContainerRef.value) {
+      transcriptContainerRef.value.scrollTop = transcriptContainerRef.value.scrollHeight;
+    }
+  });
+
+  // Fetch available languages
+  useVisibleTask$(async () => {
+    try {
+      const res = await fetch(`/api/transcription/languages?streamId=${streamId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.languages && Array.isArray(data.languages)) {
+          availableLanguages.value = data.languages;
+          // Set default language if available
+          if (data.languages.length > 0 && !data.languages.find((l: TranscriptLanguageMeta) => l.language === 'en')) {
+            selectedLanguage.value = data.languages[0].language;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Transcription] Failed to fetch languages:', err);
+    }
+  });
+
+  // Connect to SSE stream (reconnect when language changes)
+  useVisibleTask$(({ track, cleanup }) => {
+    track(() => selectedLanguage.value);
+
+    let isCancelled = false;
+
+    cleanup(() => {
+      isCancelled = true;
+      if (eventSourceRef.value) {
+        eventSourceRef.value.close();
+        eventSourceRef.value = null;
+      }
+    });
+
+    // Close existing connection if any
+    if (eventSourceRef.value) {
+      eventSourceRef.value.close();
+    }
+
+    // Reset state
+    isConnected.value = false;
+    isLoading.value = true;
+
+    // Connect to SSE stream for real-time updates
+    const eventSource = new EventSource(`/api/transcription/stream?streamId=${streamId}&language=${selectedLanguage.value}`);
+    eventSourceRef.value = eventSource;
+
+    eventSource.addEventListener('open', () => {
+      console.log('[Transcription] SSE connected');
+      isConnected.value = true;
+      error.value = '';
+    });
+
+    eventSource.addEventListener('snapshot', (e) => {
+      if (isCancelled) return;
+      try {
+        const data = JSON.parse(e.data) as TranscriptResponse;
+        if (data.segments && Array.isArray(data.segments)) {
+          segments.value = data.segments;
+          isLoading.value = false;
+          setTimeout(() => scrollToBottom(), 100);
+        }
+      } catch (err) {
+        console.error('[Transcription] Failed to parse snapshot:', err);
+      }
+    });
+
+    eventSource.addEventListener('ping', () => {
+      // Just a keep-alive, no action needed
+    });
+
+    eventSource.addEventListener('error', (e) => {
+      console.error('[Transcription] SSE error:', e);
+      isConnected.value = false;
+      if (!isCancelled) {
+        error.value = 'Connection lost, reconnecting...';
+      }
+      // EventSource will auto-reconnect
+    });
+
+    isLoading.value = false;
+  });
+
+  if (isLoading.value) {
+    return (
+      <div class="p-4 bg-white/60 rounded-xl border border-orange-100">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold text-gray-900">Live Transcript</h2>
+          <div class="flex items-center gap-2 text-xs text-gray-500">
+            <span class="w-2 h-2 bg-gray-400 rounded-full" />
+            <span>Connecting...</span>
+          </div>
+        </div>
+        <div class="text-sm text-gray-500">Loading transcript...</div>
+      </div>
+    );
+  }
+
+  if (segments.value.length === 0) {
+    return (
+      <div class="p-4 bg-white/60 rounded-xl border border-orange-100">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold text-gray-900">Live Transcript</h2>
+          <div class="flex items-center gap-2 text-xs">
+            {isConnected.value ? (
+              <>
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span class="text-green-600">Live</span>
+              </>
+            ) : (
+              <>
+                <span class="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+                <span class="text-amber-600">Reconnecting...</span>
+              </>
+            )}
+          </div>
+        </div>
+        <div class="text-center text-gray-400 text-sm py-4">
+          No transcript available yet. Transcription will appear here when the stream starts.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div class="p-4 bg-white/60 rounded-xl border border-orange-100">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold text-gray-900">Live Transcript</h2>
+        <div class="flex items-center gap-3">
+          {/* Language Selector */}
+          {availableLanguages.value.length > 1 && (
+            <select
+              class="text-xs px-2 py-1 border border-orange-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+              value={selectedLanguage.value}
+              onChange$={(e) => {
+                selectedLanguage.value = (e.target as HTMLSelectElement).value;
+              }}
+            >
+              {availableLanguages.value.map((lang) => (
+                <option key={lang.language} value={lang.language}>
+                  {getLanguageName(lang.language)}
+                </option>
+              ))}
+            </select>
+          )}
+          {/* Connection Status */}
+          <div class="flex items-center gap-2 text-xs">
+            {isConnected.value ? (
+              <>
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span class="text-green-600">Live</span>
+              </>
+            ) : (
+              <>
+                <span class="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+                <span class="text-amber-600">Reconnecting...</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+      <div
+        ref={transcriptContainerRef}
+        class="space-y-2 max-h-64 overflow-y-auto text-sm text-gray-800"
+        style={{ scrollBehavior: 'smooth' }}
+      >
+        {segments.value.map((seg) => (
+          <div key={seg.id} class="flex gap-3">
+            <div class="min-w-[64px] text-xs text-gray-500">
+              {formatMs(seg.startMs)}–{formatMs(seg.endMs)}
+            </div>
+            <div>{seg.text}</div>
+          </div>
+        ))}
+      </div>
+      {error.value && (
+        <div class="mt-2 text-xs text-amber-600">{error.value}</div>
+      )}
+    </div>
+  );
+});
+
+function formatMs(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60)
+    .toString()
+    .padStart(2, '0');
+  const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+  return `${minutes}:${seconds}`;
+}
+
+function getLanguageName(code: string): string {
+  const languageNames: Record<string, string> = {
+    'en': 'English',
+    'es': 'Spanish',
+    'fr': 'French',
+    'de': 'German',
+    'it': 'Italian',
+    'pt': 'Portuguese',
+    'ru': 'Russian',
+    'zh': 'Chinese',
+    'ja': 'Japanese',
+    'ko': 'Korean',
+    'ar': 'Arabic',
+    'hi': 'Hindi',
+    'ta': 'Tamil',
+    'te': 'Telugu',
+    'kn': 'Kannada',
+    'ml': 'Malayalam',
+    'bn': 'Bengali',
+    'mr': 'Marathi',
+    'gu': 'Gujarati',
+  };
+  return languageNames[code] || code.toUpperCase();
+}
 
 export const head: DocumentHead = ({ resolveValue }) => {
   const stream = resolveValue(useLiveStreamLoader);

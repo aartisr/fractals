@@ -1,0 +1,30 @@
+# Chat Service
+# Usage: docker-compose -f docker-compose.chat-service.yml up -d
+# Note: Requires postgres and cms-migrate to have run
+
+services:
+  chat-service:
+    build:
+      context: ./chat_service
+      dockerfile: Dockerfile
+    container_name: ntv-chat-service
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}
+      CHAT_SERVICE_LOG_LEVEL: ${CHAT_SERVICE_LOG_LEVEL:-info}
+      AUTH_BASE: ${AUTH_BASE}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+    volumes:
+      - chat_logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+volumes:
+  chat_logs:
+    driver: local
+
+networks:
+  nithyananda-tv-network:
+    external: true

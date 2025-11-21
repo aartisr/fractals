@@ -1,0 +1,44 @@
+# Web Frontend Service
+# Usage: docker-compose -f docker-compose.web.yml up -d
+# Note: Requires cms and chat-service to be running
+
+services:
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        - CMS_URL=${CMS_URL}
+        - CMS_API_KEY=${CMS_API_KEY}
+        - AUTH_BASE=${AUTH_BASE}
+        - AUTH_CLIENT_ID=${AUTH_CLIENT_ID}
+        - AUTH_CLIENT_SECRET=${AUTH_CLIENT_SECRET}
+        - AUTH_REDIRECT_URI=${AUTH_REDIRECT_URI}
+        - AUTH_ERROR_URL=${AUTH_ERROR_URL}
+        - MEDIA_BASE_URL=${MEDIA_BASE_URL}
+        - ORIGIN=${ORIGIN}
+    container_name: ntv-web
+    env_file:
+      - .env
+    environment:
+      CMS_URL: http://cms:3000
+      CHAT_SERVICE_URL: http://chat-service:9000
+      TRANSCRIPTION_API_URL: http://live-translation-api:8090
+      PORT: 3000
+      NODE_ENV: production
+      ORIGIN: ${ORIGIN:-http://localhost:3000}
+      NODE_OPTIONS: --experimental-sqlite
+      AUTH_BASE: ${AUTH_BASE}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
+      AUTH_REDIRECT_URI: ${AUTH_REDIRECT_URI}
+      AUTH_ERROR_URL: ${AUTH_ERROR_URL}
+    ports:
+      - "2007:3000"
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+networks:
+  nithyananda-tv-network:
+    external: true

@@ -1,0 +1,32 @@
+# PostgreSQL Database Service
+# Usage: docker-compose -f docker-compose.postgres.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ntv-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DATABASE:-nithyananda-tv}
+      POSTGRES_USER: ${DB_USER:-ntv}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ntv} -d ${DATABASE:-nithyananda-tv}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    networks:
+      - nithyananda-tv-network
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  nithyananda-tv-network:
+    external: true

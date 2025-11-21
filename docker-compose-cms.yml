@@ -1,0 +1,54 @@
+# CMS (Payload CMS) Service with Migration
+# Usage: docker-compose -f docker-compose.cms.yml up -d
+# Note: Requires postgres to be running
+
+services:
+  cms-migrate:
+    build:
+      context: ./cms
+      dockerfile: Dockerfile
+      target: cli
+    container_name: ntv-cms-migrate
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+    command: ["payload", "migrate"]
+    restart: "no"
+    networks:
+      - nithyananda-tv-network
+
+  cms:
+    build:
+      context: ./cms
+      dockerfile: Dockerfile
+      target: runner
+    container_name: ntv-cms
+    depends_on:
+      cms-migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}
+      PORT: 3000
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      LIVE_TRANSCODER_HOST: ${LIVE_TRANSCODER_HOST:-live-transcoder}
+      LIVE_TRANSCODER_PORT: ${LIVE_TRANSCODER_PORT:-8080}
+      MEDIA_BASE_URL: ${MEDIA_BASE_URL}
+    volumes:
+      - cms_media:/app/media
+    ports:
+      - "2008:3000"
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
+volumes:
+  cms_media:
+    driver: local
+
+networks:
+  nithyananda-tv-network:
+    external: true
