@@ -11,9 +11,14 @@ export const useLiveStreamsLoader = routeLoader$(async ({ query }) => {
   const page = parseInt(query.get('page') || '1');
 
   try {
-    // Fetch live streams from Payload CMS API
+    // Fetch only public live streams from Payload CMS API
     const response = await payload.find({
       collection: 'live-streams',
+      where: {
+        visibility: {
+          equals: 'public',
+        },
+      },
       limit: 12,
       page,
       depth: 1,

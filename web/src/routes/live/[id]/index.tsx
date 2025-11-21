@@ -41,6 +41,9 @@ export const useLiveStreamLoader = routeLoader$(async ({ params, status }) => {
       streamKey: {
         equals: streamKey,
       },
+      visibility: {
+        equals: 'public',
+      },
     },
     depth: 1,
     limit: 1,
