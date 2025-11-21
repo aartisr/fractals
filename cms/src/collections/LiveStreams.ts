@@ -20,7 +20,7 @@ const startStreamHandler = async (req: PayloadRequest) => {
     if (!stream) {
       return Response.json({ error: 'Stream not found' }, { status: 404 })
     }
-            description: 'Enable live transcription for this stream.',
+
     if (stream.status === 'live') {
       return Response.json({ error: 'Stream is already live' }, { status: 400 })
     }
@@ -43,7 +43,6 @@ const startStreamHandler = async (req: PayloadRequest) => {
         streamKey: stream.streamKey,
         rtmpUrl: rtmpUrl,
         streamId: stream.id,
-        streamId: stream.id,
       }),
     })
 
@@ -53,13 +52,11 @@ const startStreamHandler = async (req: PayloadRequest) => {
     }
 
     // Update stream status to live and set startedAt if not already set
-    // Update stream status to live and set startedAt if not already set
     const updatedStream = await req.payload.update({
       collection: 'live-streams',
       id,
       data: {
         status: 'live',
-        startedAt: stream.startedAt || new Date().toISOString(),
         startedAt: stream.startedAt || new Date().toISOString(),
       },
     })
@@ -208,18 +205,6 @@ export const LiveStreams: CollectionConfig = {
       },
     },
     {
-      name: 'startedAt',
-      label: 'Started At',
-      type: 'date',
-      admin: {
-        readOnly: true,
-        date: {
-          pickerAppearance: 'dayAndTime',
-        },
-        description: 'Actual live start time; used as time zero for transcripts.',
-      },
-    },
-    {
       name: 'visibility',
       type: 'select',
       required: true,
@@ -338,56 +323,6 @@ export const LiveStreams: CollectionConfig = {
       path: '/:id/stop',
       method: 'post',
       handler: stopStreamHandler,
-    },
-    {
-      path: '/:id/transcription/start',
-      method: 'post',
-      handler: async (req: PayloadRequest) => {
-        const id = req.routeParams?.id as string
-        if (!id) {
-          return Response.json({ error: 'Stream ID is required' }, { status: 400 })
-        }
-
-        try {
-          await req.payload.update({
-            collection: 'live-streams',
-            id,
-            data: { transcriptionEnabled: true },
-            overrideAccess: true,
-          })
-
-          return Response.json({ success: true }, { status: 200 })
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to enable transcription'
-          req.payload.logger.error(`Error enabling transcription: ${errorMessage}`)
-          return Response.json({ error: errorMessage }, { status: 500 })
-        }
-      },
-    },
-    {
-      path: '/:id/transcription/stop',
-      method: 'post',
-      handler: async (req: PayloadRequest) => {
-        const id = req.routeParams?.id as string
-        if (!id) {
-          return Response.json({ error: 'Stream ID is required' }, { status: 400 })
-        }
-
-        try {
-          await req.payload.update({
-            collection: 'live-streams',
-            id,
-            data: { transcriptionEnabled: false },
-            overrideAccess: true,
-          })
-
-          return Response.json({ success: true }, { status: 200 })
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to disable transcription'
-          req.payload.logger.error(`Error disabling transcription: ${errorMessage}`)
-          return Response.json({ error: errorMessage }, { status: 500 })
-        }
-      },
     },
     {
       path: '/:id/transcription/start',

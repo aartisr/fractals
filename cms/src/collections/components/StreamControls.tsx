@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react'
 import { useFormFields, useDocumentInfo, Button } from '@payloadcms/ui'
-import { useFormFields, useDocumentInfo, Button } from '@payloadcms/ui'
 import './StreamControls.css'
 
 export const StreamControlsComponent: React.FC = () => {
@@ -162,7 +161,6 @@ export const StreamControlsComponent: React.FC = () => {
         <span className="stream-controls__status-label">Status:</span>
         <span className={`stream-controls__status-badge stream-controls__status-badge--${status}`}>
           {status === 'live' ? 'Live' : status === 'ended' ? 'Ended' : 'Idle'}
-          {status === 'live' ? 'Live' : status === 'ended' ? 'Ended' : 'Idle'}
         </span>
       </div>
 
@@ -177,7 +175,6 @@ export const StreamControlsComponent: React.FC = () => {
               className="stream-controls__copy-btn"
               title="Copy to clipboard"
             >
-              Copy
               Copy
             </button>
           </div>
@@ -196,7 +193,6 @@ export const StreamControlsComponent: React.FC = () => {
               title="Copy to clipboard"
             >
               Copy
-              Copy
             </button>
           </div>
         </div>
@@ -210,7 +206,6 @@ export const StreamControlsComponent: React.FC = () => {
             buttonStyle="primary"
             size="medium"
           >
-            {loading ? 'Starting...' : 'Start Stream'}
             {loading ? 'Starting...' : 'Start Stream'}
           </Button>
         )}

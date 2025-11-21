@@ -224,7 +224,7 @@ export interface LiveStream {
    */
   status: 'idle' | 'live' | 'ended';
   /**
-   * Enable live transcription for this stream. Controlled via Stream Controls.
+   * Enable live transcription for this stream.
    */
   transcriptionEnabled?: boolean | null;
   /**
