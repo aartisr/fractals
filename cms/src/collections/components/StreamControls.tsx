@@ -78,7 +78,7 @@ export const StreamControlsComponent: React.FC = () => {
       return
     }
 
-    if (!confirm('Are you sure you want to stop this stream? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to stop this stream? This will stop the transcoder.')) {
       return
     }
 
@@ -104,6 +104,44 @@ export const StreamControlsComponent: React.FC = () => {
       setTimeout(() => window.location.reload(), 1500)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to stop stream'
+      setMessage({ type: 'error', text: errorMessage })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEndStream = async () => {
+    if (!id) {
+      setMessage({ type: 'error', text: 'Stream ID not found' })
+      return
+    }
+
+    if (!confirm('Are you sure you want to end this stream? This will stop the transcoder and mark the stream as ended.')) {
+      return
+    }
+
+    setLoading(true)
+    setMessage(null)
+
+    try {
+      // First, stop the transcoder
+      const stopResponse = await fetch(`/api/live-streams/${id}/stop`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const stopData = await stopResponse.json()
+
+      if (!stopResponse.ok) {
+        throw new Error(stopData.error || 'Failed to stop transcoder')
+      }
+
+      setMessage({ type: 'success', text: 'Stream ended successfully! Refreshing...' })
+      setTimeout(() => window.location.reload(), 1500)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to end stream'
       setMessage({ type: 'error', text: errorMessage })
     } finally {
       setLoading(false)
@@ -199,7 +237,7 @@ export const StreamControlsComponent: React.FC = () => {
       )}
 
       <div className="stream-controls__actions">
-        {status !== 'live' && (
+        {status !== 'live' && status !== 'ended' && (
           <Button
             onClick={handleStartStream}
             disabled={loading || !streamKey}
@@ -212,12 +250,12 @@ export const StreamControlsComponent: React.FC = () => {
 
         {status === 'live' && (
           <Button
-            onClick={handleStopStream}
+            onClick={handleEndStream}
             disabled={loading}
             buttonStyle="secondary"
             size="medium"
           >
-            {loading ? 'Stopping...' : 'Stop Stream'}
+            {loading ? 'Ending...' : 'End Stream'}
           </Button>
         )}
       </div>

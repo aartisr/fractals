@@ -289,9 +289,6 @@ export default component$(() => {
                     height={400}
                   />
                   <div class="absolute inset-0 bg-gradient-to-t from-orange-900/80 via-orange-900/20 to-transparent"></div>
-                  <div class="absolute top-4 right-4 w-12 h-12 bg-white/90 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
-                    <span class="text-sm font-semibold text-orange-700">{category.count}</span>
-                  </div>
                   <div class="absolute bottom-4 left-4 right-4">
                     <div class="flex items-center gap-2 text-white mb-2">
                       <div class="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/50">
