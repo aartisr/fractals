@@ -23,6 +23,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Make SERVER_URL available during build so Payload admin picks correct public URL
+ARG SERVER_URL
+ENV SERVER_URL=${SERVER_URL}
+
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Disable telemetry during build
