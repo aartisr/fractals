@@ -28,7 +28,7 @@ interface Category {
 export const useVideos = routeLoader$(async () => {
   const res = await payload.find({
     collection: 'videos',
-    limit: 100, // Fetch all videos (adjust limit as needed)
+    limit: 10, // Fetch all videos (adjust limit as needed)
     depth: 2,
   });
   return res.docs as unknown as Video[];
@@ -37,7 +37,7 @@ export const useVideos = routeLoader$(async () => {
 export const useCategories = routeLoader$(async () => {
   const res = await payload.find({
     collection: 'categories',
-    limit: 100,
+    limit: 10,
     sort: 'name',
   });
   return res.docs as unknown as Category[];
@@ -393,7 +393,7 @@ export const head: DocumentHead = {
   meta: [
     {
       name: 'description',
-      content: 'Browse our complete library of spiritual teachings, divine wisdom, and transformative practices from Paramahamsa Nithyananda',
+      content: 'Browse our complete library of spiritual teachings, divine wisdom, and transformative practices from THE SPH NITHYANANDA PARAMASHIVAM.',
     },
   ],
 };

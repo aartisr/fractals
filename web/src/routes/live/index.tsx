@@ -11,9 +11,14 @@ export const useLiveStreamsLoader = routeLoader$(async ({ query }) => {
   const page = parseInt(query.get('page') || '1');
 
   try {
-    // Fetch live streams from Payload CMS API
+    // Fetch only public live streams from Payload CMS API
     const response = await payload.find({
       collection: 'live-streams',
+      where: {
+        visibility: {
+          equals: 'public',
+        },
+      },
       limit: 12,
       page,
       depth: 1,
@@ -48,7 +53,7 @@ export default component$(() => {
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 class="text-4xl md:text-5xl font-bold mb-4">Live Streams</h1>
           <p class="text-xl text-orange-100 max-w-3xl">
-            Experience divine consciousness through live spiritual sessions and sacred teachings
+             Entraining, Entertaining, Enlightening! through live spiritual sessions and sacred teachings
           </p>
         </div>
       </div>
@@ -178,7 +183,7 @@ export const head: DocumentHead = {
   meta: [
     {
       name: 'description',
-      content: 'Watch live darshan and sacred teachings from His Holiness Paramahamsa Nithyananda. Experience divine consciousness through live spiritual sessions.',
+      content: 'Watch live darshan and sacred teachings from THE SPH NITHYANANDA PARAMASHIVAM.  Entraining, Entertaining, Enlightening! through live spiritual sessions.',
     },
   ],
 };
