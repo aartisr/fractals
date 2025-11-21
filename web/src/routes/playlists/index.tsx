@@ -14,7 +14,7 @@ interface Video {
   playlists: { resolution: string; url: string }[];
   duration: string;
   date: string;
-  category: { id: number; name: string };
+  category: { id: number; name: string }[] | { id: number; name: string };
   views?: number;
   likes?: number;
 }
@@ -46,7 +46,7 @@ export const useCategories = routeLoader$(async ({ query }) => {
         collection: 'videos',
         where: {
           category: {
-            equals: category.id,
+            contains: category.id,
           },
         },
         limit: 4,
@@ -415,9 +415,16 @@ export default component$(() => {
                 {/* Video Info */}
                 <div class="space-y-4">
                   <div>
-                    <span class="inline-block px-3 py-1 bg-orange-100 text-orange-700 text-sm font-semibold rounded-full mb-2">
-                      {selectedVideo.value.category.name}
-                    </span>
+                    <div class="flex flex-wrap gap-2 mb-2">
+                      {(Array.isArray(selectedVideo.value.category)
+                        ? selectedVideo.value.category
+                        : [selectedVideo.value.category]
+                      ).map((cat) => (
+                        <span key={cat.id} class="inline-block px-3 py-1 bg-orange-100 text-orange-700 text-sm font-semibold rounded-full">
+                          {cat.name}
+                        </span>
+                      ))}
+                    </div>
                     <h3 class="text-2xl font-bold text-gray-900 mb-2">
                       {selectedVideo.value.title}
                     </h3>

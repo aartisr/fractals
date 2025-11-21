@@ -4,6 +4,16 @@ export const Categories: CollectionConfig = {
   slug: 'categories',
   access: {
     read: () => true,
+    create: ({ req }) => {
+      // Allow authenticated users (including API key auth)
+      return Boolean(req.user)
+    },
+    update: ({ req }) => {
+      return Boolean(req.user)
+    },
+    delete: ({ req }) => {
+      return Boolean(req.user)
+    },
   },
   admin: {
     useAsTitle: 'name',

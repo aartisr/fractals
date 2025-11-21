@@ -27,6 +27,16 @@ export const Videos: CollectionConfig = {
   slug: 'videos',
   access: {
     read: () => true,
+    create: ({ req }) => {
+      // Allow authenticated users (including API key auth)
+      return Boolean(req.user)
+    },
+    update: ({ req }) => {
+      return Boolean(req.user)
+    },
+    delete: ({ req }) => {
+      return Boolean(req.user)
+    },
   },
   admin: {
     useAsTitle: 'title',
@@ -62,6 +72,7 @@ export const Videos: CollectionConfig = {
       type: 'relationship',
       relationTo: 'categories',
       required: true,
+      hasMany: true,
     },
     {
       name: 'resolutions',
