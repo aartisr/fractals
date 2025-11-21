@@ -52,9 +52,7 @@ export default component$(() => {
           </button>
           
           <a href="/" class="flex items-center gap-2">
-            <div class="relative w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span class="text-white text-sm font-semibold font-serif">ॐ</span>
-            </div>
+            <img src="/images/sliderlogo.png" alt="Nithyananda TV" class="w-10 h-10 object-contain" />
             <div class="text-lg font-serif font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
               Nithyananda TV
             </div>
@@ -106,9 +104,7 @@ export default component$(() => {
         <div class="p-3 border-b border-orange-200/50 flex items-center justify-center">
           <a href="/" class="flex items-center gap-2 group">
             <div class="relative flex-shrink-0">
-              <div class="relative w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-300">
-                <span class="text-white text-lg font-semibold">ॐ</span>
-              </div>
+              <img src="/images/sliderlogo.png" alt="Nithyananda TV" class="w-10 h-10 object-contain group-hover:scale-105 transition-transform duration-300" />
             </div>
             {sidebarOpen.value && (
               <div class="flex-1 overflow-hidden">
@@ -275,21 +271,18 @@ export default component$(() => {
         </div>
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="grid md:grid-cols-4 gap-12 mb-12">
+          <div class="grid md:grid-cols-3 gap-12 mb-12">
             <div>
               <div class="flex items-center gap-3 mb-6">
                 <div class="relative">
-                  <div class="absolute inset-0 bg-orange-500 blur-xl opacity-20 rounded-full"></div>
-                  <div class="relative w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center shadow-lg">
-                    <span class="text-white text-lg font-semibold font-serif">ॐ</span>
-                  </div>
+                  <img src="/images/sliderlogo.png" alt="Nithyananda TV" class="w-12 h-12 object-contain" />
                 </div>
                 <div>
                   <div class="text-xl font-serif font-semibold tracking-tight bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Nithyananda TV</div>
                 </div>
               </div>
               <p class="text-sm text-gray-600 mb-6 leading-relaxed">
-                Your gateway to divine consciousness and spiritual enlightenment through sacred teachings.
+                Entraining, Entertaining, Enlightening!
               </p>
               <div class="flex items-center gap-2">
                 <a href="#" class="w-10 h-10 bg-gradient-to-br from-orange-100 to-amber-100 hover:from-orange-200 hover:to-amber-200 border border-orange-200 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110">
@@ -309,19 +302,7 @@ export default component$(() => {
             <div>
               <h4 class="font-serif font-medium text-gray-900 mb-4">Sacred Content</h4>
               <ul class="space-y-3 text-sm">
-                {['SPH LIVE Darshan', 'Playlists', 'Sacred Categories', 'Event Schedule'].map((item) => (
-                  <li key={item}>
-                    <a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
-                      <span class="w-1 h-1 bg-orange-400 rounded-full"></span>{item}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 class="font-serif font-medium text-gray-900 mb-4">Divine Resources</h4>
-              <ul class="space-y-3 text-sm">
-                {['About KAILASA', 'Support Center', 'Global Community', 'Wisdom Blog'].map((item) => (
+                {['SPH LIVE Darshan', 'Playlists', 'All Videos'].map((item) => (
                   <li key={item}>
                     <a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
                       <span class="w-1 h-1 bg-orange-400 rounded-full"></span>{item}
@@ -345,12 +326,10 @@ export default component$(() => {
           </div>
           <div class="border-t border-orange-200/50 pt-8">
             <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-              <p class="text-sm text-gray-600">© 2024 Nithyananda TV. All rights reserved. Blessed with divine grace.</p>
+              <p class="text-sm text-gray-600">© {new Date().getFullYear()} Nithyananda TV. All rights reserved.</p>
               <div class="flex items-center gap-2 text-sm text-gray-600">
                 <span>Powered by</span>
-                <span class="font-serif font-medium text-orange-600">KAILASA</span>
-                <span class="text-orange-400">•</span>
-                <span class="font-serif">नित्यानंद</span>
+                <span class="font-serif font-medium text-orange-600">KAILASA's Nithyananda AI</span>
               </div>
             </div>
           </div>

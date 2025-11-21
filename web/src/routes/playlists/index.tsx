@@ -464,7 +464,7 @@ export const head: DocumentHead = {
   meta: [
     {
       name: 'description',
-      content: 'Explore our curated collection of spiritual teachings, wisdom, and transformative practices from Paramahamsa Nithyananda',
+      content: 'Explore our curated collection of spiritual teachings, wisdom, and transformative practices from THE SPH NITHYANANDA PARAMASHIVAM organized by category.',
     },
   ],
 };

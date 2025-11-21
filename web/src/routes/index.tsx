@@ -1,24 +1,94 @@
 import { component$ } from '@builder.io/qwik';
-import { DocumentHead, Link } from '@builder.io/qwik-city';
-import { 
+import { DocumentHead, Link, routeLoader$ } from '@builder.io/qwik-city';
+import {
   LuPlay,
   LuCalendar,
   LuUsers,
   LuClock,
   LuSparkles,
   LuMessageCircle,
-  LuCompass,
-  LuArrowRight,
-  LuUser,
-  LuHeart,
-  LuActivity,
-  LuBookOpen
 } from '@qwikest/icons/lucide';
 import { useUserContext } from '~/routes/plugin@auth';
+import { payload } from '~/utils/payload-sdk';
+
+export const useHomeData = routeLoader$(async () => {
+  try {
+    // Fetch total videos count
+    const videosRes = await payload.find({
+      collection: 'videos',
+      limit: 1,
+    });
+
+    // Fetch all live streams (public ones - live, idle, and ended)
+    const liveStreamsRes = await payload.find({
+      collection: 'live-streams',
+      where: {
+        visibility: {
+          equals: 'public',
+        },
+      },
+      limit: 3,
+      sort: '-date',
+    });
+
+    // Fetch categories with video counts for playlists
+    const categoriesRes = await payload.find({
+      collection: 'categories',
+      limit: 4,
+      sort: 'name',
+    });
+
+    const categoriesWithVideos = await Promise.all(
+      categoriesRes.docs.map(async (category: any) => {
+        const videosRes = await payload.find({
+          collection: 'videos',
+          where: {
+            category: {
+              equals: category.id,
+            },
+          },
+          limit: 1,
+        });
+
+        // Get first video for thumbnail
+        const firstVideo = videosRes.docs[0] as any;
+
+        return {
+          id: category.id,
+          name: category.name,
+          description: category.description,
+          count: videosRes.totalDocs,
+          image: firstVideo?.thumbnail || 'https://images.unsplash.com/photo-1602192509154-0b900ee1f851?w=400&q=80',
+        };
+      })
+    );
+
+    return {
+      totalVideos: videosRes.totalDocs || 0,
+      liveStreams: liveStreamsRes.docs,
+      categories: categoriesWithVideos,
+    };
+  } catch (error) {
+    console.error('Error fetching home data:', error);
+    return {
+      totalVideos: 0,
+      liveStreams: [],
+      categories: [],
+    };
+  }
+});
 
 export default component$(() => {
   const userContext = useUserContext();
-  
+  const homeData = useHomeData();
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000) {
+      return `${(num / 1000).toFixed(1)}K+`;
+    }
+    return num.toString();
+  };
+
   return (
     <>
       {/* Hero Section */}
@@ -59,44 +129,28 @@ export default component$(() => {
               </div>
 
               <h1 class="text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-transparent bg-gradient-to-br from-orange-800 via-orange-600 to-amber-600 bg-clip-text mb-6 leading-tight">
-                Experience Divine Consciousness
+                 Entraining, Entertaining, Enlightening!
               </h1>
               
               <p class="text-lg text-gray-700 mb-8 leading-relaxed font-light">
-                Immerse yourself in the sacred teachings of His Holiness Paramahamsa Nithyananda. Access thousands of enlightening discourses, live darshans, and transformative spiritual practices.
+                 
               </p>
               
               <div class="flex flex-wrap items-center gap-4">
-                <Link 
-                  href={userContext.value.isAuthenticated ? "/playlists" : "/signin"}
+                <Link
+                  href="/playlists"
                   class="px-8 py-4 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium rounded-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-2"
                   style="animation: pulse-glow 3s ease-in-out infinite;"
                 >
                   <LuPlay class="w-5 h-5" />
                   Begin Your Journey
                 </Link>
-                <Link 
-                  href="/playlists"
-                  class="px-8 py-4 border-2 border-orange-300 bg-white/50 backdrop-blur-sm text-orange-800 font-medium rounded-xl hover:bg-white hover:border-orange-400 hover:shadow-lg transition-all duration-300 flex items-center gap-2"
-                >
-                  <LuCalendar class="w-5 h-5" />
-                  Sacred Schedule
-                </Link>
               </div>
-              
+
               <div class="mt-12 flex items-center gap-8 text-sm">
                 <div class="flex items-center gap-2">
                   <div class="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center border border-orange-200">
-                    <span class="text-orange-700 font-bold">2.4K</span>
-                  </div>
-                  <div>
-                    <div class="font-medium text-gray-900">Live Viewers</div>
-                    <div class="text-xs text-gray-500">Watching now</div>
-                  </div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <div class="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center border border-orange-200">
-                    <span class="text-orange-700 font-bold">10K+</span>
+                    <span class="text-orange-700 font-bold">{formatNumber(homeData.value.totalVideos)}</span>
                   </div>
                   <div>
                     <div class="font-medium text-gray-900">Sacred Videos</div>
@@ -109,31 +163,14 @@ export default component$(() => {
             <div class="relative">
               <div class="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-400 blur-3xl opacity-20 rounded-3xl"></div>
               <div class="relative aspect-[4/5] bg-gradient-to-br from-orange-100 via-amber-50 to-yellow-100 rounded-3xl overflow-hidden shadow-2xl border-4 border-white/50">
-                <img 
-                  src="https://images.unsplash.com/photo-1545389336-cf090694435e?w=800&q=80" 
-                  alt="Meditation" 
+                <img
+                  src="/images/featured-live.jpg"
+                  alt="SPH Nithyananda"
                   class="w-full h-full object-cover"
                   width={800}
                   height={1000}
                 />
-                <div class="absolute inset-0 bg-gradient-to-t from-orange-900/60 via-transparent to-transparent"></div>
-                <button 
-                  class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-transform duration-300"
-                  style="animation: pulse-glow 3s ease-in-out infinite;"
-                >
-                  <LuPlay class="w-9 h-9 text-orange-600 ml-1" />
-                </button>
-                <div class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent backdrop-blur-sm">
-                  <div class="flex items-center gap-3 text-white">
-                    <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/50">
-                      <span class="text-lg font-medium">ॐ</span>
-                    </div>
-                    <div>
-                      <div class="font-medium font-medium">Morning Darshan</div>
-                      <div class="text-xs text-white/80">Day 342 • Live Now</div>
-                    </div>
-                  </div>
-                </div>
+                <div class="absolute inset-0 bg-gradient-to-t from-orange-900/30 via-transparent to-transparent"></div>
               </div>
               <div class="absolute -top-6 -right-6 w-32 h-32 bg-gradient-to-br from-orange-400 to-amber-500 rounded-full opacity-10 blur-2xl"></div>
               <div class="absolute -bottom-6 -left-6 w-40 h-40 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full opacity-10 blur-3xl"></div>
@@ -166,52 +203,30 @@ export default component$(() => {
             <p class="text-gray-600 max-w-2xl mx-auto">Connect with divine consciousness through live spiritual sessions</p>
           </div>
           
-          <div class="grid md:grid-cols-3 gap-6">
-            {[
-              { 
-                image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&q=80',
-                status: 'LIVE NOW',
-                statusColor: 'from-red-600 to-red-500',
-                viewers: '2,487',
-                title: 'Morning Darshan - Day 342',
-                time: 'Started 1h 23m ago',
-                action: 'Watch Now'
-              },
-              {
-                image: 'https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=600&q=80',
-                status: 'UPCOMING',
-                statusColor: 'from-orange-600 to-amber-600',
-                title: 'Evening Satsang',
-                time: 'Today at 6:00 PM EST',
-                action: 'Set Reminder'
-              },
-              {
-                image: 'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?w=600&q=80',
-                status: 'SCHEDULED',
-                statusColor: 'from-gray-800 to-gray-700',
-                title: 'Special Discourse Series',
-                time: 'Tomorrow at 8:00 AM',
-                action: 'Set Reminder'
-              }
-            ].map((session, idx) => (
-              <div key={idx} class="bg-white rounded-2xl overflow-hidden border-2 border-orange-200/50 hover:border-orange-400 hover:shadow-2xl transition-all duration-300 group cursor-pointer">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {homeData.value.liveStreams.length > 0 ? homeData.value.liveStreams.map((stream: any) => (
+              <Link key={stream.id} href={`/live/${stream.streamKey}`} class="bg-white rounded-2xl overflow-hidden border-2 border-orange-200/50 hover:border-orange-400 hover:shadow-2xl transition-all duration-300 group cursor-pointer">
                 <div class="aspect-video bg-gradient-to-br from-orange-100 to-amber-50 relative">
-                  <img 
-                    src={session.image} 
-                    alt="Live Session" 
+                  <img
+                    src={stream.thumbnailUrl || '/images/featured-live.jpg'}
+                    alt={stream.title}
                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     width={600}
                     height={338}
                   />
                   <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                  <div class={`absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r ${session.statusColor} text-white text-xs font-medium rounded-lg ${session.status === 'LIVE NOW' ? 'flex items-center gap-2' : ''} shadow-lg font-medium`}>
-                    {session.status === 'LIVE NOW' && <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>}
-                    {session.status}
-                  </div>
-                  {session.viewers && (
-                    <div class="absolute top-4 right-4 px-3 py-1.5 bg-black/60 backdrop-blur-md text-white text-xs font-medium rounded-lg flex items-center gap-1.5">
-                      <LuUsers class="w-3 h-3" />
-                      {session.viewers}
+                  {stream.status === 'live' ? (
+                    <div class="absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-500 text-white text-xs font-medium rounded-lg flex items-center gap-2 shadow-lg">
+                      <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                      LIVE NOW
+                    </div>
+                  ) : stream.status === 'idle' ? (
+                    <div class="absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs font-medium rounded-lg shadow-lg">
+                      UPCOMING
+                    </div>
+                  ) : (
+                    <div class="absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r from-gray-700 to-gray-600 text-white text-xs font-medium rounded-lg shadow-lg">
+                      ENDED
                     </div>
                   )}
                   <div class="absolute bottom-4 left-4 right-4">
@@ -221,7 +236,7 @@ export default component$(() => {
                       </div>
                       <div class="flex-1">
                         <div class="text-xs text-white/80 font-medium">SPH Nithyananda</div>
-                        <div class="text-sm font-medium">{session.title}</div>
+                        <div class="text-sm font-medium">{stream.title}</div>
                       </div>
                     </div>
                   </div>
@@ -229,14 +244,20 @@ export default component$(() => {
                 <div class="p-6">
                   <div class="flex items-center justify-between text-sm text-gray-600">
                     <span class="flex items-center gap-1.5">
-                      {session.status === 'LIVE NOW' ? <LuClock class="w-4 h-4" /> : <LuCalendar class="w-4 h-4" />}
-                      {session.time}
+                      <LuClock class="w-4 h-4" />
+                      {stream.description || (stream.status === 'live' ? 'Live streaming now' : stream.status === 'idle' ? 'Coming soon' : 'Replay available')}
                     </span>
-                    <button class="text-orange-600 hover:text-orange-700 font-medium">{session.action}</button>
+                    <span class="text-orange-600 hover:text-orange-700 font-medium">
+                      {stream.status === 'live' ? 'Watch Now' : stream.status === 'idle' ? 'Details' : 'Watch Replay'}
+                    </span>
                   </div>
                 </div>
+              </Link>
+            )) : (
+              <div class="col-span-full text-center py-12 text-gray-500">
+                No streams available at the moment. Check back soon!
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -252,29 +273,24 @@ export default component$(() => {
               <LuSparkles class="w-3 h-3" />
               <span class="font-medium tracking-wide">CURATED COLLECTIONS</span>
             </div>
-            <h2 class="text-4xl font-medium font-semibold tracking-tight text-gray-900 mb-3">Sacred Playlists</h2>
+            <h2 class="text-4xl font-medium font-semibold tracking-tight text-gray-900 mb-3">Curated Playlists</h2>
             <p class="text-gray-600 max-w-2xl mx-auto">Journey through curated paths of spiritual awakening</p>
           </div>
           
           <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { image: 'https://images.unsplash.com/photo-1602192509154-0b900ee1f851?w=400&q=80', count: 24, title: 'Meditation Mastery', desc: 'Complete guide to meditation practices', href: '/playlists' },
-              { image: 'https://images.unsplash.com/photo-1621619856624-42fd193a0661?w=400&q=80', count: 18, title: 'Yoga & Wellness', desc: 'Ancient practices for modern life', href: '/playlists' },
-              { image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&q=80', count: 32, title: 'Spiritual Wisdom', desc: 'Timeless teachings and insights', href: '/playlists' },
-              { image: 'https://images.unsplash.com/photo-1528715471579-d1bcf0ba5e83?w=400&q=80', count: 15, title: 'Sacred Scriptures', desc: 'Deep dives into ancient texts', href: '/playlists' }
-            ].map((playlist, idx) => (
-              <Link key={idx} href={playlist.href} class="group cursor-pointer">
+            {homeData.value.categories.length > 0 ? homeData.value.categories.map((category: any) => (
+              <Link key={category.id} href="/playlists" class="group cursor-pointer">
                 <div class="aspect-square bg-gradient-to-br from-orange-100 via-amber-50 to-yellow-100 rounded-2xl overflow-hidden mb-4 relative border-2 border-orange-200/50 hover:border-orange-400 transition-all duration-300 shadow-lg hover:shadow-2xl">
-                  <img 
-                    src={playlist.image} 
-                    alt={playlist.title} 
+                  <img
+                    src={category.image}
+                    alt={category.name}
                     class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     width={400}
                     height={400}
                   />
                   <div class="absolute inset-0 bg-gradient-to-t from-orange-900/80 via-orange-900/20 to-transparent"></div>
                   <div class="absolute top-4 right-4 w-12 h-12 bg-white/90 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
-                    <span class="text-sm font-semibold text-orange-700">{playlist.count}</span>
+                    <span class="text-sm font-semibold text-orange-700">{category.count}</span>
                   </div>
                   <div class="absolute bottom-4 left-4 right-4">
                     <div class="flex items-center gap-2 text-white mb-2">
@@ -285,10 +301,14 @@ export default component$(() => {
                     </div>
                   </div>
                 </div>
-                <h3 class="font-medium font-medium text-gray-900 mb-1 group-hover:text-orange-600 transition-colors">{playlist.title}</h3>
-                <p class="text-sm text-gray-600">{playlist.desc}</p>
+                <h3 class="font-medium font-medium text-gray-900 mb-1 group-hover:text-orange-600 transition-colors">{category.name}</h3>
+                <p class="text-sm text-gray-600">{category.description || 'Explore this collection'}</p>
               </Link>
-            ))}
+            )) : (
+              <div class="col-span-4 text-center py-12 text-gray-500">
+                No playlists available at the moment.
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -334,60 +354,24 @@ export default component$(() => {
         </div>
       </div>
 
-      {/* Explore Categories */}
-      <div class="py-16 lg:py-20 bg-gradient-to-br from-white to-amber-50/30">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="text-center mb-12">
-            <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-100 to-amber-100 border border-orange-200 text-orange-700 text-xs font-medium rounded-full mb-4">
-              <LuCompass class="w-3 h-3" />
-              <span class="font-medium tracking-wide">SACRED PATHS</span>
-            </div>
-            <h2 class="text-4xl font-medium font-semibold tracking-tight text-gray-900 mb-3">Explore & Discover</h2>
-            <p class="text-gray-600 max-w-2xl mx-auto">Find teachings that resonate with your spiritual journey</p>
-          </div>
-          
-          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[
-              { icon: 'user', color: 'orange', title: 'Sacred Discourses', count: '432 enlightening videos', IconComponent: LuUser, href: '/playlists' },
-              { icon: 'heart', color: 'blue', title: 'Meditation Arts', count: '187 transformative practices', IconComponent: LuHeart, href: '/models' },
-              { icon: 'activity', color: 'purple', title: 'Yogic Sciences', count: '256 ancient techniques', IconComponent: LuActivity, href: '/models' },
-              { icon: 'book-open', color: 'green', title: 'Sacred Scriptures', count: '143 divine texts explained', IconComponent: LuBookOpen, href: '/playlists' },
-              { icon: 'sparkles', color: 'amber', title: 'Divine Healing', count: '98 healing transmissions', IconComponent: LuSparkles, href: '/models' },
-              { icon: 'calendar', color: 'rose', title: 'Sacred Events', count: '76 divine celebrations', IconComponent: LuCalendar, href: '/playlists' }
-            ].map((category, idx) => (
-              <Link key={idx} href={category.href} class={`bg-gradient-to-br from-${category.color}-50 to-${category.color}-100 rounded-2xl p-8 border-2 border-${category.color}-200/50 hover:border-${category.color}-400 hover:shadow-xl transition-all duration-300 cursor-pointer group`}>
-                <div class={`w-14 h-14 bg-gradient-to-br from-${category.color}-600 to-${category.color}-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg`}>
-                  <category.IconComponent class="w-7 h-7 text-white" />
-                </div>
-                <h3 class="text-xl font-medium font-medium text-gray-900 mb-2">{category.title}</h3>
-                <p class="text-sm text-gray-600 mb-4">{category.count}</p>
-                <div class={`flex items-center gap-2 text-${category.color}-600 text-sm font-medium`}>
-                  <span class="font-medium">Explore Path</span>
-                  <LuArrowRight class="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
     </>
   );
 });
 
 export const head: DocumentHead = {
-  title: 'Nithyananda TV - Divine Streaming Platform',
+  title: 'Nithyananda TV - KAILASA\'s Web Television',
   meta: [
     {
       name: 'description',
-      content: 'Experience divine consciousness through sacred teachings of His Holiness Paramahamsa Nithyananda. Access thousands of enlightening discourses, live darshans, and transformative spiritual practices.',
+      content: ' Entraining, Entertaining, Enlightening! through sacred teachings of THE SPH NITHYANANDA PARAMASHIVAM. Access thousands of enlightening discourses, live darshans, and transformative spiritual practices.',
     },
     {
       property: 'og:title',
-      content: 'Nithyananda TV - Divine Streaming Platform',
+      content: 'Nithyananda TV - KAILASA\'s Web Television',
     },
     {
       property: 'og:description',
-      content: 'Immerse yourself in the sacred teachings. Access thousands of enlightening discourses, live darshans, and transformative spiritual practices.',
+      content: ' Entraining, Entertaining, Enlightening! through sacred teachings of THE SPH NITHYANANDA PARAMASHIVAM. Access thousands of enlightening discourses, live darshans, and transformative spiritual practices.',
     },
   ],
 };
