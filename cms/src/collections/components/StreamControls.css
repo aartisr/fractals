@@ -117,6 +117,25 @@
   flex: 1;
 }
 
+.stream-controls__actions--transcription {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.30rem;
+  margin-top: 0.5rem;
+}
+
+.stream-controls__transcription-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stream-controls__actions--transcription button {
+  flex: 0;
+  white-space: nowrap;
+}
+
 .stream-controls__message {
   padding: 0.75rem;
   border-radius: 4px;

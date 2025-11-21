@@ -6,11 +6,11 @@ RUN apk add --no-cache git
 
 WORKDIR /build
 
-# Copy go mod files
+# Copy module manifest and download deps
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
+# Copy source
 COPY . .
 
 # Build the application
@@ -37,9 +37,6 @@ COPY --from=builder /build/transcoder .
 
 # Create temp and logs directories
 RUN mkdir -p /app/temp /app/logs && chown -R transcoder:transcoder /app
-
-# Switch to non-root user
-USER transcoder
 
 # Expose RTMP port and HTTP API port
 EXPOSE 1935 8080

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"live_transcoder/pkg/config"
 	"live_transcoder/pkg/storage"
@@ -17,6 +18,7 @@ import (
 type Server struct {
 	cfg       *config.Config
 	r2Client  *storage.R2Client
+	db        *sql.DB
 	sessions  map[string]*Session
 	mu        sync.RWMutex
 	ctx       context.Context
@@ -25,16 +27,18 @@ type Server struct {
 }
 
 type Session struct {
-    streamKey  string
-    transcoder *transcoder.Transcoder
-    cancel     context.CancelFunc
+	streamKey  string
+	streamID   int64
+	transcoder *transcoder.Transcoder
+	cancel     context.CancelFunc
 }
 
-func NewServer(cfg *config.Config, r2Client *storage.R2Client) *Server {
+func NewServer(cfg *config.Config, mediaClient, analysisClient *storage.R2Client, db *sql.DB) *Server {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Server{
 		cfg:      cfg,
-		r2Client: r2Client,
+		r2Client: mediaClient,
+		db:       db,
 		sessions: make(map[string]*Session),
 		ctx:      ctx,
 		cancel:   cancel,
@@ -72,7 +76,7 @@ func (s *Server) monitorStreams() {
 }
 
 // StartStream is called when a new stream should be processed
-func (s *Server) StartStream(streamKey string, rtmpURL string) error {
+func (s *Server) StartStream(streamKey string, rtmpURL string, streamID int64) error {
 	s.mu.Lock()
 	if _, exists := s.sessions[streamKey]; exists {
 		s.mu.Unlock()
@@ -83,10 +87,11 @@ func (s *Server) StartStream(streamKey string, rtmpURL string) error {
 	log.Info().Str("stream_key", streamKey).Msg("Starting new stream")
 
 	ctx, cancel := context.WithCancel(s.ctx)
-	trans := transcoder.NewTranscoder(ctx, s.cfg, s.r2Client, streamKey, rtmpURL)
+	trans := transcoder.NewTranscoder(ctx, s.cfg, s.r2Client, s.db, streamKey, rtmpURL, streamID)
 
 	session := &Session{
 		streamKey:  streamKey,
+		streamID:   streamID,
 		transcoder: trans,
 		cancel:     cancel,
 	}
