@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"database/sql"
 	"fmt"
-	"live_transcoder/pkg/chunker"
 	"live_transcoder/pkg/chunker"
 	"live_transcoder/pkg/config"
 	"live_transcoder/pkg/storage"
@@ -17,7 +15,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"syscall"
 	"syscall"
 	"time"
 
@@ -49,7 +46,6 @@ type Transcoder struct {
 }
 
 func NewTranscoder(ctx context.Context, cfg *config.Config, r2Client *storage.R2Client, db *sql.DB, streamKey string, rtmpURL string, streamID int64) *Transcoder {
-func NewTranscoder(ctx context.Context, cfg *config.Config, r2Client *storage.R2Client, db *sql.DB, streamKey string, rtmpURL string, streamID int64) *Transcoder {
 	variants := make(map[string]string, len(cfg.Qualities))
 	for _, quality := range cfg.Qualities {
 		variants[quality.Name] = quality.Name
@@ -63,10 +59,8 @@ func NewTranscoder(ctx context.Context, cfg *config.Config, r2Client *storage.R2
 		cfg:          cfg,
 		r2Client:     r2Client,
 		db:           db,
-		db:           db,
 		streamKey:    streamKey,
 		rtmpURL:      rtmpURL,
-		streamID:     streamID,
 		streamID:     streamID,
 		processes:    make([]*exec.Cmd, 0),
 		variants:     variants,
@@ -96,7 +90,6 @@ func (t *Transcoder) Start() error {
 		close(uploadDone)
 	}()
 
-	// Start main FFmpeg transcoding process (HLS only)
 	// Start main FFmpeg transcoding process (HLS only)
 	cmd := t.buildFFmpegCommand(hlsDir)
 	cmd.Stderr = os.Stderr
@@ -192,7 +185,6 @@ func (t *Transcoder) Start() error {
 		Msg("🎬 Starting FFmpeg transcoding")
 
 	if err := cmd.Wait(); err != nil {
-	if err := cmd.Wait(); err != nil {
 		log.Warn().Err(err).Msg("FFmpeg process ended with error (stream may have stopped)")
 	}
 
@@ -250,14 +242,6 @@ func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 		Str("stream_key", t.streamKey).
 		Msg("🛑 FFmpeg stopped - starting graceful shutdown...")
 
-	// Signal upload watcher to stop first (but don't wait yet)
-	log.Debug().Str("stream_key", t.streamKey).Msg("Signaling upload watcher to stop...")
-	t.uploadCancel()
-
-	// Create a new context for graceful shutdown uploads (not tied to uploadCtx)
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer shutdownCancel()
-
 	// Upload any remaining segments (with retries for in-progress writes)
 	hlsDir := filepath.Join(t.workDir, "hls")
 	uploadedFiles := make(map[string]bool)
@@ -272,7 +256,7 @@ func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 			Str("stream_key", t.streamKey).
 			Int("attempt", i+1).
 			Msg("Scanning for remaining segments...")
-		t.uploadDirectoryWithContext(shutdownCtx, hlsDir, "", uploadedFiles)
+		t.uploadDirectory(hlsDir, "", uploadedFiles)
 		time.Sleep(500 * time.Millisecond)
 	}
 
@@ -283,10 +267,11 @@ func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 
 	// Finalize playlists by adding EXT-X-ENDLIST (marks stream as VOD)
 	log.Info().Str("stream_key", t.streamKey).Msg("📝 Finalizing playlists with EXT-X-ENDLIST...")
-	t.finalizePlaylistsWithContext(shutdownCtx)
+	t.finalizePlaylists()
 
-	// Wait for upload watcher goroutine to finish
-	log.Debug().Str("stream_key", t.streamKey).Msg("Waiting for upload watcher to stop...")
+	// Signal upload watcher to stop and wait for it
+	log.Debug().Str("stream_key", t.streamKey).Msg("Stopping upload watcher...")
+	t.uploadCancel()
 	<-uploadDone
 	log.Debug().Str("stream_key", t.streamKey).Msg("✓ Upload watcher stopped")
 
@@ -344,13 +329,6 @@ func (t *Transcoder) buildFFmpegCommand(hlsDir string) *exec.Cmd {
 	args = append(args,
 		"-var_stream_map", strings.Join(variantStreams, " "),
 		filepath.Join(hlsDir, "stream_%v.m3u8"),
-		// Extra audio-only PCM output to stdout for analysis chunker
-		"-map", "0:a:0",
-		"-ac", "1",
-		"-ar", "16000",
-		"-c:a", "pcm_s16le",
-		"-f", "s16le",
-		"pipe:1",
 		// Extra audio-only PCM output to stdout for analysis chunker
 		"-map", "0:a:0",
 		"-ac", "1",
@@ -454,12 +432,6 @@ func (t *Transcoder) uploadDirectoryWithStabilityCheck(dir, prefix string, uploa
 		t.uploadedMutex.Unlock()
 
 		if alreadyUploaded {
-		// Skip if already uploaded (protected read)
-		t.uploadedMutex.Lock()
-		alreadyUploaded := uploadedFiles[filePath]
-		t.uploadedMutex.Unlock()
-
-		if alreadyUploaded {
 			continue
 		}
 
@@ -508,10 +480,7 @@ func (t *Transcoder) uploadDirectoryWithStabilityCheck(dir, prefix string, uploa
 	}
 
 	// Upload all stable segments in parallel with concurrency limit
-	// Upload all stable segments in parallel with concurrency limit
 	var uploadWg sync.WaitGroup
-	semaphore := make(chan struct{}, 10) // Limit to 10 concurrent uploads
-
 	semaphore := make(chan struct{}, 10) // Limit to 10 concurrent uploads
 
 	for _, seg := range readyToUpload {
@@ -533,14 +502,6 @@ func (t *Transcoder) uploadDirectoryWithStabilityCheck(dir, prefix string, uploa
 				return
 			}
 
-			// Acquire semaphore
-			select {
-			case semaphore <- struct{}{}:
-				defer func() { <-semaphore }()
-			case <-t.uploadCtx.Done():
-				return
-			}
-
 			fileReader, err := os.Open(s.filePath)
 			if err != nil {
 				log.Error().Err(err).Str("file", s.filePath).Msg("Failed to open file")
@@ -553,22 +514,13 @@ func (t *Transcoder) uploadDirectoryWithStabilityCheck(dir, prefix string, uploa
 			defer cancel()
 
 			if err := t.r2Client.UploadFile(uploadTimeout, s.r2Key, fileReader, s.contentType); err != nil {
-			// Create timeout context for upload (30 seconds)
-			uploadTimeout, cancel := context.WithTimeout(t.uploadCtx, 30*time.Second)
-			defer cancel()
-
-			if err := t.r2Client.UploadFile(uploadTimeout, s.r2Key, fileReader, s.contentType); err != nil {
 				log.Error().Err(err).Str("file", s.filePath).Msg("Failed to upload file")
 				return
 			}
 
 			// Protect concurrent map write with transcoder-level mutex
 			t.uploadedMutex.Lock()
-			// Protect concurrent map write with transcoder-level mutex
-			t.uploadedMutex.Lock()
 			uploadedFiles[s.filePath] = true
-			t.uploadedMutex.Unlock()
-
 			t.uploadedMutex.Unlock()
 
 			log.Info().
@@ -591,21 +543,15 @@ func (t *Transcoder) uploadDirectoryWithStabilityCheck(dir, prefix string, uploa
 		// Create timeout context for playlist upload (10 seconds)
 		playlistTimeout, cancel := context.WithTimeout(t.uploadCtx, 10*time.Second)
 
-		// Create timeout context for playlist upload (10 seconds)
-		playlistTimeout, cancel := context.WithTimeout(t.uploadCtx, 10*time.Second)
-
 		// Handle playlists specially - rewrite paths
 		if file.Name() == "master.m3u8" {
 			rewritten, err := t.rewriteMasterPlaylist(filePath)
 			if err != nil {
 				cancel()
-				cancel()
 				log.Error().Err(err).Str("file", filePath).Msg("Failed to rewrite master playlist")
 				continue
 			}
 
-			if err := t.r2Client.UploadPlaylist(playlistTimeout, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
-				cancel()
 			if err := t.r2Client.UploadPlaylist(playlistTimeout, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
 				cancel()
 				log.Error().Err(err).Str("file", filePath).Msg("Failed to upload file")
@@ -616,13 +562,10 @@ func (t *Transcoder) uploadDirectoryWithStabilityCheck(dir, prefix string, uploa
 			rewritten, err := t.rewriteQualityPlaylist(filePath)
 			if err != nil {
 				cancel()
-				cancel()
 				log.Error().Err(err).Str("file", filePath).Msg("Failed to rewrite quality playlist")
 				continue
 			}
 
-			if err := t.r2Client.UploadPlaylist(playlistTimeout, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
-				cancel()
 			if err := t.r2Client.UploadPlaylist(playlistTimeout, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
 				cancel()
 				log.Error().Err(err).Str("file", filePath).Msg("Failed to upload file")
@@ -631,17 +574,12 @@ func (t *Transcoder) uploadDirectoryWithStabilityCheck(dir, prefix string, uploa
 		}
 
 		cancel()
-		cancel()
 		uploadedFiles[filePath] = true
 		log.Debug().Str("file", file.Name()).Str("key", r2Key).Msg("Uploaded playlist")
 	}
 }
 
 func (t *Transcoder) uploadDirectory(dir, prefix string, uploadedFiles map[string]bool) {
-	t.uploadDirectoryWithContext(t.uploadCtx, dir, prefix, uploadedFiles)
-}
-
-func (t *Transcoder) uploadDirectoryWithContext(ctx context.Context, dir, prefix string, uploadedFiles map[string]bool) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -686,7 +624,7 @@ func (t *Transcoder) uploadDirectoryWithContext(ctx context.Context, dir, prefix
 		}
 
 		// Pass the file handle so the AWS SDK can seek for checksum calculations.
-		if err := t.r2Client.UploadFile(ctx, r2Key, fileReader, contentType); err != nil {
+		if err := t.r2Client.UploadFile(t.ctx, r2Key, fileReader, contentType); err != nil {
 			fileReader.Close()
 			log.Error().Err(err).Str("file", filePath).Msg("Failed to upload file")
 			continue
@@ -711,7 +649,7 @@ func (t *Transcoder) uploadDirectoryWithContext(ctx context.Context, dir, prefix
 				continue
 			}
 
-			if err := t.r2Client.UploadPlaylist(ctx, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
+			if err := t.r2Client.UploadPlaylist(t.ctx, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
 				log.Error().Err(err).Str("file", filePath).Msg("Failed to upload file")
 				continue
 			}
@@ -723,7 +661,7 @@ func (t *Transcoder) uploadDirectoryWithContext(ctx context.Context, dir, prefix
 				continue
 			}
 
-			if err := t.r2Client.UploadPlaylist(ctx, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
+			if err := t.r2Client.UploadPlaylist(t.ctx, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
 				log.Error().Err(err).Str("file", filePath).Msg("Failed to upload file")
 				continue
 			}
@@ -735,10 +673,6 @@ func (t *Transcoder) uploadDirectoryWithContext(ctx context.Context, dir, prefix
 }
 
 func (t *Transcoder) finalizePlaylists() {
-	t.finalizePlaylistsWithContext(t.uploadCtx)
-}
-
-func (t *Transcoder) finalizePlaylistsWithContext(ctx context.Context) {
 	hlsDir := filepath.Join(t.workDir, "hls")
 
 	files, err := os.ReadDir(hlsDir)
@@ -802,7 +736,7 @@ func (t *Transcoder) finalizePlaylistsWithContext(ctx context.Context) {
 			}
 		}
 
-		if err := t.r2Client.UploadPlaylist(ctx, r2Key, bytes.NewReader(content), contentType); err != nil {
+		if err := t.r2Client.UploadPlaylist(t.uploadCtx, r2Key, bytes.NewReader(content), contentType); err != nil {
 			log.Error().Err(err).Str("file", filePath).Msg("Failed to upload finalized playlist")
 			continue
 		}
@@ -912,51 +846,6 @@ func (t *Transcoder) rewriteQualityPlaylistContent(content []byte) ([]byte, erro
 	}
 
 	return []byte(strings.Join(filtered, "\n")), nil
-}
-
-// uploadAnalysisChunks uploads local analysis WAVs to R2 and updates audio_chunks.file_path
-// from the local path to the R2 key for this stream.
-func (t *Transcoder) uploadAnalysisChunks() {
-	if t.r2Client == nil {
-		return
-	}
-	analysisDir := filepath.Join("/analysis", t.streamKey)
-	entries, err := os.ReadDir(analysisDir)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			log.Error().Err(err).Str("dir", analysisDir).Msg("failed to read analysis dir for upload")
-		}
-		return
-	}
-
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		name := e.Name()
-		if !strings.HasSuffix(strings.ToLower(name), ".wav") {
-			continue
-		}
-		localPath := filepath.Join(analysisDir, name)
-		r2Key := path.Join(t.streamKey, "analysis", name)
-
-		f, err := os.Open(localPath)
-		if err != nil {
-			log.Error().Err(err).Str("file", localPath).Msg("failed to open analysis chunk for upload")
-			continue
-		}
-		contentType := storage.GetContentType(name)
-		if err := t.r2Client.UploadFile(context.Background(), r2Key, f, contentType); err != nil {
-			log.Error().Err(err).Str("file", localPath).Str("key", r2Key).Msg("failed to upload analysis chunk to R2")
-			_ = f.Close()
-			continue
-		}
-		_ = f.Close()
-		log.Info().Str("file", localPath).Str("key", r2Key).Msg("uploaded analysis chunk to R2")
-
-		// For now we keep audio_chunks.file_path pointing at the shared volume path so
-		// live_translation can read local files; R2 copy is for archival only.
-	}
 }
 
 // uploadAnalysisChunks uploads local analysis WAVs to R2 and updates audio_chunks.file_path
