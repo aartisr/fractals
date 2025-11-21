@@ -1,7 +1,6 @@
 import { component$, useSignal, $ } from '@builder.io/qwik';
 import { DocumentHead, Link, routeLoader$ } from '@builder.io/qwik-city';
-import { LuSearch, LuPlay, LuClock, LuEye, LuLogIn, LuShield, LuChevronRight } from '@qwikest/icons/lucide';
-import { useUserContext } from '~/routes/plugin@auth';
+import { LuSearch, LuPlay, LuClock, LuEye, LuChevronRight } from '@qwikest/icons/lucide';
 import { payload } from '~/utils/payload-sdk';
 import { VideoJSPlayer } from '~/components/ui/VideoJSPlayer';
 
@@ -92,44 +91,10 @@ export const useCategories = routeLoader$(async ({ query }) => {
 });
 
 export default component$(() => {
-  const userContext = useUserContext();
   const categoriesData = useCategories();
   const searchQuery = useSignal('');
   const selectedVideo = useSignal<Video | null>(null);
   const showModal = useSignal(false);
-
-  // Protección de ruta: requiere autenticación
-  if (!userContext.value.isAuthenticated) {
-    return (
-      <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-orange-100 via-amber-100 to-yellow-100">
-        <div class="max-w-md w-full space-y-8 relative text-center">
-          <div class="inline-flex w-20 h-20 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full items-center justify-center mx-auto mb-6 shadow-2xl relative">
-            <div class="absolute inset-0 bg-orange-500 blur-2xl opacity-30 rounded-full"></div>
-            <LuShield class="w-10 h-10 text-white relative z-10" />
-          </div>
-          <h2 class="text-4xl font-semibold tracking-tight text-gray-900 mb-2">
-            Authentication Required
-          </h2>
-          <p class="text-gray-600 mb-8">
-            Please sign in to access the sacred video library and teachings
-          </p>
-          <div class="flex flex-col gap-3">
-            <Link href="/signin"
-              class="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium rounded-xl hover:shadow-2xl hover:scale-105 transition-all duration-300"
-            >
-              <LuLogIn class="w-5 h-5" />
-              Sign In to Continue
-            </Link>
-            <Link href="/"
-              class="px-8 py-4 border-2 border-orange-300 bg-white/50 backdrop-blur-sm text-orange-800 font-medium rounded-xl hover:bg-white hover:border-orange-400 hover:shadow-lg transition-all duration-300"
-            >
-              Back to Home
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const categories: Category[] = categoriesData.value?.categories ?? [];
   const pagination = categoriesData.value?.pagination;
@@ -150,6 +115,32 @@ export default component$(() => {
       return `${(views / 1000).toFixed(1)}K`;
     }
     return views.toString();
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      // If less than 7 days, show relative time
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+      if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+      if (diffDays < 730) return '1 year ago';
+
+      // Otherwise show formatted date
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   // Filter categories by search query
@@ -268,7 +259,7 @@ export default component$(() => {
                             <LuEye class="w-3 h-3" />
                             {formatViews(video.views)}
                           </span>
-                          <span>{video.date}</span>
+                          <span>{formatDate(video.date)}</span>
                         </div>
                       </div>
                     </div>
@@ -439,7 +430,7 @@ export default component$(() => {
                         <LuClock class="w-4 h-4" />
                         {selectedVideo.value.duration}
                       </span>
-                      <span>{selectedVideo.value.date}</span>
+                      <span>{formatDate(selectedVideo.value.date)}</span>
                     </div>
                   </div>
 
