@@ -1023,21 +1023,30 @@ class MainWindow(QMainWindow):
         self._img_spinner_movie.start()
         try:
             from boxcounting.box_counter_utils import BoxCounterUtils
+            from PyQt6.QtWidgets import QFileDialog
+            import os
             if which == 1:
-                result = BoxCounterUtils.load_image_for_compare(self, 1, self.img1_label, self.img2_label)
-                self._img1_data = result
-                if isinstance(result, QPixmap):
-                    self.img1_label.setPixmap(result)
+                # Open file dialog in the desired directory for Image 1
+                start_dir = os.path.join(os.getcwd(), "images", "OAS1_0001_MR1", "PROCESSED", "MPRAGE", "SUBJ_111")
+                file_path, _ = QFileDialog.getOpenFileName(self, "Select Image 1", start_dir, "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.gif)")
+                if file_path:
+                    result = BoxCounterUtils.load_image_for_compare(self, 1, self.img1_label, self.img2_label, path=file_path)
+                    self._img1_data = result
+                    if isinstance(result, QPixmap):
+                        self.img1_label.setPixmap(result)
             elif which == 2:
-                result = BoxCounterUtils.load_image_for_compare(self, 2, self.img1_label, self.img2_label)
-                self._img2_data = result
-                if isinstance(result, QPixmap):
-                    self.img2_label.setPixmap(result)
+                # Open file dialog in the desired directory for Image 2
+                start_dir = os.path.join(os.getcwd(), "images", "OAS1_0029_MR1", "PROCESSED", "MPRAGE", "SUBJ_111")
+                file_path, _ = QFileDialog.getOpenFileName(self, "Select Image 2", start_dir, "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.gif)")
+                if file_path:
+                    result = BoxCounterUtils.load_image_for_compare(self, 2, self.img1_label, self.img2_label, path=file_path)
+                    self._img2_data = result
+                    if isinstance(result, QPixmap):
+                        self.img2_label.setPixmap(result)
             img1_loaded = self._img1_data is not None
             img2_loaded = self._img2_data is not None
             if hasattr(self, 'compare_btn'):
                 self.compare_btn.setEnabled(img1_loaded and img2_loaded)
-            # self.compare_result.setText("")
         except Exception as e:
             QMessageBox.critical(self, "Image Load Error", f"Failed to load image: {e}")
         finally:
