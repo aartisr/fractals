@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+.env/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Git garbage collection logs
+.git/gc.log
+
+# Azurite local storage emulator
+__azurite_db_table__.json
+__azurite_db_blob__.json
+__azurite_db_queue__.json
+AzuriteConfig
