@@ -1,0 +1,453 @@
+@startuml fractals-workspace-architecture
+' =====================================================================
+' Fractal Workspace Application Architecture Diagram (2025 - Production)
+' ---------------------------------------------------------------------
+' This diagram illustrates the complete modular, layered architecture of the
+' Fractal Workspace application v1.0.0, including all four tabs:
+' - Fractal Generator
+' - Box Counter
+' - Image Compare
+' - Tumor Detection
+' Each package and class is annotated for clarity and maintainability.
+' =====================================================================
+
+scale 4096 width
+
+title Fractal Workspace v1.0.0 - Complete Architecture (2025)
+
+' Define UX-friendly colors (PlantUML syntax)
+skinparam package {
+  BackgroundColor<<UI>> #B3C7F7
+  BackgroundColor<<BOX>> #FFD6E0
+  BackgroundColor<<FRACTAL>> #FFF7B2
+  BackgroundColor<<UTIL>> #B2F7C1
+  BackgroundColor<<TUMOR>> #FFE4B5
+  BackgroundColor<<HANDLER>> #E0FFFF
+}
+
+note as N1
+  LEGEND:
+  [Soft Blue]     UI Layer: Main window with 4 tabs (Fractal, Box Counter, Image Compare, Tumor Detection)
+  [Soft Pink]     Box Counting Layer: Helpers, utils, and comparison dialog
+  [Soft Yellow]   Fractal Logic Layer: 6 fractal generation algorithms
+  [Soft Peach]    Tumor Detection Layer: YOLOv5-based medical image analysis
+  [Soft Cyan]     Handler Layer: Event handlers and utility functions
+  [Soft Green]    Utility Layer: External libraries (numpy, cv2, matplotlib, PyQt6)
+end note
+
+' ---------------------------
+'         UI LAYER (4 TABS)
+' ---------------------------
+package "UI Layer" <<UI>> {
+    class MainWindow {
+        ' Constants
+        +APP_TITLE: str
+        +APP_VERSION: str
+        +DEFAULT_FRACTAL_TYPE: str
+        +DEFAULT_RESOLUTION: str
+        
+        ' Tab Setup Methods
+        +__init__()
+        +setup_fractal_tab()
+        +setup_box_counter_tab()
+        +setup_image_compare_tab()
+        +setup_tumor_detection_tab()
+        
+        ' Fractal Generator Tab Methods
+        +generate_fractal_threaded()
+        +save_fractal()
+        +combo_frac_type_changed()
+        +combo_resolution_changed()
+        +combo_color_scheme_changed()
+        +edit_max_iter_changed()
+        +edit_power_changed()
+        +edit_c_real_changed()
+        +edit_c_imag_changed()
+        
+        ' Box Counter Tab Methods
+        +bc_select_image()
+        +bc_apply_roi_size()
+        +bc_update_display()
+        +bc_compute_roi()
+        
+        ' Image Compare Tab Methods
+        +handle_image_label_drop()
+        +handle_image_label_double_click()
+        +swap_image_compare()
+        +reset_image_compare()
+        +process_image_compare()
+        +add_compare_step()
+        
+        ' State Variables
+        -fractal_type: str
+        -resolution: str
+        -color_scheme: str
+        -max_iter: int
+        -power: float
+        -bc_image: ndarray
+        -bc_roi_size: int
+        -_img1_data: ndarray
+        -_img2_data: ndarray
+        -_compare_steps: list
+        -tumor_images: list
+        -tumor_results: list
+    }
+    
+    class ROIImageLabel {
+        +parent: MainWindow
+        +mousePressEvent()
+        +resizeEvent()
+        +paintEvent()
+    }
+    
+    class ScalableLabel {
+        +setPixmap()
+        +resizeEvent()
+        +dragEnterEvent()
+        +dragLeaveEvent()
+        +dropEvent()
+        -_original_pixmap: QPixmap
+        -_drag_active: bool
+    }
+    
+    note right of MainWindow
+      MainWindow (v1.0.0) is the central application window.
+      It manages all 4 tabs with production-ready features:
+      
+      1. Fractal Generator: Create 6 types of fractals
+      2. Box Counter: Compute fractal dimensions via ROI
+      3. Image Compare: Compare 2 images with drag-drop support
+      4. Tumor Detection: YOLOv5-based medical analysis
+      
+      Features: Type hints, error handling, constants,
+      comprehensive docstrings, input validation.
+    end note
+    
+    note right of ScalableLabel
+      Custom QLabel for Image Compare tab
+      with drag-and-drop support, visual feedback,
+      automatic scaling, and loading spinner.
+    end note
+}
+
+' ---------------------------
+'   BOX COUNTING LAYER
+' ---------------------------
+package "Box Counting Layer" <<BOX>> {
+    class BoxCounterHelpers {
+        +select_image(parent): tuple
+        +apply_roi_size(parent, roi_text): int
+        +update_display(parent)
+        +compute_roi(parent, x, y)
+    }
+    
+    class BoxCounterUtils {
+        +load_image_for_compare(parent, which, img1_label, img2_label, path): ndarray
+        +box_counting(image, min_box_size, max_box_size): tuple
+        +fractal_dim(image): tuple
+    }
+    
+    class BoxCounterCompareDialog {
+        +show_boxcount_comparison_dialog(parent, img1, img2, np_to_pixmap)
+        +export_as_image()
+        +export_as_pdf()
+    }
+    
+    note right of BoxCounterHelpers
+      High-level helpers for Box Counter tab:
+      - Image selection with GIF support
+      - ROI size validation
+      - Display updates with fractal dimension overlay
+      - ROI computation delegation
+    end note
+    
+    note right of BoxCounterUtils
+      Core box counting algorithms:
+      - box_counting(): Multi-scale grid overlay
+      - fractal_dim(): Complete pipeline with
+        preprocessing, skeletonization, log-log fit
+      - load_image_for_compare(): Supports multiple formats
+    end note
+    
+    note right of BoxCounterCompareDialog
+      Stepwise comparison dialog:
+      - Preprocesses both images
+      - Overlays grids at multiple scales
+      - Plots log-log graphs
+      - Computes slopes (fractal dimensions)
+      - Displays results with interpretation
+      - Export to PNG/PDF
+    end note
+}
+
+' ---------------------------
+'     FRACTAL LOGIC LAYER
+' ---------------------------
+package "Fractal Logic Layer" <<FRACTAL>> {
+    class Mandelbrot {
+        +width: int
+        +height: int
+        +max_iter: int
+        +power: float
+        +generate(): ndarray
+    }
+    
+    class Julia {
+        +width: int
+        +height: int
+        +max_iter: int
+        +c_real: float
+        +c_imag: float
+        +generate(): ndarray
+    }
+    
+    class BurningShip {
+        +width: int
+        +height: int
+        +max_iter: int
+        +power: float
+        +generate(): ndarray
+    }
+    
+    class NewtonFractal {
+        +width: int
+        +height: int
+        +max_iter: int
+        +n: int
+        +generate(): ndarray
+    }
+    
+    class BarnsleyFern {
+        +width: int
+        +height: int
+        +num_points: int
+        +generate(): ndarray
+    }
+    
+    class SierpinskiTriangle {
+        +width: int
+        +height: int
+        +num_points: int
+        +generate(): ndarray
+    }
+    
+    class FractalInfoUtil {
+        +get_fractal_info(fractal_type): str
+    }
+    
+    note right
+      6 fractal algorithms, each implementing:
+      - Configurable parameters
+      - generate() method returning numpy array
+      - Optimized computation using numpy
+      
+      FractalInfoUtil provides LaTeX formulas
+      and descriptions for each fractal type.
+    end note
+}
+
+' ---------------------------
+'   TUMOR DETECTION LAYER
+' ---------------------------
+package "Tumor Detection Layer" <<TUMOR>> {
+    class TumorDetector {
+        +model_path: str
+        +device: str
+        +load_model()
+        +detect(image): ndarray
+    }
+    
+    class DetectionWorker {
+        +run()
+        +signals: WorkerSignals
+    }
+    
+    note right
+      YOLOv5-based tumor detection:
+      - 3 models: Axial, Coronal, Sagittal
+      - GPU/CPU support
+      - Threaded execution via DetectionWorker
+      - Bounding box overlay on detected regions
+    end note
+}
+
+' ---------------------------
+'      HANDLER LAYER
+' ---------------------------
+package "Handler Layer" <<HANDLER>> {
+    class FractalHandlers {
+        +combo_frac_type_changed(parent, fractal_type)
+        +combo_resolution_changed(parent, resolution)
+        +combo_color_scheme_changed(parent, scheme)
+        +edit_max_iter_changed(parent)
+        +edit_power_changed(parent)
+        +edit_c_real_changed(parent)
+        +edit_c_imag_changed(parent)
+        +generate_fractal_threaded(parent)
+        +save_fractal(parent)
+        +np_to_pixmap(image): QPixmap
+    }
+    
+    class TumorHandlers {
+        +handle_tumor_image_double_click(parent, idx)
+        +run_tumor_detection(parent, idx)
+    }
+    
+    note right
+      Event handlers separated from UI:
+      - FractalHandlers: All fractal generation logic
+      - TumorHandlers: Tumor detection workflows
+      - Clean separation of concerns
+      - Testable business logic
+    end note
+}
+
+' ---------------------------
+'        UTILITY LAYER
+' ---------------------------
+package "Utility Layer" <<UTIL>> {
+    class numpy {
+        Arrays, linear algebra,
+        mathematical operations
+    }
+    
+    class matplotlib {
+        Plotting, colormaps,
+        figure rendering
+    }
+    
+    class cv2 {
+        Image I/O, preprocessing,
+        thresholding, morphology
+    }
+    
+    class skimage {
+        Skeletonization,
+        advanced image processing
+    }
+    
+    class PyQt6 {
+        GUI framework, widgets,
+        layouts, signals/slots
+    }
+    
+    class torch {
+        YOLOv5 model loading,
+        tensor operations, inference
+    }
+    
+    note right
+      External dependencies:
+      - numpy: Core array operations
+      - matplotlib: Visualization
+      - cv2 (OpenCV): Image processing
+      - skimage: Scientific image analysis
+      - PyQt6: Modern GUI framework
+      - torch: Deep learning for tumor detection
+    end note
+}
+
+' ---------------------------
+'        RELATIONSHIPS
+' ---------------------------
+
+' MainWindow to Fractal Generators
+MainWindow --> Mandelbrot : generates
+MainWindow --> Julia : generates
+MainWindow --> BurningShip : generates
+MainWindow --> NewtonFractal : generates
+MainWindow --> BarnsleyFern : generates
+MainWindow --> SierpinskiTriangle : generates
+MainWindow --> FractalInfoUtil : displays info
+
+' MainWindow to Box Counting Components
+MainWindow --> ROIImageLabel : owns
+MainWindow --> ScalableLabel : creates
+MainWindow --> BoxCounterHelpers : delegates to
+MainWindow --> BoxCounterUtils : uses
+MainWindow --> BoxCounterCompareDialog : launches
+
+' MainWindow to Tumor Detection
+MainWindow --> TumorDetector : uses
+MainWindow --> DetectionWorker : creates threads
+
+' MainWindow to Handlers
+MainWindow --> FractalHandlers : delegates events
+MainWindow --> TumorHandlers : delegates events
+
+' Box Counting Internal Relationships
+ROIImageLabel ..> MainWindow : parent reference
+ScalableLabel ..> MainWindow : parent reference
+BoxCounterHelpers --> BoxCounterUtils : calls
+BoxCounterHelpers --> MainWindow : updates state
+BoxCounterCompareDialog --> BoxCounterUtils : calls box_counting()
+BoxCounterCompareDialog --> MainWindow : updates UI
+
+' Tumor Detection Internal
+TumorDetector --> torch : uses
+DetectionWorker --> TumorDetector : runs detection
+
+' Handlers to Core Logic
+FractalHandlers --> Mandelbrot : creates
+FractalHandlers --> Julia : creates
+FractalHandlers --> BurningShip : creates
+FractalHandlers --> NewtonFractal : creates
+FractalHandlers --> BarnsleyFern : creates
+FractalHandlers --> SierpinskiTriangle : creates
+TumorHandlers --> TumorDetector : invokes
+
+' Dependencies on Utilities
+BoxCounterUtils ..> numpy : array operations
+BoxCounterUtils ..> cv2 : image processing
+BoxCounterUtils ..> skimage : skeletonization
+
+Mandelbrot ..> numpy : computation
+Mandelbrot ..> matplotlib : not used directly
+Julia ..> numpy : computation
+BurningShip ..> numpy : computation
+NewtonFractal ..> numpy : computation
+BarnsleyFern ..> numpy : computation
+SierpinskiTriangle ..> numpy : computation
+
+MainWindow ..> PyQt6 : inherits from
+MainWindow ..> matplotlib : via FigureCanvas
+MainWindow ..> cv2 : image display
+MainWindow ..> numpy : data handling
+
+TumorDetector ..> cv2 : preprocessing
+TumorDetector ..> numpy : array handling
+
+FractalHandlers ..> matplotlib : plotting
+FractalHandlers ..> numpy : data handling
+
+' ---------------------------
+'         FOOTER
+' ---------------------------
+note bottom
+  ==== How to Read This Diagram ====
+  
+  ARCHITECTURE OVERVIEW:
+  - 6 logical layers with clear separation of concerns
+  - 4 tabs in MainWindow: Fractal Generator, Box Counter, Image Compare, Tumor Detection
+  - Modular design enables independent testing and maintenance
+  
+  KEY FEATURES (v1.0.0):
+  - Type-hinted methods for better IDE support
+  - Comprehensive docstrings following Google style
+  - Production-ready error handling and validation
+  - Constants extracted for maintainability
+  - Drag-and-drop UI with visual feedback
+  - Multi-threaded operations for responsiveness
+  
+  RELATIONSHIP TYPES:
+  - Solid arrows (-->): Ownership or direct usage
+  - Dotted arrows (..>): Dependency or reference
+  
+  TABS FUNCTIONALITY:
+  1. Fractal Generator: 6 fractals, 12 color schemes, adjustable parameters
+  2. Box Counter: Interactive ROI selection, fractal dimension computation
+  3. Image Compare: Drag-drop images, box counting comparison, step-by-step results
+  4. Tumor Detection: 3 YOLOv5 models for medical image analysis
+end note
+
+@enduml
