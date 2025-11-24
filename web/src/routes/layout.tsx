@@ -111,8 +111,8 @@ export default component$(() => {
                 <div class="text-base font-bold tracking-tight bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent whitespace-nowrap">
                   Nithyananda TV
                 </div>
-                <div class="text-[9px] text-orange-600/70 tracking-wider uppercase font-medium whitespace-nowrap">
-                  Divine Streaming
+                <div class="text-[9px] text-orange-600/70 tracking-wider uppercase font-medium leading-tight">
+                  Entertaining, Entraining, Enlightening!
                 </div>
               </div>
             )}
