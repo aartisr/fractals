@@ -89,6 +89,11 @@ export default component$(() => {
     return num.toString();
   };
 
+  // Find the first active live stream
+  const activeLiveStream = homeData.value.liveStreams.find(
+    (stream: any) => stream.status === 'live'
+  );
+
   return (
     <>
       {/* Hero Section */}
@@ -123,10 +128,15 @@ export default component$(() => {
                 ></div>
               </div>
 
-              <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-100 to-amber-100 border border-orange-200 text-orange-700 text-xs font-medium rounded-full mb-8 shadow-sm">
-                <span class="w-2 h-2 bg-gradient-to-r from-orange-600 to-red-600 rounded-full animate-pulse"></span>
-                <span class="tracking-wide font-semibold">LIVE DARSHAN NOW</span>
-              </div>
+              {activeLiveStream && (
+                <Link
+                  href={`/live/${activeLiveStream.streamKey}`}
+                  class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-100 to-amber-100 border border-orange-200 text-orange-700 text-xs font-medium rounded-full mb-8 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 cursor-pointer"
+                >
+                  <span class="w-2 h-2 bg-gradient-to-r from-orange-600 to-red-600 rounded-full animate-pulse"></span>
+                  <span class="tracking-wide font-semibold">LIVE DARSHAN NOW</span>
+                </Link>
+              )}
 
               <h1 class="text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-transparent bg-gradient-to-br from-orange-800 via-orange-600 to-amber-600 bg-clip-text mb-6 leading-tight">
                  Entraining, Entertaining, Enlightening!
@@ -153,8 +163,8 @@ export default component$(() => {
                     <span class="text-orange-700 font-bold">{formatNumber(homeData.value.totalVideos)}</span>
                   </div>
                   <div>
-                    <div class="font-medium text-gray-900">Sacred Videos</div>
-                    <div class="text-xs text-gray-500">Available</div>
+                    <div class="font-medium text-gray-900">Videos</div>
+                    <div class="text-xs text-gray-500">Available on Demand</div>
                   </div>
                 </div>
               </div>
