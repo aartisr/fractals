@@ -242,6 +242,24 @@ func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 		Str("stream_key", t.streamKey).
 		Msg("🛑 FFmpeg stopped - starting graceful shutdown...")
 
+	// Update stream status to 'ended' in database
+	if t.db != nil && t.streamID != 0 {
+		if _, err := t.db.Exec(
+			`UPDATE live_streams SET status = 'ended' WHERE id = $1`,
+			t.streamID,
+		); err != nil {
+			log.Error().Err(err).
+				Str("stream_key", t.streamKey).
+				Int64("stream_id", t.streamID).
+				Msg("Failed to update stream status to 'ended' in database")
+		} else {
+			log.Info().
+				Str("stream_key", t.streamKey).
+				Int64("stream_id", t.streamID).
+				Msg("✓ Stream status updated to 'ended' in database")
+		}
+	}
+
 	// Upload any remaining segments (with retries for in-progress writes)
 	hlsDir := filepath.Join(t.workDir, "hls")
 	uploadedFiles := make(map[string]bool)
@@ -289,6 +307,7 @@ func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 func (t *Transcoder) buildFFmpegCommand(hlsDir string) *exec.Cmd {
 	// Build FFmpeg command for multi-quality HLS with RTMP input
 	args := []string{
+		"-nostdin", // Don't expect interactive input, allows proper signal handling
 		"-i", t.rtmpURL,
 		"-c:a", "aac",
 		"-ar", "48000",
@@ -351,6 +370,7 @@ func (t *Transcoder) buildFFmpegCommand(hlsDir string) *exec.Cmd {
 // input and outputs mono 16k PCM to stdout for the analysis chunker.
 func (t *Transcoder) buildAnalysisCommand() *exec.Cmd {
 	args := []string{
+		"-nostdin", // Don't expect interactive input, allows proper signal handling
 		"-loglevel", "warning",
 		"-i", t.rtmpURL,
 		"-map", "0:a:0",

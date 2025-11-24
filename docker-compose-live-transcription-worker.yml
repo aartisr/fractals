@@ -22,7 +22,7 @@ services:
 volumes:
   analysis_data:
     external: true
-    name: ntv-transcoder-ujazvw_analysis_data
+    name: ntv_transcoder_analysis_data
 
 networks:
   nithyananda-tv-network:

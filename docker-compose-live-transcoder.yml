@@ -43,6 +43,8 @@ volumes:
   transcoder_temp:
   transcoder_logs:
   analysis_data:
+    external: true
+    name: ntv_transcoder_analysis_data
 
 networks:
   nithyananda-tv-network:
