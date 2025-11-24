@@ -17,6 +17,7 @@ export interface VideoSource {
   type: string;
   label?: string;
   res?: number;
+  allowSeeksWithinUnsafeLiveWindow?: boolean;
 }
 
 export interface VideoJSPlayerProps {
@@ -54,11 +55,18 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
     const currentTime = player.currentTime();
     const isPaused = player.paused();
 
-    // Change source
-    player.src([{
+    // Change source with all relevant options
+    const sourceConfig: any = {
       src: sortedSources[index].src,
       type: sortedSources[index].type,
-    }]);
+    };
+
+    // Pass through allowSeeksWithinUnsafeLiveWindow if set
+    if (sortedSources[index].allowSeeksWithinUnsafeLiveWindow) {
+      sourceConfig.allowSeeksWithinUnsafeLiveWindow = true;
+    }
+
+    player.src([sourceConfig]);
 
     // Restore playback state
     player.one("loadedmetadata", () => {
@@ -104,15 +112,23 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
       fluid: props.fluid ?? true,
       aspectRatio: props.aspectRatio ?? "16:9",
       playbackRates: props.playbackRates ?? [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2],
-      sources: sortedSources.length > 0 ? [{
-        src: sortedSources[0].src,
-        type: sortedSources[0].type,
-      }] : [],
+      sources: sortedSources.length > 0 ? [(() => {
+        const sourceConfig: any = {
+          src: sortedSources[0].src,
+          type: sortedSources[0].type,
+        };
+        // Pass through allowSeeksWithinUnsafeLiveWindow if set
+        if (sortedSources[0].allowSeeksWithinUnsafeLiveWindow) {
+          sourceConfig.allowSeeksWithinUnsafeLiveWindow = true;
+        }
+        return sourceConfig;
+      })()] : [],
       html5: {
         vhs: {
           overrideNative: !videoElement.canPlayType('application/vnd.apple.mpegurl'),
           enableLowInitialPlaylist: true,
           fastQualityChange: true,
+          allowSeeksWithinUnsafeLiveWindow: true, // Enable seeking in live streams (DVR mode)
         },
         nativeVideoTracks: false,
         nativeAudioTracks: false,

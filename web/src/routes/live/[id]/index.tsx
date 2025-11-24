@@ -130,6 +130,47 @@ export default component$(() => {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Video Player, Transcript, and Info */}
           <div class="lg:col-span-2 space-y-6">
+            {/* Stream Title and Status - Above Video Player */}
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+                  {stream.value.title}
+                </h1>
+                <div class="flex items-center gap-2">
+                  <span
+                    class={`inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full ${
+                      stream.value.status === 'live'
+                        ? 'bg-red-100 text-red-700'
+                        : stream.value.status === 'ended'
+                        ? 'bg-gray-100 text-gray-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}
+                  >
+                    {stream.value.status === 'live' && <span class="w-2 h-2 bg-red-600 rounded-full animate-pulse" />}
+                    {String(stream.value.status).toUpperCase()}
+                  </span>
+                  {stream.value.visibility && (
+                    <span
+                      class={`px-3 py-1 text-sm font-semibold rounded-full ${
+                        stream.value.visibility === 'public'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {stream.value.visibility}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                class="p-3 rounded-full hover:bg-orange-100 transition-colors"
+                aria-label="Add to favorites"
+              >
+                <LuHeart class="w-6 h-6 text-orange-600" />
+              </button>
+            </div>
+
             {/* Video Player */}
             <div class="relative">
               {/* Live Badge */}
@@ -143,12 +184,50 @@ export default component$(() => {
               {stream.value.masterPlaylistUrl ? (
                 <div class="aspect-video bg-black rounded-lg overflow-hidden">
                   <VideoJSPlayer
-                    sources={[
-                      {
-                        src: stream.value.masterPlaylistUrl,
-                        type: 'application/x-mpegURL',
-                      },
-                    ]}
+                    sources={(() => {
+                      const masterUrl = stream.value.masterPlaylistUrl;
+                      const baseUrl = masterUrl.replace('/master.m3u8', '');
+
+                      // All sources support DVR seeking for live streams
+                      const sourceOptions = isLive ? { allowSeeksWithinUnsafeLiveWindow: true } : {};
+
+                      return [
+                        {
+                          src: masterUrl,
+                          type: 'application/x-mpegURL',
+                          label: 'Auto',
+                          ...sourceOptions
+                        },
+                        {
+                          src: `${baseUrl}/1080p/playlist.m3u8`,
+                          type: 'application/x-mpegURL',
+                          label: '1080p',
+                          res: 1080,
+                          ...sourceOptions
+                        },
+                        {
+                          src: `${baseUrl}/720p/playlist.m3u8`,
+                          type: 'application/x-mpegURL',
+                          label: '720p',
+                          res: 720,
+                          ...sourceOptions
+                        },
+                        {
+                          src: `${baseUrl}/480p/playlist.m3u8`,
+                          type: 'application/x-mpegURL',
+                          label: '480p',
+                          res: 480,
+                          ...sourceOptions
+                        },
+                        {
+                          src: `${baseUrl}/360p/playlist.m3u8`,
+                          type: 'application/x-mpegURL',
+                          label: '360p',
+                          res: 360,
+                          ...sourceOptions
+                        },
+                      ];
+                    })()}
                     poster={stream.value.thumbnailUrl}
                     autoplay={isLive}
                     muted={false}
@@ -172,46 +251,6 @@ export default component$(() => {
 
             {/* Stream Info */}
             <div class="p-6 bg-white/50 rounded-xl">
-              <div class="flex items-start justify-between gap-4 mb-4">
-                <div class="flex-1">
-                  <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                    {stream.value.title}
-                  </h1>
-                  <div class="flex items-center gap-2">
-                    <span
-                      class={`inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full ${
-                        stream.value.status === 'live'
-                          ? 'bg-red-100 text-red-700'
-                          : stream.value.status === 'ended'
-                          ? 'bg-gray-100 text-gray-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}
-                    >
-                      {stream.value.status === 'live' && <span class="w-2 h-2 bg-red-600 rounded-full animate-pulse" />}
-                      {String(stream.value.status).toUpperCase()}
-                    </span>
-                    {stream.value.visibility && (
-                      <span
-                        class={`px-3 py-1 text-sm font-semibold rounded-full ${
-                          stream.value.visibility === 'public'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        {stream.value.visibility}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  class="p-3 rounded-full hover:bg-orange-100 transition-colors"
-                  aria-label="Add to favorites"
-                >
-                  <LuHeart class="w-6 h-6 text-orange-600" />
-                </button>
-              </div>
-
               {/* Metadata */}
               <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-6">
                 {stream.value.date && (
@@ -477,11 +516,14 @@ const TranscriptSnapshot = component$<{ streamId: number }>(({ streamId }) => {
 
 function formatMs(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60)
+  const hours = Math.floor(totalSeconds / 3600)
+    .toString()
+    .padStart(2, '0');
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
     .toString()
     .padStart(2, '0');
   const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-  return `${minutes}:${seconds}`;
+  return `${hours}:${minutes}:${seconds}`;
 }
 
 function getLanguageName(code: string): string {
