@@ -5,7 +5,7 @@
 > *"In the irregularity of a tumor's boundary lies the signature of its malignancy."*  
 > — Clinical Collaborator, Radiology Research Group
 <p align="center">
-  <img src="design/tumor_detection_before_after.jpg" alt="Tumor Detection Before and After" width="500"/>
+  <img src="design/tumor_detection_before_after.png" alt="Tumor Detection Before and After" width="500"/>
   <br>
   <i>Example: Tumor region (red box) automatically detected and highlighted by ONNX model</i>
 </p>
