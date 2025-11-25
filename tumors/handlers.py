@@ -831,7 +831,6 @@ def _show_detection_failure(self, idx: int) -> None:
 __all__ = [
     'handle_tumor_image_double_click',
     'update_tumor_image_display',
-    'zoom_tumor_image',
     'run_tumor_detection',
 ]
 
