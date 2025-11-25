@@ -18,7 +18,6 @@ coverage.xml
 *.tmp
 
 # Model and data outputs (comment out if you want to keep these in git)
-tumors/output_models/
 yolov5/runs/
 
 # Large processed images (comment out if you want to keep these in git)
