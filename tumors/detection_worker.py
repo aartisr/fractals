@@ -29,21 +29,33 @@ from PyQt6.QtCore import QObject, pyqtSignal
 # LOGGING CONFIGURATION
 # ============================================================================
 
-# Configure module logger
-logger = logging.getLogger(__name__)
+
+# Ensure logging is always configured for production
+def _configure_logging():
+    logger = logging.getLogger(__name__)
+    if not logger.hasHandlers():
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('[%(asctime)s] %(levelname)s %(name)s: %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logger
+
+logger = _configure_logging()
 
 
 # ============================================================================
 # CONSTANTS
 # ============================================================================
 
+
 # Subprocess timeout (seconds) - prevent hanging on failed processes
-DEFAULT_TIMEOUT = 300  # 5 minutes
-MAX_TIMEOUT = 1800     # 30 minutes
+DEFAULT_TIMEOUT = int(os.environ.get("TUMOR_DETECT_TIMEOUT", 300))  # 5 minutes
+MAX_TIMEOUT = int(os.environ.get("TUMOR_DETECT_MAX_TIMEOUT", 1800)) # 30 minutes
 
 # File verification retry settings
-FILE_CHECK_DELAY = 0.5  # seconds
-MAX_FILE_CHECK_RETRIES = 5
+FILE_CHECK_DELAY = float(os.environ.get("TUMOR_DETECT_FILE_CHECK_DELAY", 0.5))  # seconds
+MAX_FILE_CHECK_RETRIES = int(os.environ.get("TUMOR_DETECT_MAX_FILE_CHECK_RETRIES", 5))
 
 
 # ============================================================================
@@ -61,22 +73,16 @@ class DetectionWorker(QObject):
     in PyQt6 applications. It runs subprocess commands and verifies output.
     
     Signals:
-        finished(str): Emitted when detection completes successfully
-            - Parameter: Path to the detected/processed image file
-        
-        error(str): Emitted when an error occurs during detection
-            - Parameter: Error message describing what went wrong
-        
-        progress(int): Emitted to report progress (optional, for future use)
-            - Parameter: Progress percentage (0-100)
-    
+        finished(str): Emitted when detection completes successfully (output file path)
+        error(str): Emitted when an error occurs (error message)
+        progress(int): Emitted to report progress (0-100, optional)
+
     Thread Safety:
-        This class is designed to be moved to a QThread. All heavy operations
-        run in the thread, and only signals cross thread boundaries.
-    
-    Usage:
+        Designed for use with QThread. All heavy operations run in the thread; only signals cross thread boundaries.
+
+    Example Usage:
         >>> worker = DetectionWorker(
-        ...     command=["yolov5", "detect", "--input", "image.jpg"],
+        ...     command=["python", "tumor_detector.py", "--input", "image.jpg"],
         ...     detected_path="/output/detected.jpg"
         ... )
         >>> thread = QThread()
@@ -85,23 +91,6 @@ class DetectionWorker(QObject):
         >>> worker.error.connect(on_detection_error)
         >>> thread.started.connect(worker.run)
         >>> thread.start()
-    
-    Example:
-        Basic usage with error handling:
-        
-        >>> def handle_success(path):
-        ...     print(f"Detection complete: {path}")
-        >>> 
-        >>> def handle_error(msg):
-        ...     print(f"Error: {msg}")
-        >>> 
-        >>> worker = DetectionWorker(
-        ...     command=["yolov5", "detect"],
-        ...     detected_path="output.jpg",
-        ...     timeout=180
-        ... )
-        >>> worker.finished.connect(handle_success)
-        >>> worker.error.connect(handle_error)
     """
     
     # Qt signals for thread-safe communication
@@ -113,61 +102,28 @@ class DetectionWorker(QObject):
         self,
         command: Union[List[str], str],
         detected_path: Union[str, Path],
-        timeout: Optional[int] = DEFAULT_TIMEOUT,
+        timeout: Optional[int] = None,
         verify_output: bool = True,
         parent: Optional[QObject] = None
     ):
         """
         Initialize the detection worker.
-        
+
         Args:
-            command: Command to execute for tumor detection
-                - List of strings: ["yolov5", "detect", "--arg", "value"]
-                - Single string: "yolov5 detect --arg value" (shell=True)
-            
+            command: Command to execute for tumor detection (list or string)
             detected_path: Expected path to the output/detected image file
-                - Path where the detection process will save results
-                - Used to verify successful completion
-            
-            timeout: Maximum execution time in seconds (default: 300)
-                - Prevents indefinite hanging on failed processes
-                - None for no timeout (not recommended)
-                - Range: 1 to MAX_TIMEOUT seconds
-            
+            timeout: Maximum execution time in seconds (default: from env or 300)
             verify_output: Whether to verify output file exists (default: True)
-                - If True, checks that detected_path exists after execution
-                - If False, trusts subprocess success code only
-            
             parent: Optional parent QObject for Qt object hierarchy
-        
-        Raises:
-            TypeError: If command or detected_path have invalid types
-            ValueError: If timeout is out of valid range
-            
-        Validation:
-            - Command must be non-empty list or string
-            - Detected path must be valid path string
-            - Timeout must be positive integer or None
         """
         super().__init__(parent)
-        
-        # Validate and store command
         self.command = self._validate_command(command)
-        
-        # Validate and store output path
         self.detected_path = self._validate_path(detected_path)
-        
-        # Validate and store timeout
-        self.timeout = self._validate_timeout(timeout)
-        
-        # Store verification preference
+        self.timeout = self._validate_timeout(timeout if timeout is not None else DEFAULT_TIMEOUT)
         self.verify_output = bool(verify_output)
-        
-        # Execution state
         self._is_running = False
         self._process: Optional[subprocess.Popen] = None
-        
-        logger.debug(
+        logger.info(
             f"DetectionWorker initialized: command={self.command}, "
             f"output={self.detected_path}, timeout={self.timeout}s"
         )
@@ -314,38 +270,33 @@ class DetectionWorker(QObject):
             Safe to run in QThread. Only emits signals (thread-safe).
             Does not modify any GUI elements directly.
         """
+        """
+        Run the detection process. Emits signals for completion or error.
+        """
         self._is_running = True
-        
         try:
-            logger.info(f"Starting detection: {' '.join(self.command)}")
-            
-            # Execute subprocess with timeout
+            logger.info(f"[DetectionWorker] Starting detection: {' '.join(self.command)}")
+            self.progress.emit(5)
             result = self._execute_subprocess()
-            
+            self.progress.emit(60)
             if result.returncode != 0:
-                # Subprocess failed
                 error_msg = self._format_subprocess_error(result)
                 logger.error(f"Detection failed: {error_msg}")
                 self.error.emit(error_msg)
                 return
-            
             logger.info("Detection subprocess completed successfully")
-            
-            # Verify output file if requested
             if self.verify_output:
                 if not self._verify_output_file():
                     error_msg = (
-                        f"Detection completed but output file not found: "
-                        f"{self.detected_path}"
+                        f"Detection completed but output file not found: {self.detected_path}"
                     )
                     logger.error(error_msg)
                     self.error.emit(error_msg)
                     return
-            
-            # Success - emit finished signal with output path
+            self.progress.emit(95)
             logger.info(f"Detection complete: {self.detected_path}")
             self.finished.emit(self.detected_path)
-            
+            self.progress.emit(100)
         except subprocess.TimeoutExpired:
             error_msg = (
                 f"Detection timed out after {self.timeout} seconds. "
@@ -353,15 +304,13 @@ class DetectionWorker(QObject):
             )
             logger.error(error_msg)
             self.error.emit(error_msg)
-            
         except FileNotFoundError as e:
             error_msg = (
                 f"Detection command not found: {self.command[0]}. "
-                f"Ensure the detection script/executable exists."
+                f"Ensure the detection script/executable exists and is in your PATH."
             )
             logger.error(f"{error_msg} ({e})")
             self.error.emit(error_msg)
-            
         except PermissionError as e:
             error_msg = (
                 f"Permission denied executing: {self.command[0]}. "
@@ -369,13 +318,10 @@ class DetectionWorker(QObject):
             )
             logger.error(f"{error_msg} ({e})")
             self.error.emit(error_msg)
-            
         except Exception as e:
-            # Catch-all for unexpected errors
             error_msg = f"Unexpected error during detection: {type(e).__name__}: {e}"
             logger.exception(error_msg)
             self.error.emit(error_msg)
-            
         finally:
             self._is_running = False
             self._process = None
@@ -396,27 +342,25 @@ class DetectionWorker(QObject):
             FileNotFoundError: If command executable not found
             PermissionError: If lacking permission to execute
         """
+        """
+        Run the detection subprocess and return the result.
+        """
         try:
             result = subprocess.run(
                 self.command,
-                check=False,  # Don't raise on non-zero exit (we handle it)
-                capture_output=True,  # Capture stdout/stderr for error reporting
-                text=True,  # Decode output as text
+                check=False,
+                capture_output=True,
+                text=True,
                 timeout=self.timeout,
-                shell=False  # Security: never use shell=True with user input
+                shell=False
             )
             return result
-            
         except subprocess.TimeoutExpired as e:
-            # Kill the process if it's still running
             if self._process:
                 self._process.kill()
             raise
     
-    def _format_subprocess_error(
-        self,
-        result: subprocess.CompletedProcess
-    ) -> str:
+    def _format_subprocess_error(self, result: subprocess.CompletedProcess) -> str:
         """
         Format detailed error message from subprocess failure.
         
@@ -429,17 +373,12 @@ class DetectionWorker(QObject):
         error_parts = [
             f"Detection process failed with exit code {result.returncode}."
         ]
-        
-        # Include stderr if available
         if result.stderr and result.stderr.strip():
-            stderr_preview = result.stderr.strip()[:500]  # Limit length
+            stderr_preview = result.stderr.strip()[:500]
             error_parts.append(f"Error output: {stderr_preview}")
-        
-        # Include stdout if no stderr (some programs log errors to stdout)
         elif result.stdout and result.stdout.strip():
             stdout_preview = result.stdout.strip()[:500]
             error_parts.append(f"Output: {stdout_preview}")
-        
         return "\n".join(error_parts)
     
     def _verify_output_file(self) -> bool:
@@ -454,29 +393,20 @@ class DetectionWorker(QObject):
             on some systems where file creation isn't immediately visible.
         """
         import time
-        
         for attempt in range(MAX_FILE_CHECK_RETRIES):
             if os.path.exists(self.detected_path):
-                # File exists - verify it's readable and has content
                 try:
                     size = os.path.getsize(self.detected_path)
                     if size > 0:
-                        logger.debug(
-                            f"Output file verified: {self.detected_path} "
-                            f"({size} bytes)"
-                        )
+                        logger.info(f"Output file verified: {self.detected_path} ({size} bytes)")
                         return True
                     else:
-                        logger.warning(
-                            f"Output file exists but is empty: {self.detected_path}"
-                        )
+                        logger.warning(f"Output file exists but is empty: {self.detected_path}")
                 except OSError as e:
                     logger.warning(f"Cannot access output file: {e}")
-            
-            # File not found or empty - wait and retry
             if attempt < MAX_FILE_CHECK_RETRIES - 1:
                 time.sleep(FILE_CHECK_DELAY)
-        
+        logger.error(f"Output file not found after {MAX_FILE_CHECK_RETRIES} retries: {self.detected_path}")
         return False
     
     # ========================================================================
@@ -506,17 +436,12 @@ class DetectionWorker(QObject):
         if self._process and self._process.poll() is None:
             logger.warning("Cancelling detection process...")
             try:
-                self._process.terminate()  # Graceful shutdown
-                
-                # Wait briefly for graceful shutdown
+                self._process.terminate()
                 import time
                 time.sleep(0.5)
-                
-                # Force kill if still running
                 if self._process.poll() is None:
                     logger.warning("Process did not terminate, forcing kill...")
                     self._process.kill()
-                    
             except Exception as e:
                 logger.error(f"Error cancelling process: {e}")
 

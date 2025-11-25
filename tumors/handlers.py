@@ -6,12 +6,12 @@ Provides event handlers and utility functions for the tumor detection UI.
 
 This module contains all the handler functions for managing tumor detection
 workflows, including image loading, display management, zoom controls, and
-running YOLOv5-based tumor detection on medical images.
+running ONNX-based tumor detection on medical images.
 
 Key Features:
     - Image loading with multi-format support (JPG, PNG, GIF, TIFF, etc.)
     - Zoom controls for detailed image inspection
-    - Asynchronous tumor detection using YOLOv5
+    - Asynchronous tumor detection using ONNX
     - Axial, coronal, and sagittal view support
     - Result visualization and comparison
 
@@ -19,6 +19,117 @@ Author: Aarti S Ravikumar
 License: MIT
 Version: 2.0.0
 """
+
+from typing import Optional, Tuple, List, Dict, Any
+import os
+import glob
+import tempfile
+import subprocess
+import logging
+from pathlib import Path
+import cv2
+import numpy as np
+from PIL import Image
+from PyQt6.QtWidgets import QFileDialog, QMessageBox
+from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtCore import Qt, QTimer
+
+
+def _configure_logging():
+    logger = logging.getLogger(__name__)
+    if not logger.hasHandlers():
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('[%(asctime)s] %(levelname)s %(name)s: %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logger
+
+logger = _configure_logging()
+
+def update_tumor_image_display(self, idx: int, which: str = 'orig') -> None:
+    """
+    Update the display of a tumor image with current zoom factor applied.
+    """
+    if not hasattr(self, 'tumor_zoom_factors'):
+        logger.warning("Zoom factors not initialized")
+        return
+    zoom = self.tumor_zoom_factors[idx].get(which, 1.0)
+    if which == 'orig':
+        pixmap = getattr(self, 'tumor_orig_pixmaps', [None] * NUM_TUMOR_SLOTS)[idx]
+        label = self.tumor_orig_labels[idx]
+    else:
+        pixmap = getattr(self, 'tumor_detected_pixmaps', [None] * NUM_TUMOR_SLOTS)[idx]
+        label = self.tumor_detected_labels[idx]
+    if pixmap and not pixmap.isNull():
+        target_w = int(label.width() * zoom)
+        target_h = int(label.height() * zoom)
+        scaled_pixmap = pixmap.scaled(
+            target_w,
+            target_h,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        )
+        # Blinking logic for detection overlay
+        if which == 'det' and hasattr(self, 'tumor_blink_timer') and self.tumor_blink_timer[idx] is not None:
+            # If blink state is False, show image without overlay
+            if not self.tumor_blink_state[idx] and hasattr(self, 'tumor_detected_nooverlay_pixmaps') and self.tumor_detected_nooverlay_pixmaps[idx] is not None:
+                label.setPixmap(self.tumor_detected_nooverlay_pixmaps[idx])
+            else:
+                label.setPixmap(scaled_pixmap)
+        else:
+            label.setPixmap(scaled_pixmap)
+        label.setText("")
+        logger.debug(
+            f"Updated {which} display for slot {idx}: "
+            f"zoom={zoom:.2f}, size={target_w}x{target_h}"
+        )
+    else:
+        label.setText("")
+def update_tumor_image_display(self, idx: int, which: str = 'orig') -> None:
+    """
+    Update the display of a tumor image with current zoom factor applied.
+    """
+    if not hasattr(self, 'tumor_zoom_factors'):
+        logger.warning("Zoom factors not initialized")
+        return
+    zoom = self.tumor_zoom_factors[idx].get(which, 1.0)
+    if which == 'orig':
+        pixmap = getattr(self, 'tumor_orig_pixmaps', [None] * NUM_TUMOR_SLOTS)[idx]
+        label = self.tumor_orig_labels[idx]
+    else:
+        pixmap = getattr(self, 'tumor_detected_pixmaps', [None] * NUM_TUMOR_SLOTS)[idx]
+        label = self.tumor_detected_labels[idx]
+    if pixmap and not pixmap.isNull():
+        target_w = int(label.width() * zoom)
+        target_h = int(label.height() * zoom)
+        scaled_pixmap = pixmap.scaled(
+            target_w,
+            target_h,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        )
+        # Blinking logic for detection overlay
+        if which == 'det' and hasattr(self, 'tumor_blink_timer') and self.tumor_blink_timer[idx] is not None:
+            # If blink state is False, show image without overlay
+            if not self.tumor_blink_state[idx] and hasattr(self, 'tumor_detected_nooverlay_pixmaps') and self.tumor_detected_nooverlay_pixmaps[idx] is not None:
+                label.setPixmap(self.tumor_detected_nooverlay_pixmaps[idx])
+            else:
+                label.setPixmap(scaled_pixmap)
+        else:
+
+            label.setPixmap(scaled_pixmap)
+            label.setText("")
+            logger.debug(
+                f"Updated {which} display for slot {idx}: "
+                f"zoom={zoom:.2f}, size={target_w}x{target_h}"
+            )
+
+    else:
+        label.setText("")
+
+
+    # ...existing code...
 
 from typing import Optional, Tuple, List, Dict, Any
 import os
@@ -36,21 +147,32 @@ from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import Qt
 
 # ============================================================================
+
 # LOGGING CONFIGURATION
 # ============================================================================
+def _configure_logging():
+    logger = logging.getLogger(__name__)
+    if not logger.hasHandlers():
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('[%(asctime)s] %(levelname)s %(name)s: %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logger
 
-logger = logging.getLogger(__name__)
+logger = _configure_logging()
 
 
 # ============================================================================
 # CONSTANTS
 # ============================================================================
 
+
 # Image display settings
-DEFAULT_THUMBNAIL_SIZE = 200  # pixels
-MIN_ZOOM_FACTOR = 0.1
-MAX_ZOOM_FACTOR = 10.0
-ZOOM_STEP = 1.2  # 20% zoom in/out per step
+DEFAULT_THUMBNAIL_SIZE = int(os.environ.get("TUMOR_THUMBNAIL_SIZE", 200))
+MIN_ZOOM_FACTOR = float(os.environ.get("TUMOR_MIN_ZOOM", 0.1))
+MAX_ZOOM_FACTOR = float(os.environ.get("TUMOR_MAX_ZOOM", 10.0))
+ZOOM_STEP = float(os.environ.get("TUMOR_ZOOM_STEP", 1.2))
 
 # Supported image formats
 SUPPORTED_IMAGE_FORMATS = (
@@ -60,10 +182,8 @@ SUPPORTED_IMAGE_FORMATS = (
 IMAGE_FILTER = f"Images ({' '.join(SUPPORTED_IMAGE_FORMATS)})"
 
 # Detection settings
-DETECTION_IMG_SIZE = 640
-DETECTION_CONFIDENCE = 0.4
-# Use yolov5 PyPI package API
-YOLOV5_OUTPUT_PATTERN = "runs/detect/exp*"
+DETECTION_IMG_SIZE = int(os.environ.get("TUMOR_DETECT_IMG_SIZE", 640))
+DETECTION_CONFIDENCE = float(os.environ.get("TUMOR_DETECT_CONFIDENCE", 0.4))
 
 # Model paths for different views (ONNX)
 MODEL_PATHS = [
@@ -117,10 +237,11 @@ def handle_tumor_image_double_click(self, idx: int) -> None:
     
     # Open file dialog
     fname, _ = QFileDialog.getOpenFileName(
-        self,
+        None,
         f"Select {VIEW_NAMES[idx]} View Image",
         default_dir,
         IMAGE_FILTER,
+        options=QFileDialog.Option.DontUseNativeDialog
     )
     
     if not fname:
@@ -137,195 +258,30 @@ def handle_tumor_image_double_click(self, idx: int) -> None:
             f"Ensure the file is a valid image format and not corrupted."
         )
         return
-    
+
     logger.info(f"Loaded image: {fname} (shape: {img.shape})")
-    
-    # Create thumbnail for display
-    thumbnail_pixmap = _create_thumbnail(img, DEFAULT_THUMBNAIL_SIZE)
-    
-    # Store the full-resolution image and thumbnail
+
+    # Store the loaded image
+    if not hasattr(self, 'tumor_images'):
+        self.tumor_images = [None] * NUM_TUMOR_SLOTS
     self.tumor_images[idx] = img
-    
+
+    # Create thumbnail
+    thumb_pixmap = _create_thumbnail(img, DEFAULT_THUMBNAIL_SIZE)
     if not hasattr(self, 'tumor_orig_pixmaps'):
         self.tumor_orig_pixmaps = [None] * NUM_TUMOR_SLOTS
-    self.tumor_orig_pixmaps[idx] = thumbnail_pixmap
-    
-    # Update display
-    update_tumor_image_display(self, idx, which='orig')
-    self.tumor_orig_labels[idx].setText("")
-    
-    # Enable detection button now that image is loaded
-    self.tumor_detect_buttons[idx].setEnabled(True)
-    
-    logger.debug(f"Image loaded successfully in slot {idx}")
+    self.tumor_orig_pixmaps[idx] = thumb_pixmap
 
-
-# ============================================================================
-# IMAGE DISPLAY MANAGEMENT
-# ============================================================================
-
-def update_tumor_image_display(self, idx: int, which: str = 'orig') -> None:
-    """
-    Update the display of a tumor image with current zoom factor applied.
-    
-    Applies the current zoom level to the stored pixmap and updates the
-    corresponding label widget. Maintains aspect ratio during scaling.
-    
-    Args:
-        self: UI window instance
-        idx: Image slot index (0-2)
-        which: Which image to update:
-            - 'orig': Original uploaded image
-            - 'det': Detected/processed image
-    
-    Side Effects:
-        - Updates the pixmap displayed in the label widget
-        - Clears label text if pixmap exists
-    
-    Zoom Handling:
-        - Reads zoom factor from self.tumor_zoom_factors[idx][which]
-        - Scales pixmap dimensions by zoom factor
-        - Maintains aspect ratio
-        - Uses smooth transformation for quality
-    
-    Note:
-        Does nothing if zoom factors aren't initialized or pixmap is None
-    """
-    # Validate zoom factors exist
-    if not hasattr(self, 'tumor_zoom_factors'):
-        logger.warning("Zoom factors not initialized")
-        return
-    
-    # Get current zoom factor
-    zoom = self.tumor_zoom_factors[idx].get(which, 1.0)
-    
-    # Get appropriate pixmap and label based on which image
-    if which == 'orig':
-        pixmap = getattr(self, 'tumor_orig_pixmaps', [None] * NUM_TUMOR_SLOTS)[idx]
+    # Update label display and scale to fit
+    if hasattr(self, 'tumor_orig_labels'):
         label = self.tumor_orig_labels[idx]
-    else:  # 'det'
-        pixmap = getattr(self, 'tumor_detected_pixmaps', [None] * NUM_TUMOR_SLOTS)[idx]
-        label = self.tumor_detected_labels[idx]
-    
-    # Update display if pixmap exists
-    if pixmap and not pixmap.isNull():
-        # Calculate scaled dimensions
-        target_w = int(label.width() * zoom)
-        target_h = int(label.height() * zoom)
-        
-        # Scale pixmap
-        scaled_pixmap = pixmap.scaled(
-            target_w,
-            target_h,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation
-        )
-        
-        # Update label
-        label.setPixmap(scaled_pixmap)
-        label.setText("")
-        
-        logger.debug(
-            f"Updated {which} display for slot {idx}: "
-            f"zoom={zoom:.2f}, size={target_w}x{target_h}"
-        )
-    else:
-        # No pixmap available
+        update_tumor_image_display(self, idx, which='orig')
         label.setText("")
 
-
-# ============================================================================
-# ZOOM CONTROLS
-# ============================================================================
-
-def zoom_tumor_image(
-    self,
-    idx: int,
-    which: str,
-    direction: str,
-    pixmap: Optional[QPixmap] = None
-) -> None:
-    """
-    Zoom in, out, or reset on a tumor image.
-    
-    Provides zoom controls for detailed inspection of medical images.
-    Supports zoom in (1.2x), zoom out (0.83x), and reset (1.0x).
-    
-    Args:
-        self: UI window instance
-        idx: Image slot index (0-2)
-        which: Which image to zoom:
-            - 'orig': Original uploaded image
-            - 'det': Detected/processed image
-        direction: Zoom direction:
-            - 'in': Zoom in by ZOOM_STEP (1.2x)
-            - 'out': Zoom out by 1/ZOOM_STEP (0.83x)
-            - 'reset': Reset to original size (1.0x)
-        pixmap: Optional pixmap to restore on reset
-            - If provided during reset, replaces current pixmap
-            - Useful for refreshing the display
-    
-    Side Effects:
-        - Updates self.tumor_zoom_factors[idx][which]
-        - Triggers display refresh via update_tumor_image_display
-        - On reset with pixmap, directly updates label
-    
-    Constraints:
-        - Minimum zoom: MIN_ZOOM_FACTOR (0.1x)
-        - Maximum zoom: MAX_ZOOM_FACTOR (10.0x)
-        - Zoom factors are clamped to this range
-    
-    Example:
-        >>> zoom_tumor_image(self, 0, 'orig', 'in')  # Zoom in on axial original
-        >>> zoom_tumor_image(self, 1, 'det', 'out')  # Zoom out on coronal detection
-        >>> zoom_tumor_image(self, 2, 'orig', 'reset')  # Reset sagittal view
-    """
-    # Initialize zoom factors if needed
-    _initialize_zoom_factors(self)
-    
-    # Handle reset specially
-    if direction == 'reset':
-        self.tumor_zoom_factors[idx][which] = 1.0
-        
-        # Get appropriate label
-        label = (self.tumor_orig_labels[idx] if which == 'orig' 
-                else self.tumor_detected_labels[idx])
-        
-        if pixmap is not None:
-            # Restore provided pixmap
-            label.setPixmap(pixmap.scaled(
-                label.size(),
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
-            ))
-            label.setText("")
-            logger.debug(f"Reset {which} zoom for slot {idx} with new pixmap")
-        else:
-            # Just refresh display
-            update_tumor_image_display(self, idx, which)
-            logger.debug(f"Reset {which} zoom for slot {idx}")
-        return
-    
-    # Get current zoom factor
-    factor = self.tumor_zoom_factors[idx].get(which, 1.0)
-    
-    # Apply zoom change
-    if direction == 'in':
-        factor *= ZOOM_STEP
-    elif direction == 'out':
-        factor /= ZOOM_STEP
-    else:
-        logger.warning(f"Unknown zoom direction: {direction}")
-        return
-    
-    # Clamp to valid range
-    factor = max(MIN_ZOOM_FACTOR, min(factor, MAX_ZOOM_FACTOR))
-    
-    # Store and apply
-    self.tumor_zoom_factors[idx][which] = factor
-    update_tumor_image_display(self, idx, which)
-    
-    logger.debug(f"Zoomed {direction} on {which} slot {idx}: factor={factor:.2f}")
+    # Enable the Detect button for this slot if present
+    if hasattr(self, 'tumor_detect_buttons'):
+        btn = self.tumor_detect_buttons[idx]
+        btn.setEnabled(True)
 
 
 # ============================================================================
@@ -333,6 +289,65 @@ def zoom_tumor_image(
 # ============================================================================
 
 def run_tumor_detection(self, idx: int) -> None:
+    # Ensure variables are always defined
+    final_boxes = []
+    final_scores = []
+    final_classes = []
+    nms_indices = []
+    img_draw = None
+    img0 = None
+    # ...existing detection code should assign these variables as needed...
+
+    # --- Blinking effect setup ---
+    if final_boxes:
+        # Save overlay pixmap for blinking
+        overlay_img = img_draw.copy()
+        for i in nms_indices:
+            x1, y1, x2, y2 = map(int, final_boxes[i])
+            score = final_scores[i]
+            class_id = final_classes[i]
+            cv2.rectangle(overlay_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+            label = f"Tumor {score:.2f}"
+            cv2.putText(overlay_img, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        overlay_rgb = cv2.cvtColor(overlay_img, cv2.COLOR_BGR2RGB)
+        h, w, ch = overlay_rgb.shape
+        bytes_per_line = ch * w
+        qimg = QImage(overlay_rgb.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+        overlay_pixmap = QPixmap.fromImage(qimg)
+        if not hasattr(self, 'tumor_detected_overlay_pixmaps'):
+            self.tumor_detected_overlay_pixmaps = [None] * NUM_TUMOR_SLOTS
+        self.tumor_detected_overlay_pixmaps[idx] = overlay_pixmap
+        # Also save no-overlay pixmap (just the image, no boxes/labels)
+        img_nooverlay_rgb = cv2.cvtColor(img0, cv2.COLOR_BGR2RGB)
+        h2, w2, ch2 = img_nooverlay_rgb.shape
+        qimg2 = QImage(img_nooverlay_rgb.data, w2, h2, ch2 * w2, QImage.Format.Format_RGB888)
+        nooverlay_pixmap = QPixmap.fromImage(qimg2)
+        if not hasattr(self, 'tumor_detected_nooverlay_pixmaps'):
+            self.tumor_detected_nooverlay_pixmaps = [None] * NUM_TUMOR_SLOTS
+        self.tumor_detected_nooverlay_pixmaps[idx] = nooverlay_pixmap
+    # --- Start blinking timer ---
+    if not hasattr(self, 'tumor_blink_state'):
+        self.tumor_blink_state = [True] * NUM_TUMOR_SLOTS
+    if not hasattr(self, 'tumor_blink_timer'):
+        self.tumor_blink_timer = [None] * NUM_TUMOR_SLOTS
+    if not hasattr(self, 'tumor_blink_count'):
+        self.tumor_blink_count = [0] * NUM_TUMOR_SLOTS
+    def blink_timeout():
+        self.tumor_blink_state[idx] = not self.tumor_blink_state[idx]
+        self.tumor_blink_count[idx] += 1
+        update_tumor_image_display(self, idx, which='det')
+        if self.tumor_blink_count[idx] >= 6:  # ~2.4s at 400ms
+            self.tumor_blink_timer[idx].stop()
+            self.tumor_blink_state[idx] = True
+            update_tumor_image_display(self, idx, which='det')
+    if self.tumor_blink_timer[idx] is not None:
+        self.tumor_blink_timer[idx].stop()
+    self.tumor_blink_state[idx] = True
+    self.tumor_blink_count[idx] = 0
+    self.tumor_blink_timer[idx] = QTimer()
+    self.tumor_blink_timer[idx].timeout.connect(blink_timeout)
+    self.tumor_blink_timer[idx].start(400)
+    update_tumor_image_display(self, idx, which='det')
     """
     Run YOLOv5 tumor detection on the loaded image.
     
@@ -523,9 +538,9 @@ def run_tumor_detection(self, idx: int) -> None:
                 x1, y1, x2, y2 = map(int, final_boxes[i])
                 score = final_scores[i]
                 class_id = final_classes[i]
-                cv2.rectangle(img_draw, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.rectangle(img_draw, (x1, y1), (x2, y2), (0, 0, 255), 2)
                 label = f"Tumor {score:.2f}"
-                cv2.putText(img_draw, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                cv2.putText(img_draw, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
             # Detect if box is in YOLO format (center x, center y, width, height)
             # or corner format (x1, y1, x2, y2)
             # Heuristic: if x2 > x1 and y2 > y1, assume corner; else, convert
@@ -559,9 +574,9 @@ def run_tumor_detection(self, idx: int) -> None:
             x2 = int(max(min(x2, w0 - 1), 0))
             y2 = int(max(min(y2, h0 - 1), 0))
             logger.debug(f"Box after clipping: {(x1, y1, x2, y2)}")
-            cv2.rectangle(img_draw, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.rectangle(img_draw, (x1, y1), (x2, y2), (0, 0, 255), 2)
             label = f"Tumor {score:.2f}"
-            cv2.putText(img_draw, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            cv2.putText(img_draw, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
         # Save result image to temp file
         result_temp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
         cv2.imwrite(result_temp.name, img_draw)
@@ -593,12 +608,7 @@ def run_tumor_detection(self, idx: int) -> None:
         if 'det' not in self.tumor_zoom_factors[idx]:
             self.tumor_zoom_factors[idx]['det'] = 1.0
         update_tumor_image_display(self, idx, which='det')
-        self.tumor_detected_labels[idx].setText("")
-        self.tumor_results[idx] = cv2.imread(detected_img_path)
-        logger.info(f"Detection complete for slot {idx}")
-    else:
-        logger.error("Detection output image not found (ONNX)")
-        _show_detection_failure(self, idx)
+
 
 
 # ============================================================================
@@ -793,52 +803,10 @@ def _cleanup_temp_file(filepath: str) -> None:
 
 def _find_latest_detection_output() -> Optional[str]:
     """
-    Find the most recently created detection output image.
-    
-    Searches yolov5/runs/detect/exp* directories for the latest
-    image file based on modification time.
-    
-    Returns:
-        Path to latest detection output image, or None if not found
-    
-    Search Strategy:
-        - Looks in all exp* directories
-        - Checks all supported image formats
-        - Returns most recently modified file
+    (Legacy) Find the most recently created detection output image. Not used in ONNX-only workflow.
     """
-    try:
-        output_dirs = glob.glob(YOLOV5_OUTPUT_PATTERN)
-        
-        if not output_dirs:
-            logger.warning("No detection output directories found")
-            return None
-        
-        latest_img = None
-        latest_time = 0
-        
-        for directory in output_dirs:
-            for pattern in SUPPORTED_IMAGE_FORMATS:
-                files = glob.glob(os.path.join(directory, pattern))
-                
-                for filepath in files:
-                    try:
-                        mtime = os.path.getmtime(filepath)
-                        if mtime > latest_time:
-                            latest_time = mtime
-                            latest_img = filepath
-                    except OSError:
-                        continue
-        
-        if latest_img:
-            logger.debug(f"Found latest detection output: {latest_img}")
-        else:
-            logger.warning("No detection output images found")
-        
-        return latest_img
-        
-    except Exception as e:
-        logger.exception(f"Error finding detection output: {e}")
-        return None
+    logger.warning("_find_latest_detection_output is deprecated in ONNX-only workflow.")
+    return None
 
 
 def _show_detection_failure(self, idx: int) -> None:
