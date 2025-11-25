@@ -7,6 +7,7 @@
 ## The Convergence of Fractals and Deep Learning
 
 The **Tumor Detection** module represents the ultimate integration: where traditional fractal analysis meets cutting-edge artificial intelligence. By combining **YOLOv5 deep learning** for automated detection with **fractal dimension quantification** for characterization, this module provides a comprehensive diagnostic toolkit for brain tumor analysis.
+The **Tumor Detection** module represents the ultimate integration: where traditional fractal analysis meets cutting-edge artificial intelligence. By combining **deep learning models (trained with YOLOv5 and exported to ONNX)** for automated detection with **fractal dimension quantification** for characterization, this module provides a comprehensive diagnostic toolkit for brain tumor analysis. All inference in the Fractal Workspace is performed using **ONNX Runtime** and `.onnx` model files for maximum speed and portability.
 
 Fractals, with their intricate self-similar patterns and mathematical elegance, have revolutionized our understanding of complex structures in nature. In medical imaging, fractal geometry offers a powerful lens for analyzing, quantifying, and interpreting the subtle complexities of biological tissues—complexities that often elude traditional Euclidean approaches.
 
@@ -69,44 +70,14 @@ Instead of a single universal model, plane-specific architectures provide:
 
 ---
 
-## YOLOv5 Architecture: Real-Time Object Detection
+## Model Architecture and Export
 
-### What is YOLO?
+The tumor detection models were trained using the YOLOv5 architecture (CSPDarknet53 backbone, PANet neck, YOLO detection head) in PyTorch, then exported to the ONNX format for fast, dependency-free inference. All runtime detection in Fractal Workspace uses **ONNX Runtime** and `.onnx` model files. No PyTorch or YOLOv5 installation is required for end users.
 
-**YOLO** = "You Only Look Once" — a revolutionary computer vision architecture that:
-
-1. **Single-Pass Detection:** Processes entire image in one forward pass (vs. region proposals)
-2. **Speed:** 30-60 FPS on GPU, enabling real-time applications
-3. **Accuracy:** State-of-the-art mAP (mean Average Precision) on medical datasets
-4. **Versatility:** Detects multiple tumors per image with confidence scores
-
-### Model Architecture
-
-**Backbone:** CSPDarknet53 (Cross-Stage Partial Network)
-- 53 convolutional layers with residual connections
-- Feature extraction at multiple scales (P3, P4, P5 pyramid levels)
-- Batch normalization and Leaky ReLU activation
-
-**Neck:** PANet (Path Aggregation Network)
-- Bottom-up and top-down feature fusion
-- Preserves spatial information while capturing context
-- Critical for small tumor detection
-
-**Head:** YOLO Detection Head
-- Three prediction layers for different object sizes
-- Anchor boxes tailored to tumor size distributions
-- Outputs: bounding box coordinates, objectness score, class confidence
-
-**Loss Function:**
-
-$$
-\\mathcal{L} = \\lambda_{box} \\mathcal{L}_{box} + \\lambda_{obj} \\mathcal{L}_{obj} + \\lambda_{cls} \\mathcal{L}_{cls}
-$$
-
-where:
-- $\\mathcal{L}_{box}$: Bounding box regression loss (CIoU)
-- $\\mathcal{L}_{obj}$: Objectness (tumor presence) loss
-- $\\mathcal{L}_{cls}$: Classification loss (tumor types, if multi-class)
+**Key Points:**
+- **Single-Pass Detection:** Fast, accurate, and robust
+- **ONNX Export:** Models are exported to `.onnx` for cross-platform, hardware-agnostic inference
+- **No PyTorch/YOLOv5 at Runtime:** Only ONNX Runtime is required for detection
 
 ### Training Dataset
 
@@ -181,9 +152,9 @@ User selects appropriate model based on:
 ### Step 3: Detection Inference
 
 **Process:**
-1. Load selected pre-trained model (`.pt` file)
+1. Load selected pre-trained ONNX model (`.onnx` file)
 2. Resize input image to 640×640 (preserving aspect ratio)
-3. Forward pass through YOLOv5 network
+3. Forward pass through ONNX Runtime
 4. Non-maximum suppression (NMS) to remove duplicate detections
 5. Confidence threshold filtering (default: 0.25, adjustable)
 
@@ -572,10 +543,12 @@ Future: 3D box counting on full volumetric data
 
 ## Conclusion: A New Paradigm in Medical Diagnostics
 
+
+
 The **Fractal Workspace** demonstrates that the integration of:
 
 - **Mathematical Rigor** (fractal geometry, box counting algorithms)
-- **Computational Power** (YOLOv5 deep learning, GPU acceleration)
+- **Computational Power** (deep learning models trained with YOLOv5, exported to ONNX, and accelerated with ONNX Runtime)
 - **Clinical Insight** (radiological expertise, histopathological correlation)
 - **User-Friendly Design** (intuitive GUI, automated workflows)
 
@@ -583,7 +556,7 @@ The **Fractal Workspace** demonstrates that the integration of:
 
 ### Key Achievements
 
-✅ **Automated Detection:** YOLOv5 models achieve 84-89% mAP across three anatomical planes  
+✅ **Automated Detection:** ONNX models (trained with YOLOv5, exported to ONNX) achieve 84-89% mAP across three anatomical planes using ONNX Runtime for fast, hardware-agnostic inference  
 ✅ **Quantitative Biomarkers:** Fractal dimension provides objective, reproducible metrics  
 ✅ **Clinical Validation:** Correlation with tumor grade, survival, treatment response  
 ✅ **Research Enablement:** Complete pipeline from generation → detection → quantification → comparison  
