@@ -42,5 +42,24 @@ export const AudioChunks: CollectionConfig = {
       },
     },
   ],
+  hooks: {
+    afterChange: [
+      async ({ req, doc }) => {
+        // Emit NOTIFY so the transcription worker can react in pub/sub mode.
+        // Safe no-op if db/pg_notify isn't available.
+        try {
+          const db: any = req?.payload?.db as any
+          await db?.query?.(
+            `SELECT pg_notify('audio_chunks', json_build_object('id', $1, 'stream_id', $2)::text)`,
+            [doc.id, doc.stream],
+          )
+        } catch (err) {
+          req.payload.logger?.warn?.(
+            { err },
+            'audio_chunks notify failed (continuing without pub/sub)',
+          )
+        }
+      },
+    ],
+  },
 }
-

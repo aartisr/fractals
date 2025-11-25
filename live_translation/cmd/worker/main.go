@@ -1,19 +1,20 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 
 	"live_translation/internal/transcribe"
 	"live_translation/internal/types"
-	"live_translation/internal/window"
 )
 
 type audioChunkRow struct {
@@ -24,10 +25,7 @@ type audioChunkRow struct {
 	FilePath string
 }
 
-// streamState holds per-stream window manager and chunk history.
 type streamState struct {
-	mgr      *window.Manager
-	chunks   []types.Chunk
 	language string
 }
 
@@ -57,17 +55,6 @@ func main() {
 		defaultLanguage = "en"
 	}
 
-	// Sliding window config
-	winCfg := window.Config{
-		MaxWindowMs:      envInt("MAX_WINDOW_MS", 60000), // 60s window
-		StabilityWindows: envInt("STABILITY_WINDOWS", 2),
-		AnchorOverlapMs:  envInt("WINDOW_ANCHOR_OVERLAP_MS", 0),
-		AnchorStepMs:     envInt("WINDOW_ANCHOR_STEP_MS", 0),
-	}
-	makeManager := func() *window.Manager {
-		return window.NewManager(winCfg)
-	}
-
 	baseCfg := deepgramConfigFromEnv()
 	if baseCfg.Language == "" {
 		baseCfg.Language = defaultLanguage
@@ -79,86 +66,43 @@ func main() {
 	lastChunkByStream := make(map[int64]int64)
 	states := make(map[int64]*streamState)
 
-	pollInterval := time.Duration(envInt("POLL_INTERVAL_MS", 2000)) * time.Millisecond
+	// Initial catch-up in case the worker restarts after chunks already exist.
+	if err := processNewChunks(db, baseCfg, defaultLanguage, states, lastChunkByStream, &lastID); err != nil {
+		log.Printf("initial catch-up error: %v", err)
+	}
+
+	listener := pq.NewListener(dbURI, 2*time.Second, 30*time.Second, func(ev pq.ListenerEventType, err error) {
+		if err != nil {
+			log.Printf("pq listener event %v: %v", ev, err)
+		}
+	})
+	if err := listener.Listen("audio_chunks"); err != nil {
+		log.Fatalf("listen audio_chunks failed: %v", err)
+	}
+
+	finalizeTicker := time.NewTicker(30 * time.Second)
+	defer finalizeTicker.Stop()
 
 	for {
-		enabled, err := loadEnabledStreams(db)
-		if err != nil {
-			log.Printf("error loading enabled streams: %v", err)
-			enabled = nil
-		}
-
-		newRows, err := fetchNewAudioChunks(db, lastID)
-		if err != nil {
-			log.Printf("error fetching audio_chunks: %v", err)
-			time.Sleep(pollInterval)
-			continue
-		}
-		if len(newRows) == 0 {
-			time.Sleep(pollInterval)
-			continue
-		}
-
-		for _, row := range newRows {
-			if enabled != nil {
-				if _, ok := enabled[row.StreamID]; !ok {
-					if row.ID > lastID {
-						lastID = row.ID
-					}
-					continue
-				}
+		select {
+		case n := <-listener.Notify:
+			if n == nil {
+				continue
 			}
-			// Track per-stream last processed chunk ID.
-			lastChunkByStream[row.StreamID] = row.ID
-			st, ok := states[row.StreamID]
-			if !ok {
-				st = &streamState{
-					mgr:    makeManager(),
-					chunks: make([]types.Chunk, 0, 128),
-				}
-				st.language = loadStreamLanguage(db, row.StreamID, defaultLanguage)
-				states[row.StreamID] = st
+			if err := handleNotification(context.Background(), db, baseCfg, defaultLanguage, states, lastChunkByStream, &lastID, n); err != nil {
+				log.Printf("handle notification error: %v", err)
 			}
-
-			ch := types.Chunk{
-				ID:        strconv.FormatInt(row.ID, 10),
-				SessionID: "stream-" + strconv.FormatInt(row.StreamID, 10),
-				StartMs:   row.StartMs,
-				EndMs:     row.EndMs,
-				URI:       row.FilePath,
-				CreatedAt: time.Now().UTC(),
+		case <-finalizeTicker.C:
+			if err := finalizeEndedStreams(db, states, lastChunkByStream); err != nil {
+				log.Printf("finalizeEndedStreams error: %v", err)
 			}
-			st.chunks = append(st.chunks, ch)
-
-			job := st.mgr.AddChunk(ch)
-			log.Printf("window job stream=%d [%d-%d]ms chunks=%d",
-				row.StreamID, job.WindowStartMs, job.WindowEndMs, len(job.ChunkIDs))
-
-			if baseCfg.Enabled && baseCfg.APIKey != "" {
-				cfg := baseCfg
-				cfg.Language = st.language
-				dgResp, err := transcribe.TranscribeWindow(job, st.chunks, cfg)
-				if err != nil {
-					log.Printf("deepgram error stream=%d window [%d-%d]: %v", row.StreamID, job.WindowStartMs, job.WindowEndMs, err)
-				} else {
-					txt := strings.TrimSpace(dgResp.TopTranscript())
-					if txt != "" {
-						if err := mergeWindow(db, row.StreamID, st.language, job.WindowStartMs, job.WindowEndMs, txt); err != nil {
-							log.Printf("merge window error stream=%d [%d-%d]: %v", row.StreamID, job.WindowStartMs, job.WindowEndMs, err)
-						}
-					}
-				}
+		case <-time.After(90 * time.Second):
+			// Periodic reconnect check and keep-alive.
+			go listener.Ping()
+			// Also run a gap catch-up to be safe.
+			if err := processNewChunks(db, baseCfg, defaultLanguage, states, lastChunkByStream, &lastID); err != nil {
+				log.Printf("catch-up error: %v", err)
 			}
-
-			if row.ID > lastID {
-				lastID = row.ID
-			}
-		}
-
-		// After processing new chunks, see if any ended streams are fully drained
-		// and can be finalized (mark transcripts.is_final and disable transcription).
-		if err := finalizeEndedStreams(db, states, lastChunkByStream); err != nil {
-			log.Printf("finalizeEndedStreams error: %v", err)
 		}
 	}
 }
@@ -186,16 +130,14 @@ func fetchNewAudioChunks(db *sql.DB, lastID int64) ([]audioChunkRow, error) {
 	return out, rows.Err()
 }
 
-func envInt(key string, def int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return def
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return def
-	}
-	return n
+func fetchAudioChunkByID(db *sql.DB, id int64) (audioChunkRow, error) {
+	var r audioChunkRow
+	err := db.QueryRow(`
+		SELECT id, stream_id, start_ms, end_ms, file_path
+		FROM audio_chunks
+		WHERE id = $1
+	`, id).Scan(&r.ID, &r.StreamID, &r.StartMs, &r.EndMs, &r.FilePath)
+	return r, err
 }
 
 func deepgramConfigFromEnv() transcribe.DeepgramConfig {
@@ -203,26 +145,130 @@ func deepgramConfigFromEnv() transcribe.DeepgramConfig {
 	lang := os.Getenv("DG_LANGUAGE")
 	model := os.Getenv("DG_MODEL")
 	smart := os.Getenv("DG_SMART_FORMAT")
-	keep := os.Getenv("DG_KEEP_WINDOWS")
-	winDir := os.Getenv("DG_WINDOWS_DIR")
-	minStepMs := envInt("DG_MIN_WINDOW_STEP_MS", 10000)
 
 	return transcribe.DeepgramConfig{
-		APIKey:          apiKey,
-		Language:        lang,
-		Model:           model,
-		SmartFormat:     smart == "" || strings.ToLower(smart) == "true",
-		KeepWindows:     strings.ToLower(keep) == "true",
-		WindowsDir:      winDir,
-		Enabled:         apiKey != "",
-		MaxBodyBytes:    0,
-		MinWindowStepMs: int64(minStepMs),
+		APIKey:       apiKey,
+		Language:     lang,
+		Model:        model,
+		SmartFormat:  smart == "" || strings.ToLower(smart) == "true",
+		Enabled:      apiKey != "",
+		MaxBodyBytes: 0,
 	}
 }
 
-// mergeWindow applies the sliding-window replacement logic to transcripts/transcript_segments.
-// It treats the Deepgram transcript for [windowStartMs, windowEndMs] as authoritative for that range.
-func mergeWindow(db *sql.DB, streamID int64, language string, windowStartMs, windowEndMs int64, text string) error {
+// processNewChunks scans for unseen audio_chunks (id > lastID) and processes them.
+func processNewChunks(db *sql.DB, baseCfg transcribe.DeepgramConfig, defaultLanguage string, states map[int64]*streamState, lastChunkByStream map[int64]int64, lastID *int64) error {
+	rows, err := fetchNewAudioChunks(db, *lastID)
+	if err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+
+	enabled, err := loadEnabledStreams(db)
+	if err != nil {
+		log.Printf("error loading enabled streams: %v", err)
+		enabled = nil
+	}
+
+	for _, row := range rows {
+		if enabled != nil {
+			if _, ok := enabled[row.StreamID]; !ok {
+				if row.ID > *lastID {
+					*lastID = row.ID
+				}
+				continue
+			}
+		}
+		if err := processChunkRow(db, baseCfg, defaultLanguage, states, lastChunkByStream, row); err != nil {
+			log.Printf("process chunk %d error: %v", row.ID, err)
+		}
+		if row.ID > *lastID {
+			*lastID = row.ID
+		}
+	}
+	return nil
+}
+
+func processChunkRow(db *sql.DB, baseCfg transcribe.DeepgramConfig, defaultLanguage string, states map[int64]*streamState, lastChunkByStream map[int64]int64, row audioChunkRow) error {
+	lastChunkByStream[row.StreamID] = row.ID
+
+	st, ok := states[row.StreamID]
+	if !ok {
+		st = &streamState{}
+		st.language = loadStreamLanguage(db, row.StreamID, defaultLanguage)
+		states[row.StreamID] = st
+	}
+
+	ch := types.Chunk{
+		ID:        strconv.FormatInt(row.ID, 10),
+		SessionID: "stream-" + strconv.FormatInt(row.StreamID, 10),
+		StartMs:   row.StartMs,
+		EndMs:     row.EndMs,
+		URI:       row.FilePath,
+		CreatedAt: time.Now().UTC(),
+	}
+	if baseCfg.Enabled && baseCfg.APIKey != "" {
+		cfg := baseCfg
+		cfg.Language = st.language
+
+		dgResp, err := transcribe.TranscribeChunk(ch, cfg)
+		if err != nil {
+			log.Printf("deepgram error stream=%d chunk [%d-%d]: %v", row.StreamID, ch.StartMs, ch.EndMs, err)
+		} else {
+			txt := strings.TrimSpace(dgResp.TopTranscript())
+			if txt != "" {
+				if err := mergeChunk(db, row.StreamID, st.language, ch.StartMs, ch.EndMs, txt); err != nil {
+					log.Printf("merge chunk error stream=%d [%d-%d]: %v", row.StreamID, ch.StartMs, ch.EndMs, err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func handleNotification(ctx context.Context, db *sql.DB, baseCfg transcribe.DeepgramConfig, defaultLanguage string, states map[int64]*streamState, lastChunkByStream map[int64]int64, lastID *int64, n *pq.Notification) error {
+	var payload struct {
+		ID       int64 `json:"id"`
+		StreamID int64 `json:"stream_id"`
+	}
+	if err := json.Unmarshal([]byte(n.Extra), &payload); err != nil {
+		return err
+	}
+	if payload.ID == 0 {
+		return errors.New("notification missing id")
+	}
+
+	row, err := fetchAudioChunkByID(db, payload.ID)
+	if err != nil {
+		return err
+	}
+
+	// Optional guard for out-of-order notifications.
+	if payload.ID <= *lastID {
+		return nil
+	}
+
+	// Skip if transcription is disabled for this stream.
+	enabled, err := isTranscriptionEnabled(ctx, db, row.StreamID)
+	if err != nil {
+		log.Printf("enable check error stream=%d: %v", row.StreamID, err)
+	}
+	if enabled {
+		if err := processChunkRow(db, baseCfg, defaultLanguage, states, lastChunkByStream, row); err != nil {
+			return err
+		}
+	}
+
+	if row.ID > *lastID {
+		*lastID = row.ID
+	}
+	return nil
+}
+
+// mergeChunk writes or replaces the transcript text for a single audio chunk range.
+func mergeChunk(db *sql.DB, streamID int64, language string, startMs, endMs int64, text string) error {
 	// Get or create transcript row.
 	trID, _, err := getOrCreateTranscript(db, streamID, language)
 	if err != nil {
@@ -239,31 +285,31 @@ func mergeWindow(db *sql.DB, streamID int64, language string, windowStartMs, win
 		return err
 	}
 
-	// Delete overlapping segments in [windowStartMs, windowEndMs].
+	// Delete overlapping segments in [startMs, endMs].
 	// Only delete segments whose *start* falls inside this window.
 	// This preserves earlier-prefix text (e.g. [0-10000]) when a later
-	// window only refines a suffix (e.g. [10000-20000]).
+	// chunk only refines a suffix (e.g. [10000-20000]).
 	if _, err := db.Exec(
 		`DELETE FROM transcript_segments
          WHERE transcript_id = $1
            AND start_ms >= $2
            AND start_ms < $3`,
-		trID, windowStartMs, windowEndMs,
+		trID, startMs, endMs,
 	); err != nil {
 		return err
 	}
 
-	// Insert new segment for this window as a single block for now.
+	// Insert new segment for this chunk as a single block for now.
 	if _, err := db.Exec(
 		`INSERT INTO transcript_segments (transcript_id, start_ms, end_ms, text, rev, is_stable, updated_at, created_at)
          VALUES ($1, $2, $3, $4, 1, false, now(), now())`,
-		trID, windowStartMs, windowEndMs, text,
+		trID, startMs, endMs, text,
 	); err != nil {
 		return err
 	}
 
-	log.Printf("mergeWindow: stream=%d lang=%s version=%d [%d-%d] textLen=%d",
-		streamID, language, newVersion, windowStartMs, windowEndMs, len(text))
+	log.Printf("mergeChunk: stream=%d lang=%s version=%d [%d-%d] textLen=%d",
+		streamID, language, newVersion, startMs, endMs, len(text))
 	return nil
 }
 
@@ -394,6 +440,18 @@ func loadStreamLanguage(db *sql.DB, streamID int64, def string) string {
 		}
 	}
 	return def
+}
+
+func isTranscriptionEnabled(ctx context.Context, db *sql.DB, streamID int64) (bool, error) {
+	var enabled sql.NullBool
+	err := db.QueryRowContext(ctx, `SELECT transcription_enabled FROM live_streams WHERE id = $1`, streamID).Scan(&enabled)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return enabled.Valid && enabled.Bool, nil
 }
 
 // loadDotEnv loads KEY=VALUE pairs from a simple .env file

@@ -170,15 +170,15 @@ func NewWavWriter(path string, sampleRate, channels, bitsPerSample int) (*wavWri
 	// ChunkSize placeholder at [4:8]
 	copy(header[8:], "WAVE")
 	copy(header[12:], "fmt ")
-	binary.LittleEndian.PutUint32(header[16:], 16)                     // Subchunk1Size
-	binary.LittleEndian.PutUint16(header[20:], 1)                      // AudioFormat PCM
-	binary.LittleEndian.PutUint16(header[22:], uint16(channels))       // NumChannels
-	binary.LittleEndian.PutUint32(header[24:], uint32(sampleRate))     // SampleRate
+	binary.LittleEndian.PutUint32(header[16:], 16)                 // Subchunk1Size
+	binary.LittleEndian.PutUint16(header[20:], 1)                  // AudioFormat PCM
+	binary.LittleEndian.PutUint16(header[22:], uint16(channels))   // NumChannels
+	binary.LittleEndian.PutUint32(header[24:], uint32(sampleRate)) // SampleRate
 	byteRate := sampleRate * channels * bitsPerSample / 8
-	binary.LittleEndian.PutUint32(header[28:], uint32(byteRate))       // ByteRate
+	binary.LittleEndian.PutUint32(header[28:], uint32(byteRate)) // ByteRate
 	blockAlign := channels * bitsPerSample / 8
-	binary.LittleEndian.PutUint16(header[32:], uint16(blockAlign))     // BlockAlign
-	binary.LittleEndian.PutUint16(header[34:], uint16(bitsPerSample))  // BitsPerSample
+	binary.LittleEndian.PutUint16(header[32:], uint16(blockAlign))    // BlockAlign
+	binary.LittleEndian.PutUint16(header[34:], uint16(bitsPerSample)) // BitsPerSample
 	copy(header[36:], "data")
 	// Subchunk2Size placeholder at [40:44]
 
@@ -236,4 +236,3 @@ func (w *wavWriter) Close() error {
 
 	return nil
 }
-

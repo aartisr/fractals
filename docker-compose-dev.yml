@@ -233,6 +233,25 @@ services:
     networks:
       - nithyananda-tv-network
 
+  live-translation-translator:
+    build:
+      context: ./live_translation/translator
+      dockerfile: Dockerfile
+    container_name: ntv-live-translation-translator
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cms-migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql://${DB_USER:-ntv}:${DB_PASSWORD}@postgres:5432/${DATABASE:-nithyananda-tv}?sslmode=disable
+      TRANSLATION_MODEL: ${TRANSLATION_MODEL:-gpt-4o}
+    restart: unless-stopped
+    networks:
+      - nithyananda-tv-network
+
 volumes:
   pgdata:
   redis_data:

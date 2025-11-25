@@ -39,7 +39,7 @@ export const useHomeData = routeLoader$(async () => {
     });
 
     const categoriesWithVideos = await Promise.all(
-      categoriesRes.docs.map(async (category: any) => {
+      (categoriesRes?.docs ?? []).map(async (category: any) => {
         const videosRes = await payload.find({
           collection: 'videos',
           where: {
@@ -51,22 +51,22 @@ export const useHomeData = routeLoader$(async () => {
         });
 
         // Get first video for thumbnail
-        const firstVideo = videosRes.docs[0] as any;
+        const firstVideo = (videosRes?.docs ?? [])[0] as any;
 
         return {
           id: category.id,
           name: category.name,
           description: category.description,
-          count: videosRes.totalDocs,
+          count: videosRes?.totalDocs ?? 0,
           image: firstVideo?.thumbnail || 'https://images.unsplash.com/photo-1602192509154-0b900ee1f851?w=400&q=80',
         };
       })
     );
 
     return {
-      totalVideos: videosRes.totalDocs || 0,
-      liveStreams: liveStreamsRes.docs,
-      categories: categoriesWithVideos,
+      totalVideos: videosRes?.totalDocs || 0,
+      liveStreams: liveStreamsRes?.docs || [],
+      categories: categoriesWithVideos || [],
     };
   } catch (error) {
     console.error('Error fetching home data:', error);
@@ -225,40 +225,31 @@ export default component$(() => {
                     height={338}
                   />
                   <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                  {stream.status === 'live' ? (
-                    <div class="absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-500 text-white text-xs font-medium rounded-lg flex items-center gap-2 shadow-lg">
-                      <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                      LIVE NOW
-                    </div>
-                  ) : stream.status === 'idle' ? (
-                    <div class="absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs font-medium rounded-lg shadow-lg">
-                      UPCOMING
-                    </div>
-                  ) : (
-                    <div class="absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r from-gray-700 to-gray-600 text-white text-xs font-medium rounded-lg shadow-lg">
-                      ENDED
-                    </div>
-                  )}
-                  <div class="absolute bottom-4 left-4 right-4">
-                    <div class="flex items-center gap-2 text-white">
-                      <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/50">
-                        <span class="text-sm font-medium">ॐ</span>
-                      </div>
-                      <div class="flex-1">
-                        <div class="text-xs text-white/80 font-medium">SPH Nithyananda</div>
-                        <div class="text-sm font-medium">{stream.title}</div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
                 <div class="p-6">
-                  <div class="flex items-center justify-between text-sm text-gray-600">
+                  <div class="flex items-center justify-between mb-3">
+                    {stream.status === 'live' ? (
+                      <div class="px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-500 text-white text-xs font-medium rounded-lg flex items-center gap-2">
+                        <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                        LIVE NOW
+                      </div>
+                    ) : stream.status === 'idle' ? (
+                      <div class="px-3 py-1.5 bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs font-medium rounded-lg">
+                        UPCOMING
+                      </div>
+                    ) : (
+                      <div class="px-3 py-1.5 bg-gradient-to-r from-gray-700 to-gray-600 text-white text-xs font-medium rounded-lg">
+                        ENDED
+                      </div>
+                    )}
+                    <span class="text-orange-600 hover:text-orange-700 font-medium text-sm">
+                      {stream.status === 'live' ? 'Watch Now' : stream.status === 'idle' ? 'Details' : 'Watch Replay'}
+                    </span>
+                  </div>
+                  <div class="flex items-center text-sm text-gray-600">
                     <span class="flex items-center gap-1.5">
                       <LuClock class="w-4 h-4" />
-                      {stream.description || (stream.status === 'live' ? 'Live streaming now' : stream.status === 'idle' ? 'Coming soon' : 'Replay available')}
-                    </span>
-                    <span class="text-orange-600 hover:text-orange-700 font-medium">
-                      {stream.status === 'live' ? 'Watch Now' : stream.status === 'idle' ? 'Details' : 'Watch Replay'}
+                      {stream.title}
                     </span>
                   </div>
                 </div>

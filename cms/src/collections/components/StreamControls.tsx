@@ -9,8 +9,6 @@ export const StreamControlsComponent: React.FC = () => {
   const status = useFormFields(([fields]) => fields?.status?.value as string)
   const streamKey = useFormFields(([fields]) => fields?.streamKey?.value as string)
   const masterPlaylistUrl = useFormFields(([fields]) => fields?.masterPlaylistUrl?.value as string)
-  const transcriptionEnabled = useFormFields(([fields]) => fields?.transcriptionEnabled?.value as boolean)
-
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -72,44 +70,6 @@ export const StreamControlsComponent: React.FC = () => {
     }
   }
 
-  const handleStopStream = async () => {
-    if (!id) {
-      setMessage({ type: 'error', text: 'Stream ID not found' })
-      return
-    }
-
-    if (!confirm('Are you sure you want to stop this stream? This will stop the transcoder.')) {
-      return
-    }
-
-    setLoading(true)
-    setMessage(null)
-
-    try {
-      const response = await fetch(`/api/live-streams/${id}/stop`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to stop stream')
-      }
-
-      setMessage({ type: 'success', text: 'Stream stopped successfully! Refreshing...' })
-      setTimeout(() => window.location.reload(), 1500)
-      setTimeout(() => window.location.reload(), 1500)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to stop stream'
-      setMessage({ type: 'error', text: errorMessage })
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleEndStream = async () => {
     if (!id) {
       setMessage({ type: 'error', text: 'Stream ID not found' })
@@ -142,43 +102,6 @@ export const StreamControlsComponent: React.FC = () => {
       setTimeout(() => window.location.reload(), 1500)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to end stream'
-      setMessage({ type: 'error', text: errorMessage })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const callTranscriptionEndpoint = async (action: 'start' | 'stop') => {
-    if (!id) {
-      setMessage({ type: 'error', text: 'Stream ID not found' })
-      return
-    }
-
-    setLoading(true)
-    setMessage(null)
-
-    try {
-      const response = await fetch(`/api/live-streams/${id}/transcription/${action}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || `Failed to ${action} transcription`)
-      }
-
-      setMessage({
-        type: 'success',
-        text: action === 'start' ? 'Transcription started! Refreshing...' : 'Transcription stopped! Refreshing...',
-      })
-
-      setTimeout(() => window.location.reload(), 1500)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Failed to ${action} transcription`
       setMessage({ type: 'error', text: errorMessage })
     } finally {
       setLoading(false)

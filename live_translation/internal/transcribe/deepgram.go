@@ -1,18 +1,15 @@
 package transcribe
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"live_translation/internal/chunker"
 	"live_translation/internal/types"
 )
 
@@ -21,107 +18,37 @@ type DeepgramConfig struct {
 	Language     string
 	Model        string
 	SmartFormat  bool
-	KeepWindows  bool   // keep window wav files on disk if true
-	WindowsDir   string // directory for window wavs
-	Enabled      bool   // if false, noop
-	MaxBodyBytes int64  // safety limit, 0 = unlimited
-
-	// MinWindowStepMs optionally rate-limits how often a new window
-	// should be sent (enforced by caller).
-	MinWindowStepMs int64
+	Enabled      bool  // if false, noop
+	MaxBodyBytes int64 // safety limit, 0 = unlimited
 }
 
-// TranscribeWindow builds a WAV for the given window, sends it to Deepgram,
-// and returns the parsed response. It still writes a temp window WAV on disk.
-func TranscribeWindow(job types.WindowJob, allChunks []types.Chunk, cfg DeepgramConfig) (deepgramResponse, error) {
+// TranscribeChunk sends a single chunk to Deepgram.
+func TranscribeChunk(ch types.Chunk, cfg DeepgramConfig) (deepgramResponse, error) {
 	var empty deepgramResponse
 	if !cfg.Enabled || cfg.APIKey == "" {
 		return empty, nil
 	}
-
-	// Collect chunk paths for this window in time order.
-	idSet := make(map[string]struct{}, len(job.ChunkIDs))
-	for _, id := range job.ChunkIDs {
-		idSet[id] = struct{}{}
-	}
-	var paths []string
-	for _, ch := range allChunks {
-		if _, ok := idSet[ch.ID]; !ok {
-			continue
-		}
-		if ch.URI == "" {
-			continue
-		}
-		paths = append(paths, ch.URI)
-	}
-	if len(paths) == 0 {
+	if ch.URI == "" {
 		return empty, nil
 	}
 
-	winDir := cfg.WindowsDir
-	if winDir == "" {
-		winDir = "chunks/windows"
-	}
-	if err := os.MkdirAll(winDir, 0o755); err != nil {
-		log.Printf("deepgram: mkdir windows dir error: %v", err)
-		return empty, err
-	}
-
-	windowPath := filepath.Join(winDir, fmt.Sprintf("window_%s_%d.wav", safeName(job.SessionID), job.WindowEndMs))
-
-	if err := buildWindowWav(windowPath, paths); err != nil {
-		log.Printf("deepgram: build window wav error: %v", err)
-		return empty, err
-	}
-	if !cfg.KeepWindows {
-		defer os.Remove(windowPath)
-	}
-
-	resp, err := sendToDeepgram(windowPath, job, cfg)
+	f, err := openChunkSource(ch.URI)
 	if err != nil {
-		log.Printf("deepgram: request error: %v", err)
+		return empty, err
+	}
+	defer f.Close()
+
+	var body io.Reader = f
+	if cfg.MaxBodyBytes > 0 {
+		body = io.LimitReader(f, cfg.MaxBodyBytes)
+	}
+
+	resp, err := sendToDeepgram(body, ch.StartMs, ch.EndMs, cfg)
+	if err != nil {
+		log.Printf("deepgram chunk: request error: %v", err)
 		return empty, err
 	}
 	return resp, nil
-}
-
-func buildWindowWav(outPath string, chunkPaths []string) error {
-	w, err := chunker.NewWavWriterInternal(outPath, 16000, 1, 16)
-	if err != nil {
-		return err
-	}
-	defer w.Close()
-
-	buf := make([]byte, 4096)
-	for _, p := range chunkPaths {
-		f, err := openChunkSource(p)
-		if err != nil {
-			return err
-		}
-		// Skip WAV header (44 bytes).
-		if _, err := f.Seek(44, io.SeekStart); err != nil {
-			_ = f.Close()
-			return err
-		}
-		for {
-			n, err := f.Read(buf)
-			if n > 0 {
-				if _, werr := w.Write(buf[:n]); werr != nil {
-					_ = f.Close()
-					return werr
-				}
-			}
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				_ = f.Close()
-				return err
-			}
-		}
-		_ = f.Close()
-	}
-	return nil
 }
 
 // openChunkSource opens a chunk path either from local disk or via HTTP based on configuration.
@@ -187,18 +114,8 @@ func openChunkSource(p string) (*os.File, error) {
 	return os.Open(p)
 }
 
-func sendToDeepgram(path string, job types.WindowJob, cfg DeepgramConfig) (deepgramResponse, error) {
+func sendToDeepgram(body io.Reader, startMs, endMs int64, cfg DeepgramConfig) (deepgramResponse, error) {
 	var dgResp deepgramResponse
-	f, err := os.Open(path)
-	if err != nil {
-		return dgResp, err
-	}
-	defer f.Close()
-
-	var body io.Reader = f
-	if cfg.MaxBodyBytes > 0 {
-		body = io.LimitReader(f, cfg.MaxBodyBytes)
-	}
 
 	language := cfg.Language
 	if language == "" {
@@ -214,8 +131,7 @@ func sendToDeepgram(path string, job types.WindowJob, cfg DeepgramConfig) (deepg
 		smart = "true"
 	}
 
-	url := fmt.Sprintf("https://api.deepgram.com/v1/listen?smart_format=%s&language=%s&model=%s",
-		smart, language, model)
+	url := "https://api.deepgram.com/v1/listen?smart_format=" + smart + "&language=" + language + "&model=" + model
 
 	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
@@ -246,8 +162,8 @@ func sendToDeepgram(path string, job types.WindowJob, cfg DeepgramConfig) (deepg
 	}
 
 	transcript := dgResp.TopTranscript()
-	// Log full transcript for this window so you can see complete text.
-	log.Printf("deepgram window [%d-%d]ms: %s", job.WindowStartMs, job.WindowEndMs, transcript)
+	// Log full transcript for this chunk so you can see complete text.
+	log.Printf("deepgram transcript [%d-%d]ms: %s", startMs, endMs, transcript)
 	return dgResp, nil
 }
 
@@ -276,25 +192,5 @@ func truncate(s string, max int) string {
 	if len(s) <= max {
 		return s
 	}
-	return s[:max] + "…"
-}
-
-func safeName(s string) string {
-	var buf bytes.Buffer
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if (c >= 'a' && c <= 'z') ||
-			(c >= 'A' && c <= 'Z') ||
-			(c >= '0' && c <= '9') ||
-			c == '-' || c == '_' {
-			buf.WriteByte(c)
-		} else {
-			buf.WriteByte('_')
-		}
-	}
-	out := buf.String()
-	if out == "" {
-		return "session"
-	}
-	return out
+	return s[:max] + "..."
 }

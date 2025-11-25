@@ -193,7 +193,7 @@ export interface Video {
   description?: string | null;
   duration?: string | null;
   date?: string | null;
-  category: number | Category;
+  category: (number | Category)[];
   /**
    * Optional. Defaults to common resolutions.
    */

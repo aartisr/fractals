@@ -105,8 +105,8 @@ func (t *Transcoder) Start() error {
 		Channels:      1,
 		FrameMs:       20,
 		SilenceThresh: 800,
-		MinSilenceMs:  700,
-		MinChunkMs:    1500,
+		MinSilenceMs:  1000,
+		MinChunkMs:    10000,
 		OutputDir:     chunkDir,
 	}
 

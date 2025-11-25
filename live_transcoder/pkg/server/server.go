@@ -16,14 +16,14 @@ import (
 )
 
 type Server struct {
-	cfg       *config.Config
-	r2Client  *storage.R2Client
-	db        *sql.DB
-	sessions  map[string]*Session
-	mu        sync.RWMutex
-	ctx       context.Context
-	cancel    context.CancelFunc
-	rtmpCmd   *exec.Cmd
+	cfg      *config.Config
+	r2Client *storage.R2Client
+	db       *sql.DB
+	sessions map[string]*Session
+	mu       sync.RWMutex
+	ctx      context.Context
+	cancel   context.CancelFunc
+	rtmpCmd  *exec.Cmd
 }
 
 type Session struct {
@@ -138,10 +138,10 @@ func (s *Server) StopStream(streamKey string) error {
 
 // IsStreamRunning returns true if a session for the given streamKey exists
 func (s *Server) IsStreamRunning(streamKey string) bool {
-    s.mu.RLock()
-    defer s.mu.RUnlock()
-    _, exists := s.sessions[streamKey]
-    return exists
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	_, exists := s.sessions[streamKey]
+	return exists
 }
 
 func (s *Server) Stop() {

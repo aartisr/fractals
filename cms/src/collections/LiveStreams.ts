@@ -264,6 +264,15 @@ export const LiveStreams: CollectionConfig = {
       },
     },
     {
+      name: 'translationLanguages',
+      label: 'Translation Languages',
+      type: 'text',
+      hasMany: true,
+      admin: {
+        description: 'Target languages for live translation (e.g. ta, hi, fr). Leave empty to disable translation.',
+      },
+    },
+    {
       name: 'rtmpUrl',
       label: 'RTMP Source URL',
       type: 'text',

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 type Server struct {
@@ -19,11 +19,11 @@ type Server struct {
 }
 
 type TranscriptResponse struct {
-	StreamID     int64              `json:"streamId"`
-	TranscriptID int64              `json:"transcriptId"`
-	Language     string             `json:"language"`
-	Version      int64              `json:"version"`
-	IsFinal      bool               `json:"isFinal"`
+	StreamID     int64               `json:"streamId"`
+	TranscriptID int64               `json:"transcriptId"`
+	Language     string              `json:"language"`
+	Version      int64               `json:"version"`
+	IsFinal      bool                `json:"isFinal"`
 	Segments     []TranscriptSegment `json:"segments"`
 }
 
@@ -36,7 +36,7 @@ type TranscriptLanguageMeta struct {
 
 // TranscriptLanguagesResponse lists languages that have transcripts for a stream.
 type TranscriptLanguagesResponse struct {
-	StreamID  int64                   `json:"streamId"`
+	StreamID  int64                    `json:"streamId"`
 	Languages []TranscriptLanguageMeta `json:"languages"`
 }
 
@@ -243,8 +243,25 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request, streamID int6
 		flusher.Flush()
 	}
 
-	// Simple polling loop: check for new version every few seconds and send new snapshots.
-	ticker := time.NewTicker(3 * time.Second)
+	dsn := os.Getenv("DATABASE_URI")
+	if dsn == "" {
+		http.Error(w, "missing DATABASE_URI", http.StatusInternalServerError)
+		return
+	}
+
+	listener := pq.NewListener(dsn, 2*time.Second, 30*time.Second, func(et pq.ListenerEventType, err error) {
+		if err != nil {
+			log.Printf("pq listener event %v: %v", et, err)
+		}
+	})
+	defer listener.Close()
+	if err := listener.Listen("transcripts_update"); err != nil {
+		log.Printf("listen transcripts_update error: %v", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
 	lastVersion := version
@@ -253,7 +270,25 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request, streamID int6
 		select {
 		case <-r.Context().Done():
 			return
-		case <-ticker.C:
+		case n := <-listener.Notify:
+			if n == nil {
+				continue
+			}
+			var payload struct {
+				StreamID int64  `json:"stream_id"`
+				Language string `json:"language"`
+				Version  int64  `json:"version"`
+			}
+			if err := json.Unmarshal([]byte(n.Extra), &payload); err != nil {
+				log.Printf("sse notify parse error: %v", err)
+				continue
+			}
+			if payload.StreamID != streamID {
+				continue
+			}
+			if payload.Language != "" && payload.Language != language {
+				continue
+			}
 			trID2, lang2, version2, isFinal2, err := s.loadTranscriptMeta(streamID, language)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
@@ -261,18 +296,15 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request, streamID int6
 					flusher.Flush()
 					return
 				}
-				log.Printf("sse poll meta error: %v", err)
+				log.Printf("sse notify meta error: %v", err)
 				continue
 			}
 			if version2 == lastVersion {
-				// Still same version; just send a ping.
-				writeSSE(w, "ping", `{"ts":`+strconv.FormatInt(time.Now().Unix(), 10)+`}`)
-				flusher.Flush()
 				continue
 			}
 			segs2, err := s.loadTranscriptSegments(trID2)
 			if err != nil {
-				log.Printf("sse poll segments error: %v", err)
+				log.Printf("sse notify segments error: %v", err)
 				continue
 			}
 			resp := TranscriptResponse{
@@ -288,6 +320,9 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request, streamID int6
 				flusher.Flush()
 				lastVersion = version2
 			}
+		case <-ticker.C:
+			writeSSE(w, "ping", `{"ts":`+strconv.FormatInt(time.Now().Unix(), 10)+`}`)
+			flusher.Flush()
 		}
 	}
 }

@@ -1,8 +1,9 @@
 import { component$, useSignal, $ } from '@builder.io/qwik';
-import { DocumentHead, Link, routeLoader$ } from '@builder.io/qwik-city';
-import { LuSearch, LuPlay, LuClock, LuEye, LuChevronRight } from '@qwikest/icons/lucide';
+import { DocumentHead, Link, routeLoader$, useNavigate } from '@builder.io/qwik-city';
+import { LuSearch, LuClock, LuEye, LuChevronRight, LuExternalLink } from '@qwikest/icons/lucide';
 import { payload } from '~/utils/payload-sdk';
 import { VideoJSPlayer } from '~/components/ui/VideoJSPlayer';
+import { VideoCard } from '~/components/ui/VideoCard';
 
 interface Video {
   id: number;
@@ -27,38 +28,59 @@ interface Category {
 
 export const useCategories = routeLoader$(async ({ query }) => {
   const page = parseInt(query.get('page') || '1');
+  const searchQuery = query.get('search') || undefined;
   const limit = 5; // Categories per page
 
   try {
+    // Build where clause for category search
+    const categoryWhere: any = {};
+    if (searchQuery && searchQuery.trim()) {
+      categoryWhere.name = { contains: searchQuery };
+    }
+
     // Fetch categories with pagination
     const categoriesRes = await payload.find({
       collection: 'categories',
       limit,
       page,
+      where: Object.keys(categoryWhere).length > 0 ? categoryWhere : undefined,
       sort: 'name',
     });
 
     const categories: Category[] = [];
 
-    // For each category, fetch first 4 videos
+    // For each category, fetch first 4 videos (with optional search)
     for (const category of categoriesRes.docs) {
+      const videoWhere: any = {
+        category: {
+          contains: category.id,
+        },
+      };
+
+      // Add search filter for videos if search query exists
+      if (searchQuery && searchQuery.trim()) {
+        videoWhere.or = [
+          { title: { contains: searchQuery } },
+          { description: { contains: searchQuery } },
+        ];
+      }
+
       const videosRes = await payload.find({
         collection: 'videos',
-        where: {
-          category: {
-            contains: category.id,
-          },
-        },
+        where: videoWhere,
         limit: 4,
         depth: 2,
         sort: '-date',
       });
 
-      categories.push({
-        id: category.id,
-        name: category.name,
-        videos: videosRes.docs as unknown as Video[],
-      });
+      // Only include category if it has videos (when searching)
+      if (!searchQuery || videosRes.docs.length > 0) {
+        categories.push({
+          id: category.id,
+          name: category.name,
+          videos: videosRes.docs as unknown as Video[],
+        });
+      }
     }
 
     return {
@@ -72,6 +94,7 @@ export const useCategories = routeLoader$(async ({ query }) => {
         prevPage: categoriesRes.prevPage,
         totalDocs: categoriesRes.totalDocs,
       },
+      searchQuery: searchQuery || '',
     };
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -86,15 +109,17 @@ export const useCategories = routeLoader$(async ({ query }) => {
         prevPage: null,
         totalDocs: 0,
       },
+      searchQuery: searchQuery || '',
     };
   }
 });
 
 export default component$(() => {
   const categoriesData = useCategories();
-  const searchQuery = useSignal('');
+  const searchQuery = useSignal(categoriesData.value?.searchQuery || '');
   const selectedVideo = useSignal<Video | null>(null);
   const showModal = useSignal(false);
+  const nav = useNavigate();
 
   const categories: Category[] = categoriesData.value?.categories ?? [];
   const pagination = categoriesData.value?.pagination;
@@ -109,6 +134,15 @@ export default component$(() => {
     selectedVideo.value = null;
   });
 
+  const handleSearch = $((e: Event) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (searchQuery.value.trim()) {
+      params.set('search', searchQuery.value.trim());
+    }
+    nav(`/playlists?${params.toString()}`);
+  });
+
   const formatViews = (views?: number) => {
     if (views === undefined || views === null) return '--';
     if (views >= 1000) {
@@ -120,45 +154,16 @@ export default component$(() => {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      const now = new Date();
-      const diffTime = Math.abs(now.getTime() - date.getTime());
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-      // If less than 7 days, show relative time
-      if (diffDays === 0) return 'Today';
-      if (diffDays === 1) return 'Yesterday';
-      if (diffDays < 7) return `${diffDays} days ago`;
-      if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-      if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-      if (diffDays < 730) return '1 year ago';
-
-      // Otherwise show formatted date
       return date.toLocaleDateString('en-US', {
         year: 'numeric',
-        month: 'short',
-        day: 'numeric'
+        month: 'long',
+        day: 'numeric',
       });
     } catch {
       return dateString;
     }
   };
 
-  // Filter categories by search query
-  const getFilteredCategories = () => {
-    if (!searchQuery.value.trim()) {
-      return categories;
-    }
-
-    const query = searchQuery.value.toLowerCase();
-    return categories.map(category => ({
-      ...category,
-      videos: category.videos.filter(video =>
-        video.title.toLowerCase().includes(query) ||
-        video.description.toLowerCase().includes(query) ||
-        category.name.toLowerCase().includes(query)
-      )
-    })).filter(category => category.videos.length > 0);
-  };
 
   return (
     <>
@@ -182,33 +187,54 @@ export default component$(() => {
         {/* Search Section */}
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div class="bg-white rounded-xl shadow-md p-6 mb-8">
-            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <form onSubmit$={handleSearch} class="flex flex-col md:flex-row gap-4 items-center justify-between">
               {/* Search Bar */}
               <div class="flex-1 w-full relative">
                 <LuSearch class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search videos and categories..."
+                  placeholder="Search playlists and videos..."
                   class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   value={searchQuery.value}
                   onInput$={(e) => searchQuery.value = (e.target as HTMLInputElement).value}
                 />
               </div>
 
+              <div class="flex gap-2">
+                <button
+                  type="submit"
+                  class="px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium rounded-lg hover:shadow-lg transition-all whitespace-nowrap"
+                >
+                  Search
+                </button>
+                {searchQuery.value && (
+                  <button
+                    type="button"
+                    onClick$={() => {
+                      searchQuery.value = '';
+                      nav('/playlists');
+                    }}
+                    class="px-6 py-3 border-2 border-orange-300 text-orange-700 font-medium rounded-lg hover:bg-orange-50 transition-all whitespace-nowrap"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
               {/* Browse All Link */}
               <Link
                 href="/explore"
-                class="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium rounded-lg hover:shadow-lg transition-all whitespace-nowrap"
+                class="flex items-center gap-2 px-6 py-3 bg-white border-2 border-orange-300 text-orange-700 font-medium rounded-lg hover:bg-orange-50 transition-all whitespace-nowrap"
               >
                 Browse All Videos
                 <LuChevronRight class="w-4 h-4" />
               </Link>
-            </div>
+            </form>
           </div>
 
           {/* Categories with Videos */}
           <div class="space-y-12">
-            {getFilteredCategories().map((category) => (
+            {categories.map((category) => (
               <div key={category.id} class="space-y-4">
                 {/* Category Header */}
                 <div class="flex items-center justify-between">
@@ -225,44 +251,12 @@ export default component$(() => {
                 {/* Videos Grid */}
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   {category.videos.map((video) => (
-                    <div
+                    <VideoCard
                       key={video.id}
-                      class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group"
-                      onClick$={() => handleVideoClick(video)}
-                    >
-                      {/* Thumbnail */}
-                      <div class="relative aspect-video overflow-hidden bg-gray-200">
-                        <img
-                          src={video.thumbnail}
-                          alt={video.title}
-                          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          loading="lazy"
-                        />
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                          <LuPlay class="w-12 h-12 text-white" />
-                        </div>
-                        <div class="absolute bottom-2 right-2 bg-black/80 text-white px-2 py-1 rounded text-xs">
-                          {video.duration}
-                        </div>
-                      </div>
-
-                      {/* Content */}
-                      <div class="p-4">
-                        <h3 class="text-sm font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-orange-600 transition-colors">
-                          {video.title}
-                        </h3>
-                        <p class="text-gray-600 text-xs line-clamp-2 mb-3">
-                          {video.description}
-                        </p>
-                        <div class="flex items-center justify-between text-xs text-gray-500">
-                          <span class="flex items-center gap-1">
-                            <LuEye class="w-3 h-3" />
-                            {formatViews(video.views)}
-                          </span>
-                          <span>{formatDate(video.date)}</span>
-                        </div>
-                      </div>
-                    </div>
+                      video={video}
+                      onVideoClick={handleVideoClick}
+                      size="small"
+                    />
                   ))}
                 </div>
 
@@ -277,16 +271,16 @@ export default component$(() => {
           </div>
 
           {/* No Results */}
-          {getFilteredCategories().length === 0 && (
+          {categories.length === 0 && (
             <div class="text-center py-16">
               <div class="text-6xl mb-4">🔍</div>
               <h3 class="text-2xl font-bold text-gray-700 mb-2">No results found</h3>
-              <p class="text-gray-500">Try adjusting your search query</p>
+              <p class="text-gray-500">{searchQuery.value ? 'Try adjusting your search query' : 'No playlists available'}</p>
             </div>
           )}
 
           {/* Pagination Controls */}
-          {pagination && pagination.totalPages > 1 && !searchQuery.value && (
+          {pagination && pagination.totalPages > 1 && (
             <div class="mt-12 pt-8 border-t border-orange-200">
               <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                 {/* Page Info */}
@@ -299,7 +293,7 @@ export default component$(() => {
                 <div class="flex items-center gap-3">
                   {pagination.hasPrevPage && (
                     <Link
-                      href={`/playlists?page=${pagination.prevPage}`}
+                      href={`/playlists?page=${pagination.prevPage}${searchQuery.value ? `&search=${encodeURIComponent(searchQuery.value)}` : ''}`}
                       class="px-6 py-3 bg-white border-2 border-orange-300 text-orange-700 font-medium rounded-xl hover:bg-orange-50 hover:border-orange-400 hover:shadow-lg transition-all duration-300"
                     >
                       ← Previous
@@ -325,7 +319,7 @@ export default component$(() => {
                       return (
                         <Link
                           key={pageNum}
-                          href={`/playlists?page=${pageNum}`}
+                          href={`/playlists?page=${pageNum}${searchQuery.value ? `&search=${encodeURIComponent(searchQuery.value)}` : ''}`}
                           class={`w-10 h-10 flex items-center justify-center rounded-lg font-medium transition-all ${
                             pageNum === pagination.page
                               ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg'
@@ -340,7 +334,7 @@ export default component$(() => {
 
                   {pagination.hasNextPage && (
                     <Link
-                      href={`/playlists?page=${pagination.nextPage}`}
+                      href={`/playlists?page=${pagination.nextPage}${searchQuery.value ? `&search=${encodeURIComponent(searchQuery.value)}` : ''}`}
                       class="px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-300"
                     >
                       Next →
@@ -352,7 +346,7 @@ export default component$(() => {
           )}
         </div>
 
-        {/* Video Modal */}
+        {/* Video Modal with Quick Preview */}
         {showModal.value && selectedVideo.value && (
           <div
             class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
@@ -410,6 +404,17 @@ export default component$(() => {
                     autoplay={true}
                     muted={false}
                   />
+                </div>
+
+                {/* Open Full Page Button */}
+                <div class="mb-6">
+                  <Link
+                    href={`/videos/${selectedVideo.value.videoId}`}
+                    class="flex items-center justify-center gap-2 w-full px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium rounded-lg hover:shadow-lg hover:scale-105 transition-all"
+                  >
+                    <LuExternalLink class="w-5 h-5" />
+                    Play
+                  </Link>
                 </div>
 
                 {/* Video Info */}

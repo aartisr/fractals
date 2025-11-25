@@ -117,9 +117,25 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
       }
     });
 
-    eventSource.addEventListener('error', (e) => {
+    eventSource.addEventListener('error', async (e) => {
       console.error('[LiveChat] SSE error:', e);
       isConnected.value = false;
+
+      // Check if session expired by verifying auth status
+      try {
+        const meResp = await fetch('/api/me', { method: 'GET' });
+        if (!meResp.ok) {
+          // Session expired - user needs to sign in again
+          isAuthenticated.value = false;
+          error.value = 'Your session has expired. Please sign in again to participate in live chat.';
+          reconnecting.value = false;
+          eventSource.close();
+          return;
+        }
+      } catch (authCheckErr) {
+        console.error('[LiveChat] Auth check during error failed:', authCheckErr);
+      }
+
       if (isAuthenticated.value === false) {
         error.value = 'Please sign in to participate in live chat.';
       } else {
@@ -169,6 +185,14 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
       const data = await response.json();
 
       if (!response.ok || !data.success) {
+        // Check if it's an authentication error (401/403)
+        if (response.status === 401 || response.status === 403) {
+          isAuthenticated.value = false;
+          error.value = 'Your session has expired. Please sign in again to participate in live chat.';
+          messageInput.value = content; // Restore message
+          isLoading.value = false;
+          return;
+        }
         throw new Error(data.error || 'Failed to send message');
       }
 

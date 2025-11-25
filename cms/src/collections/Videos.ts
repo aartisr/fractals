@@ -1,6 +1,8 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, PayloadRequest } from 'payload'
 
-const addComputedURLs = async ({ doc, req }: any) => {
+type AddComputedArgs = { doc: any; req: PayloadRequest }
+
+const addComputedURLs = async ({ doc, req }: AddComputedArgs) => {
   const base = req?.payload?.config?.custom?.mediaBaseUrl
     || process.env.MEDIA_BASE_URL
     || 'cdn.url'
