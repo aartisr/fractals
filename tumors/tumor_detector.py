@@ -51,9 +51,9 @@ SAMPLE_IMAGE_URLS = {
 
 # Expected detection output paths (legacy)
 LEGACY_DETECTION_PATHS = [
-    'yolov5/runs/detect/exp2/b510dc0d5cd3906018c4dd49b98643_gallery.jpeg',
-    'yolov5/runs/detect/exp3/14.jpg',
-    'yolov5/runs/detect/exp4/10a4749375e20983b677e0502a9d7f_gallery.jpg'
+    'runs/detect/exp2/b510dc0d5cd3906018c4dd49b98643_gallery.jpeg',
+    'runs/detect/exp3/14.jpg',
+    'runs/detect/exp4/10a4749375e20983b677e0502a9d7f_gallery.jpg'
 ]
 
 # Local storage paths
@@ -184,28 +184,13 @@ def run_axial_detection(self) -> None:
     )
     
     # Hardcoded detection parameters (legacy)
-    command = [
-        "python",
-        "yolov5/detect.py",
-        "--weights", "output_models/tumor_detector_axial.pt",
-        "--img", "640",
-        "--conf", "0.4",
-        "--source", SAMPLE_IMAGE_URLS['axial'],
-        "--save-txt"
-    ]
-    
     try:
-        logger.info("Running legacy axial detection")
-        
-        # Run detection subprocess
-        subprocess.run(
-            command,
-            check=True,
-            capture_output=True,
-            timeout=60
-        )
-        
-        # Load detected image
+        import yolov5
+        logger.info("Running legacy axial detection using yolov5 PyPI API")
+        model = yolov5.load("output_models/tumor_detector_axial.pt")
+        results = model(SAMPLE_IMAGE_URLS['axial'], size=640, conf=0.4)
+        results.save()
+        # Detected image is saved by yolov5 API; further logic can be added here if needed
         detected_path = LEGACY_DETECTION_PATHS[0]
         
         if os.path.exists(detected_path):

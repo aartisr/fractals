@@ -76,7 +76,7 @@ class DetectionWorker(QObject):
     
     Usage:
         >>> worker = DetectionWorker(
-        ...     command=["python", "detect.py", "--input", "image.jpg"],
+        ...     command=["yolov5", "detect", "--input", "image.jpg"],
         ...     detected_path="/output/detected.jpg"
         ... )
         >>> thread = QThread()
@@ -96,7 +96,7 @@ class DetectionWorker(QObject):
         ...     print(f"Error: {msg}")
         >>> 
         >>> worker = DetectionWorker(
-        ...     command=["python", "detect.py"],
+        ...     command=["yolov5", "detect"],
         ...     detected_path="output.jpg",
         ...     timeout=180
         ... )
@@ -122,8 +122,8 @@ class DetectionWorker(QObject):
         
         Args:
             command: Command to execute for tumor detection
-                - List of strings: ["python", "detect.py", "--arg", "value"]
-                - Single string: "python detect.py --arg value" (shell=True)
+                - List of strings: ["yolov5", "detect", "--arg", "value"]
+                - Single string: "yolov5 detect --arg value" (shell=True)
             
             detected_path: Expected path to the output/detected image file
                 - Path where the detection process will save results

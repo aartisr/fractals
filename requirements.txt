@@ -1,3 +1,4 @@
+onnxruntime
 numpy
 matplotlib
 PyQt6
@@ -8,4 +9,3 @@ pytest
 pytest-qt
 pytest-html
 pytest-cov
-yolov5

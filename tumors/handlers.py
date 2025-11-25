@@ -62,14 +62,14 @@ IMAGE_FILTER = f"Images ({' '.join(SUPPORTED_IMAGE_FORMATS)})"
 # Detection settings
 DETECTION_IMG_SIZE = 640
 DETECTION_CONFIDENCE = 0.4
-YOLOV5_DETECT_SCRIPT = "yolov5/detect.py"
-YOLOV5_OUTPUT_PATTERN = "yolov5/runs/detect/exp*"
+# Use yolov5 PyPI package API
+YOLOV5_OUTPUT_PATTERN = "runs/detect/exp*"
 
-# Model paths for different views
+# Model paths for different views (ONNX)
 MODEL_PATHS = [
-    "tumors/output_models/tumor_detector_axial.pt",
-    "tumors/output_models/tumor_detector_coronal.pt",
-    "tumors/output_models/tumor_detector_sagittal.pt",
+    "tumors/output_models/tumor_detector_axial.onnx",
+    "tumors/output_models/tumor_detector_coronal.onnx",
+    "tumors/output_models/tumor_detector_sagittal.onnx",
 ]
 
 # View names for logging/display
@@ -411,100 +411,193 @@ def run_tumor_detection(self, idx: int) -> None:
     
     logger.debug(f"Saved temp input image: {temp_input_path}")
     
-    # Build detection command
-    command = [
-        "python",
-        YOLOV5_DETECT_SCRIPT,
-        "--weights", weights_path,
-        "--img", str(DETECTION_IMG_SIZE),
-        "--conf", str(DETECTION_CONFIDENCE),
-        "--source", temp_input_path,
-        "--save-txt"  # Save bounding box annotations
-    ]
-    
-    logger.info(f"Running detection: {' '.join(command)}")
-    
-    # Run detection
+    # Run detection using ONNX Runtime
     try:
-        result = subprocess.run(
-            command,
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=60  # 1 minute timeout
-        )
-        logger.debug("Detection subprocess completed successfully")
-        
-    except subprocess.TimeoutExpired:
-        QMessageBox.critical(
-            self,
-            "Detection Timeout",
-            "Detection process timed out after 60 seconds.\n"
-            "The image may be too large or the system is overloaded."
-        )
-        logger.error("Detection timed out")
-        _cleanup_temp_file(temp_input_path)
-        return
-        
-    except subprocess.CalledProcessError as e:
-        error_msg = e.stderr if e.stderr else str(e)
-        QMessageBox.critical(
-            self,
-            "Detection Failed",
-            f"Detection process failed:\n\n{error_msg}"
-        )
-        logger.error(f"Detection subprocess failed: {error_msg}")
-        _cleanup_temp_file(temp_input_path)
-        return
-        
+        import onnxruntime as ort
+        logger.info(f"Running detection using ONNX Runtime: weights={weights_path}, img={DETECTION_IMG_SIZE}, conf={DETECTION_CONFIDENCE}, source={temp_input_path}")
+        # Load ONNX model
+        session = ort.InferenceSession(weights_path, providers=["CPUExecutionProvider"])
+        # Preprocess image
+        img0 = cv2.imread(temp_input_path)
+        if img0 is None:
+            raise RuntimeError(f"Failed to load temp image for ONNX inference: {temp_input_path}")
+        img = cv2.cvtColor(img0, cv2.COLOR_BGR2RGB)
+        img = cv2.resize(img, (DETECTION_IMG_SIZE, DETECTION_IMG_SIZE))
+        img = img.astype(np.float32) / 255.0
+        img = np.transpose(img, (2, 0, 1))  # HWC to CHW
+        img = np.expand_dims(img, axis=0)  # Add batch dim
+        # Some ONNX models expect NCHW, float32
+        # Get input name
+        input_name = session.get_inputs()[0].name
+        # Run inference
+        outputs = session.run(None, {input_name: img})
+        # Postprocess: outputs[0] is usually (N, num_boxes, 85) for YOLOv5
+        pred = outputs[0]
+        # Only keep boxes with confidence > DETECTION_CONFIDENCE
+        boxes = []
+        scores = []
+        classes = []
+        for det in pred[0]:
+            # YOLOv5 ONNX: [x1, y1, x2, y2, conf, cls1, cls2, ...]
+            conf = det[4]
+            if conf < DETECTION_CONFIDENCE:
+                continue
+            class_id = int(np.argmax(det[5:]))
+            boxes.append(det[:4])
+            scores.append(conf)
+            classes.append(class_id)
+        def nms(boxes, scores, iou_threshold=0.5):
+            boxes = np.array(boxes)
+            scores = np.array(scores)
+            x1 = boxes[:, 0]
+            y1 = boxes[:, 1]
+            x2 = boxes[:, 2]
+            y2 = boxes[:, 3]
+            areas = (x2 - x1 + 1) * (y2 - y1 + 1)
+            order = scores.argsort()[::-1]
+            keep = []
+            while order.size > 0:
+                i = order[0]
+                keep.append(i)
+                xx1 = np.maximum(x1[i], x1[order[1:]])
+                yy1 = np.maximum(y1[i], y1[order[1:]])
+                xx2 = np.minimum(x2[i], x2[order[1:]])
+                yy2 = np.minimum(y2[i], y2[order[1:]])
+                w = np.maximum(0.0, xx2 - xx1 + 1)
+                h = np.maximum(0.0, yy2 - yy1 + 1)
+                inter = w * h
+                ovr = inter / (areas[i] + areas[order[1:]] - inter)
+                inds = np.where(ovr <= iou_threshold)[0]
+                order = order[inds + 1]
+            return keep
+
+        # Letterbox-aware scaling: map boxes from 640x640 model input to original image size
+        img_draw = img0.copy()
+        h0, w0 = img0.shape[:2]
+        r = min(DETECTION_IMG_SIZE / w0, DETECTION_IMG_SIZE / h0)
+        new_unpad = (int(round(w0 * r)), int(round(h0 * r)))
+        dw = DETECTION_IMG_SIZE - new_unpad[0]
+        dh = DETECTION_IMG_SIZE - new_unpad[1]
+        dw /= 2
+        dh /= 2
+        # Convert all boxes to original image coordinates first
+        final_boxes = []
+        final_scores = []
+        final_classes = []
+        for box, score, class_id in zip(boxes, scores, classes):
+            if score < 0.5:
+                continue
+            x1, y1, x2, y2 = box
+            # YOLO format to corner
+            if (x2 < x1 or y2 < y1):
+                cx, cy, w, h = x1, y1, x2, y2
+                x1 = cx - w / 2
+                y1 = cy - h / 2
+                x2 = cx + w / 2
+                y2 = cy + h / 2
+            # Normalized to 640
+            if max(x1, y1, x2, y2) <= 1.0:
+                x1 *= DETECTION_IMG_SIZE
+                y1 *= DETECTION_IMG_SIZE
+                x2 *= DETECTION_IMG_SIZE
+                y2 *= DETECTION_IMG_SIZE
+            # Letterbox reverse
+            x1 = (x1 - dw) / r
+            y1 = (y1 - dh) / r
+            x2 = (x2 - dw) / r
+            y2 = (y2 - dh) / r
+            # Clip
+            x1 = max(min(x1, w0 - 1), 0)
+            y1 = max(min(y1, h0 - 1), 0)
+            x2 = max(min(x2, w0 - 1), 0)
+            y2 = max(min(y2, h0 - 1), 0)
+            # Filter invalid boxes
+            if (x2 - x1) > 1 and (y2 - y1) > 1:
+                final_boxes.append([x1, y1, x2, y2])
+                final_scores.append(score)
+                final_classes.append(class_id)
+        # Apply NMS on final boxes
+        if final_boxes:
+            nms_indices = nms(final_boxes, final_scores, iou_threshold=0.3)
+            for i in nms_indices:
+                x1, y1, x2, y2 = map(int, final_boxes[i])
+                score = final_scores[i]
+                class_id = final_classes[i]
+                cv2.rectangle(img_draw, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                label = f"Tumor {score:.2f}"
+                cv2.putText(img_draw, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            # Detect if box is in YOLO format (center x, center y, width, height)
+            # or corner format (x1, y1, x2, y2)
+            # Heuristic: if x2 > x1 and y2 > y1, assume corner; else, convert
+            x1, y1, x2, y2 = box
+            logger.debug(f"Raw box: {box}")
+            # If box is YOLO format (center x, center y, w, h):
+            if (x2 < x1 or y2 < y1):
+                logger.debug("Box appears to be YOLO format, converting to corner format.")
+                cx, cy, w, h = x1, y1, x2, y2
+                x1 = cx - w / 2
+                y1 = cy - h / 2
+                x2 = cx + w / 2
+                y2 = cy + h / 2
+                logger.debug(f"Converted to corner: {(x1, y1, x2, y2)}")
+            # If coordinates are normalized (0-1), scale to 640
+            if max(x1, y1, x2, y2) <= 1.0:
+                x1 *= DETECTION_IMG_SIZE
+                y1 *= DETECTION_IMG_SIZE
+                x2 *= DETECTION_IMG_SIZE
+                y2 *= DETECTION_IMG_SIZE
+                logger.debug(f"Box scaled from normalized: {(x1, y1, x2, y2)}")
+            # Remove padding, then rescale to original image size
+            x1 = (x1 - dw) / r
+            y1 = (y1 - dh) / r
+            x2 = (x2 - dw) / r
+            y2 = (y2 - dh) / r
+            logger.debug(f"Box after letterbox reverse: {(x1, y1, x2, y2)}")
+            # Clip to image size
+            x1 = int(max(min(x1, w0 - 1), 0))
+            y1 = int(max(min(y1, h0 - 1), 0))
+            x2 = int(max(min(x2, w0 - 1), 0))
+            y2 = int(max(min(y2, h0 - 1), 0))
+            logger.debug(f"Box after clipping: {(x1, y1, x2, y2)}")
+            cv2.rectangle(img_draw, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            label = f"Tumor {score:.2f}"
+            cv2.putText(img_draw, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        # Save result image to temp file
+        result_temp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
+        cv2.imwrite(result_temp.name, img_draw)
+        result_temp.close()
+        detected_img_path = result_temp.name
+        logger.info(f"Detection result saved to: {detected_img_path}")
     except Exception as e:
         QMessageBox.critical(
             self,
-            "Detection Error",
-            f"Unexpected error during detection:\n\n{type(e).__name__}: {e}"
+            "Detection Failed",
+            f"Detection process failed (ONNX):\n\n{str(e)}"
         )
-        logger.exception("Unexpected detection error")
+        logger.error(f"Detection failed (ONNX): {e}")
         _cleanup_temp_file(temp_input_path)
         return
-    
     # Clean up temp file
     _cleanup_temp_file(temp_input_path)
-    
-    # Find detection output image
-    detected_img_path = _find_latest_detection_output()
-    
+    # Load detection result as pixmap
     if detected_img_path and os.path.exists(detected_img_path):
-        logger.info(f"Found detection output: {detected_img_path}")
-        
-        # Load detection result as pixmap
         pixmap = QPixmap(detected_img_path)
-        
         if pixmap.isNull():
             logger.error(f"Failed to load detection result: {detected_img_path}")
             _show_detection_failure(self, idx)
             return
-        
-        # Store detection result
         if not hasattr(self, 'tumor_detected_pixmaps'):
             self.tumor_detected_pixmaps = [None] * NUM_TUMOR_SLOTS
         self.tumor_detected_pixmaps[idx] = pixmap
-        
-        # Initialize zoom factor for detected image
         _initialize_zoom_factors(self)
         if 'det' not in self.tumor_zoom_factors[idx]:
             self.tumor_zoom_factors[idx]['det'] = 1.0
-        
-        # Update display
         update_tumor_image_display(self, idx, which='det')
         self.tumor_detected_labels[idx].setText("")
-        
-        # Store full-resolution result for potential export
         self.tumor_results[idx] = cv2.imread(detected_img_path)
-        
         logger.info(f"Detection complete for slot {idx}")
-        
     else:
-        logger.error("Detection output image not found")
+        logger.error("Detection output image not found (ONNX)")
         _show_detection_failure(self, idx)
 
 
