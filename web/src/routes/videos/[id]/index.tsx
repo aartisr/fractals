@@ -106,41 +106,7 @@ export default component$(() => {
           {/* Video Player */}
           <div class="aspect-video bg-black rounded-lg overflow-hidden">
             <VideoJSPlayer
-              sources={(() => {
-                const v: any = video.value as any;
-                const master = v?.masterUrl as string | undefined;
-                const pls = Array.isArray(v?.playlists) ? v.playlists as Array<{ resolution?: string; url?: string }> : [];
-
-                const sources = [];
-
-                // Add master playlist first (usually adaptive)
-                if (master) {
-                  sources.push({
-                    src: master,
-                    type: 'application/x-mpegURL',
-                    label: 'Auto'
-                  });
-                }
-
-                // Add quality-specific playlists
-                const sorted = [
-                  ...pls.filter(p => p?.resolution === '1080p'),
-                  ...pls.filter(p => p?.resolution !== '1080p'),
-                ];
-
-                for (const playlist of sorted) {
-                  if (playlist?.url) {
-                    sources.push({
-                      src: playlist.url,
-                      type: 'application/x-mpegURL',
-                      label: playlist.resolution || 'Unknown',
-                      res: playlist.resolution ? parseInt(playlist.resolution) : undefined
-                    });
-                  }
-                }
-
-                return sources;
-              })()}
+              masterPlaylistUrl={(video.value as any)?.masterUrl}
               poster={(video.value as any).thumbnail}
               autoplay={false}
               muted={false}

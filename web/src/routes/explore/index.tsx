@@ -402,34 +402,7 @@ export default component$(() => {
                 {/* Video Player */}
                 <div class="aspect-video bg-black rounded-lg mb-6 overflow-hidden">
                   <VideoJSPlayer
-                    sources={(() => {
-                      const sources = [];
-
-                      // Add master playlist
-                      if (selectedVideo.value.masterUrl) {
-                        sources.push({
-                          src: selectedVideo.value.masterUrl,
-                          type: 'application/x-mpegURL',
-                          label: 'Auto'
-                        });
-                      }
-
-                      // Add quality-specific playlists
-                      if (selectedVideo.value.playlists) {
-                        for (const playlist of selectedVideo.value.playlists) {
-                          if (playlist?.url) {
-                            sources.push({
-                              src: playlist.url,
-                              type: 'application/x-mpegURL',
-                              label: playlist.resolution || 'Unknown',
-                              res: playlist.resolution ? parseInt(playlist.resolution) : undefined
-                            });
-                          }
-                        }
-                      }
-
-                      return sources;
-                    })()}
+                    masterPlaylistUrl={selectedVideo.value.masterUrl}
                     poster={selectedVideo.value.thumbnail}
                     autoplay={true}
                     muted={false}

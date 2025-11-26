@@ -756,6 +756,9 @@ func (t *Transcoder) finalizePlaylists() {
 			}
 		}
 
+		// Ensure VOD semantics and ENDLIST.
+		content = t.ensureVODAndEndlist(content)
+
 		if err := t.r2Client.UploadPlaylist(t.uploadCtx, r2Key, bytes.NewReader(content), contentType); err != nil {
 			log.Error().Err(err).Str("file", filePath).Msg("Failed to upload finalized playlist")
 			continue
@@ -866,6 +869,52 @@ func (t *Transcoder) rewriteQualityPlaylistContent(content []byte) ([]byte, erro
 	}
 
 	return []byte(strings.Join(filtered, "\n")), nil
+}
+
+// ensureVODAndEndlist normalizes a playlist to VOD type and appends ENDLIST.
+func (t *Transcoder) ensureVODAndEndlist(content []byte) []byte {
+	lines := strings.Split(string(content), "\n")
+	var out []string
+	insertedType := false
+
+	for _, line := range lines {
+		trim := strings.TrimSpace(line)
+		if strings.HasPrefix(trim, "#EXT-X-PLAYLIST-TYPE") {
+			out = append(out, "#EXT-X-PLAYLIST-TYPE:VOD")
+			insertedType = true
+			continue
+		}
+		out = append(out, line)
+	}
+
+	if !insertedType {
+		insertAt := 1
+		if len(out) > 1 && strings.HasPrefix(out[1], "#EXT-X-VERSION") {
+			insertAt = 2
+		}
+		tmp := append([]string{}, out[:insertAt]...)
+		tmp = append(tmp, "#EXT-X-PLAYLIST-TYPE:VOD")
+		tmp = append(tmp, out[insertAt:]...)
+		out = tmp
+	}
+
+	// Trim trailing blanks
+	for len(out) > 0 && strings.TrimSpace(out[len(out)-1]) == "" {
+		out = out[:len(out)-1]
+	}
+
+	hasEndlist := false
+	for _, line := range out {
+		if strings.TrimSpace(line) == "#EXT-X-ENDLIST" {
+			hasEndlist = true
+			break
+		}
+	}
+	if !hasEndlist {
+		out = append(out, "#EXT-X-ENDLIST")
+	}
+
+	return []byte(strings.Join(out, "\n") + "\n")
 }
 
 // uploadAnalysisChunks uploads local analysis WAVs to R2 and updates audio_chunks.file_path

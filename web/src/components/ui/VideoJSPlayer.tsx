@@ -11,6 +11,7 @@ import type Player from "video.js/dist/types/player";
 import "@videojs/http-streaming";
 
 import "video.js/dist/video-js.css";
+import { parseMasterPlaylist, variantsToVideoJSSources } from "~/utils/m3u8-parser";
 
 export interface VideoSource {
   src: string;
@@ -21,7 +22,8 @@ export interface VideoSource {
 }
 
 export interface VideoJSPlayerProps {
-  sources: VideoSource[];
+  sources?: VideoSource[];
+  masterPlaylistUrl?: string; // Auto-parse master playlist for quality variants
   poster?: string;
   autoplay?: boolean;
   controls?: boolean;
@@ -29,6 +31,7 @@ export interface VideoJSPlayerProps {
   fluid?: boolean;
   aspectRatio?: string;
   playbackRates?: number[];
+  isLive?: boolean; // Enable DVR seeking for live streams
   onReady?: (player: Player) => void;
   onError?: (error: any) => void;
 }
@@ -40,9 +43,10 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
   const currentQuality = useSignal<number>(0);
   const showQualityMenu = useSignal<boolean>(false);
   const errorMessage = useSignal<string>("");
+  const sources = useSignal<VideoSource[]>([]);
 
-  // Sort sources by resolution (highest first)
-  const sortedSources = props.sources.sort((a, b) => {
+  // Sort sources by resolution (highest first) - create new array to avoid mutation
+  const sortedSources = [...sources.value].sort((a, b) => {
     const resA = a.res || 0;
     const resB = b.res || 0;
     return resB - resA;
@@ -95,13 +99,69 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
     }
   });
 
-  // Initialize player
-  useVisibleTask$(({ cleanup, track }) => {
+  // Initialize player - parse playlist and setup player in one task
+  useVisibleTask$(async ({ cleanup, track }) => {
+    track(() => props.masterPlaylistUrl);
     track(() => props.sources);
 
     if (!videoRef.value) return;
 
     const videoElement = videoRef.value;
+
+    // Parse master playlist if provided, otherwise use props.sources
+    if (props.masterPlaylistUrl) {
+      try {
+        console.log('[VideoJSPlayer] Parsing master playlist:', props.masterPlaylistUrl);
+        const result = await parseMasterPlaylist(props.masterPlaylistUrl);
+
+        if (result.error || result.variants.length === 0) {
+          console.warn('[VideoJSPlayer] Failed to parse master playlist:', result.error);
+          sources.value = [{
+            src: props.masterPlaylistUrl,
+            type: 'application/x-mpegURL',
+            label: 'Auto',
+            ...(props.isLive ? { allowSeeksWithinUnsafeLiveWindow: true } : {})
+          }];
+        } else {
+          console.log('[VideoJSPlayer] Parsed', result.variants.length, 'quality variants');
+          sources.value = variantsToVideoJSSources(
+            result.variants,
+            props.masterPlaylistUrl,
+            props.isLive ? { allowSeeksWithinUnsafeLiveWindow: true } : {}
+          );
+        }
+      } catch (error) {
+        console.error('[VideoJSPlayer] Error parsing master playlist:', error);
+        sources.value = [{
+          src: props.masterPlaylistUrl,
+          type: 'application/x-mpegURL',
+          label: 'Auto',
+          ...(props.isLive ? { allowSeeksWithinUnsafeLiveWindow: true } : {})
+        }];
+      }
+    } else {
+      sources.value = props.sources || [];
+    }
+
+    // Sort sources after they're set (highest resolution first)
+    const currentSources = [...sources.value].sort((a, b) => {
+      const resA = a.res || 0;
+      const resB = b.res || 0;
+      return resB - resA;
+    });
+
+    // Don't initialize if we have no sources
+    if (currentSources.length === 0) {
+      console.warn('[VideoJSPlayer] No sources available, skipping player initialization');
+      return;
+    }
+
+    console.log('[VideoJSPlayer] Initializing player with', currentSources.length, 'sources');
+
+    // Dispose existing player if re-initializing
+    if (playerRef.value && !playerRef.value.isDisposed()) {
+      playerRef.value.dispose();
+    }
 
     // Initialize Video.js with sources in options
     const player = videojs(videoElement, {
@@ -112,15 +172,18 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
       fluid: props.fluid ?? true,
       aspectRatio: props.aspectRatio ?? "16:9",
       playbackRates: props.playbackRates ?? [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2],
-      sources: sortedSources.length > 0 ? [(() => {
+      liveui: props.isLive ?? false,
+      inactivityTimeout: props.isLive ? 0 : undefined,
+      sources: currentSources.length > 0 ? [(() => {
         const sourceConfig: any = {
-          src: sortedSources[0].src,
-          type: sortedSources[0].type,
+          src: currentSources[0].src,
+          type: currentSources[0].type,
         };
         // Pass through allowSeeksWithinUnsafeLiveWindow if set
-        if (sortedSources[0].allowSeeksWithinUnsafeLiveWindow) {
+        if (currentSources[0].allowSeeksWithinUnsafeLiveWindow) {
           sourceConfig.allowSeeksWithinUnsafeLiveWindow = true;
         }
+        console.log('[VideoJSPlayer] Using source:', sourceConfig.src, sourceConfig.label || 'Auto');
         return sourceConfig;
       })()] : [],
       html5: {
@@ -129,6 +192,9 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
           enableLowInitialPlaylist: true,
           fastQualityChange: true,
           allowSeeksWithinUnsafeLiveWindow: true, // Enable seeking in live streams (DVR mode)
+          // Provide a DVR window; adjust if you want a larger window.
+          liveSyncDuration: props.isLive ? 12 : undefined,
+          liveMaxLatencyDuration: props.isLive ? 60 : undefined,
         },
         nativeVideoTracks: false,
         nativeAudioTracks: false,

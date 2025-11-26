@@ -1,14 +1,19 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
 	"live_transcoder/pkg/config"
 	"live_transcoder/pkg/storage"
 	"live_transcoder/pkg/transcoder"
+	"net/http"
+	"io"
 	"os"
 	"os/exec"
+	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -50,6 +55,9 @@ func (s *Server) Start() error {
 	if err := os.MkdirAll(s.cfg.Server.TempDir, 0755); err != nil {
 		return fmt.Errorf("failed to create temp directory: %w", err)
 	}
+
+	// On startup, reconcile any ended/idle streams whose playlists were not finalized.
+	s.reconcileEndedPlaylists()
 
 	// Start RTMP listener using FFmpeg
 	rtmpListenAddr := fmt.Sprintf("rtmp://0.0.0.0:%d", s.cfg.RTMP.Port)
@@ -195,4 +203,123 @@ func (s *Server) Stop() {
 
 	s.r2Client.Wait()
 	log.Info().Msg("Server stopped")
+}
+
+// reconcileEndedPlaylists ensures ended/idle streams have VOD playlists with ENDLIST.
+func (s *Server) reconcileEndedPlaylists() {
+	if s.db == nil || s.r2Client == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	rows, err := s.db.QueryContext(ctx, `SELECT stream_key FROM live_streams WHERE status = 'ended'`)
+	if err != nil {
+		log.Warn().Err(err).Msg("reconcile: failed to load ended/idle streams")
+		return
+	}
+	defer rows.Close()
+
+	var streamKeys []string
+	for rows.Next() {
+		var sk string
+		if err := rows.Scan(&sk); err == nil && strings.TrimSpace(sk) != "" {
+			streamKeys = append(streamKeys, strings.TrimSpace(sk))
+		}
+	}
+
+	for _, sk := range streamKeys {
+		s.reconcileStreamPlaylists(ctx, sk)
+	}
+}
+
+func (s *Server) reconcileStreamPlaylists(ctx context.Context, streamKey string) {
+	qualities := make([]string, 0, len(s.cfg.Qualities))
+	for _, q := range s.cfg.Qualities {
+		qualities = append(qualities, q.Name)
+	}
+
+	// Master
+	s.rewriteIfNeeded(ctx, path.Join(streamKey, "master.m3u8"))
+	// Variants
+	for _, q := range qualities {
+		s.rewriteIfNeeded(ctx, path.Join(streamKey, q, "playlist.m3u8"))
+	}
+}
+
+func (s *Server) rewriteIfNeeded(ctx context.Context, key string) {
+	url := s.r2Client.GetPublicURL(key)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil || resp.StatusCode >= 400 {
+		if err == nil {
+			resp.Body.Close()
+		}
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+
+	newBody := ensureVODAndEndlist(body)
+	if bytes.Equal(newBody, body) {
+		return
+	}
+
+	contentType := storage.GetContentType(key)
+	if err := s.r2Client.UploadPlaylist(context.Background(), key, bytes.NewReader(newBody), contentType); err != nil {
+		log.Warn().Err(err).Str("key", key).Msg("reconcile: upload failed")
+	} else {
+		log.Info().Str("key", key).Msg("reconcile: playlist finalized to VOD")
+	}
+}
+
+// ensureVODAndEndlist normalizes a playlist to VOD type and appends ENDLIST.
+func ensureVODAndEndlist(content []byte) []byte {
+	lines := strings.Split(string(content), "\n")
+	var out []string
+	insertedType := false
+
+	for _, line := range lines {
+		trim := strings.TrimSpace(line)
+		if strings.HasPrefix(trim, "#EXT-X-PLAYLIST-TYPE") {
+			out = append(out, "#EXT-X-PLAYLIST-TYPE:VOD")
+			insertedType = true
+			continue
+		}
+		out = append(out, line)
+	}
+
+	if !insertedType {
+		insertAt := 1
+		if len(out) > 1 && strings.HasPrefix(out[1], "#EXT-X-VERSION") {
+			insertAt = 2
+		}
+		tmp := append([]string{}, out[:insertAt]...)
+		tmp = append(tmp, "#EXT-X-PLAYLIST-TYPE:VOD")
+		tmp = append(tmp, out[insertAt:]...)
+		out = tmp
+	}
+
+	// Trim trailing blanks
+	for len(out) > 0 && strings.TrimSpace(out[len(out)-1]) == "" {
+		out = out[:len(out)-1]
+	}
+
+	hasEndlist := false
+	for _, line := range out {
+		if strings.TrimSpace(line) == "#EXT-X-ENDLIST" {
+			hasEndlist = true
+			break
+		}
+	}
+	if !hasEndlist {
+		out = append(out, "#EXT-X-ENDLIST")
+	}
+
+	return []byte(strings.Join(out, "\n") + "\n")
 }

@@ -184,50 +184,8 @@ export default component$(() => {
               {stream.value.masterPlaylistUrl ? (
                 <div class="aspect-video bg-black rounded-lg overflow-hidden">
                   <VideoJSPlayer
-                    sources={(() => {
-                      const masterUrl = stream.value.masterPlaylistUrl;
-                      const baseUrl = masterUrl.replace('/master.m3u8', '');
-
-                      // All sources support DVR seeking for live streams
-                      const sourceOptions = isLive ? { allowSeeksWithinUnsafeLiveWindow: true } : {};
-
-                      return [
-                        {
-                          src: masterUrl,
-                          type: 'application/x-mpegURL',
-                          label: 'Auto',
-                          ...sourceOptions
-                        },
-                        {
-                          src: `${baseUrl}/1080p/playlist.m3u8`,
-                          type: 'application/x-mpegURL',
-                          label: '1080p',
-                          res: 1080,
-                          ...sourceOptions
-                        },
-                        {
-                          src: `${baseUrl}/720p/playlist.m3u8`,
-                          type: 'application/x-mpegURL',
-                          label: '720p',
-                          res: 720,
-                          ...sourceOptions
-                        },
-                        {
-                          src: `${baseUrl}/480p/playlist.m3u8`,
-                          type: 'application/x-mpegURL',
-                          label: '480p',
-                          res: 480,
-                          ...sourceOptions
-                        },
-                        {
-                          src: `${baseUrl}/360p/playlist.m3u8`,
-                          type: 'application/x-mpegURL',
-                          label: '360p',
-                          res: 360,
-                          ...sourceOptions
-                        },
-                      ];
-                    })()}
+                    masterPlaylistUrl={stream.value.masterPlaylistUrl}
+                    isLive={isLive}
                     poster={stream.value.thumbnailUrl}
                     autoplay={isLive}
                     muted={false}
@@ -404,7 +362,10 @@ const TranscriptSnapshot = component$<{ streamId: number }>(({ streamId }) => {
     });
 
     eventSource.addEventListener('error', (e) => {
-      console.error('[Transcription] SSE error:', e);
+      // Only log if we were previously connected (indicates actual error, not initial connection)
+      if (isConnected.value) {
+        console.warn('[Transcription] SSE connection lost, reconnecting...');
+      }
       isConnected.value = false;
       if (!isCancelled) {
         error.value = 'Connection lost, reconnecting...';
