@@ -49,12 +49,36 @@ export const AudioChunks: CollectionConfig = {
         // Safe no-op if db/pg_notify isn't available.
         try {
           const db: any = req?.payload?.db as any
-          await db?.query?.(
+
+          // Extract numeric stream ID from relationship field
+          // In Payload, relationship fields can be objects or IDs
+          const streamId = typeof doc.stream === 'object' ? doc.stream?.id : doc.stream
+
+          if (!streamId) {
+            req.payload.logger?.warn?.(
+              'audio_chunks notify skipped: missing stream ID',
+            )
+            return
+          }
+
+          if (!db || typeof db.query !== 'function') {
+            req.payload.logger?.warn?.(
+              'audio_chunks notify skipped: db.query not available',
+            )
+            return
+          }
+
+          await db.query(
             `SELECT pg_notify('audio_chunks', json_build_object('id', $1, 'stream_id', $2)::text)`,
-            [doc.id, doc.stream],
+            [doc.id, streamId],
+          )
+
+          // Log success for debugging
+          req.payload.logger?.info?.(
+            `audio_chunks notify sent: id=${doc.id}, stream_id=${streamId}`,
           )
         } catch (err) {
-          req.payload.logger?.warn?.(
+          req.payload.logger?.error?.(
             { err },
             'audio_chunks notify failed (continuing without pub/sub)',
           )

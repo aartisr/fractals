@@ -15,12 +15,35 @@ export const Transcripts: CollectionConfig = {
         // Notify listeners that a transcript version/state changed.
         try {
           const db: any = req?.payload?.db as any
-          await db?.query?.(
+
+          // Extract numeric stream ID from relationship field
+          const streamId = typeof doc.stream === 'object' ? doc.stream?.id : doc.stream
+
+          if (!streamId) {
+            req.payload.logger?.warn?.(
+              'transcripts notify skipped: missing stream ID',
+            )
+            return
+          }
+
+          if (!db || typeof db.query !== 'function') {
+            req.payload.logger?.warn?.(
+              'transcripts notify skipped: db.query not available',
+            )
+            return
+          }
+
+          await db.query(
             `SELECT pg_notify('transcripts_update', json_build_object('stream_id', $1, 'language', $2, 'version', $3, 'is_final', COALESCE($4, false))::text)`,
-            [doc.stream, doc.language, doc.version, doc.isFinal],
+            [streamId, doc.language, doc.version, doc.isFinal],
+          )
+
+          // Log success for debugging
+          req.payload.logger?.info?.(
+            `transcripts notify sent: stream_id=${streamId}, language=${doc.language}, version=${doc.version}`,
           )
         } catch (err) {
-          req.payload.logger?.warn?.(
+          req.payload.logger?.error?.(
             { err },
             'transcripts notify failed (continuing without pub/sub)',
           )

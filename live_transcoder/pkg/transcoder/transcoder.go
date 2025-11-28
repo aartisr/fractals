@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"live_transcoder/pkg/chunker"
 	"live_transcoder/pkg/config"
 	"live_transcoder/pkg/storage"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -140,11 +142,29 @@ func (t *Transcoder) Start() error {
 		defer close(insertDone)
 		for insert := range insertChan {
 			if t.db != nil && t.streamID != 0 {
-				if _, err := t.db.Exec(
-					`INSERT INTO audio_chunks (stream_id, start_ms, end_ms, file_path) VALUES ($1, $2, $3, $4)`,
+				// Insert audio chunk and get the generated ID
+				var chunkID int64
+				err := t.db.QueryRow(
+					`INSERT INTO audio_chunks (stream_id, start_ms, end_ms, file_path) VALUES ($1, $2, $3, $4) RETURNING id`,
 					t.streamID, insert.startMs, insert.endMs, insert.path,
-				); err != nil {
+				).Scan(&chunkID)
+
+				if err != nil {
 					log.Error().Err(err).Str("stream_key", t.streamKey).Msg("failed to insert audio_chunk")
+				} else {
+					// Successfully inserted - emit pg_notify so transcription worker can react
+					if _, notifyErr := t.db.Exec(
+						`SELECT pg_notify('audio_chunks', json_build_object('id', $1::bigint, 'stream_id', $2::bigint)::text)`,
+						chunkID, t.streamID,
+					); notifyErr != nil {
+						log.Warn().Err(notifyErr).Str("stream_key", t.streamKey).Msg("failed to send audio_chunks notification")
+					} else {
+						log.Info().
+							Str("stream_key", t.streamKey).
+							Int64("chunk_id", chunkID).
+							Int64("stream_id", t.streamID).
+							Msg("audio_chunks notification sent")
+					}
 				}
 			}
 		}
@@ -242,23 +262,8 @@ func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 		Str("stream_key", t.streamKey).
 		Msg("🛑 FFmpeg stopped - starting graceful shutdown...")
 
-	// Update stream status to 'ended' in database
-	if t.db != nil && t.streamID != 0 {
-		if _, err := t.db.Exec(
-			`UPDATE live_streams SET status = 'ended' WHERE id = $1`,
-			t.streamID,
-		); err != nil {
-			log.Error().Err(err).
-				Str("stream_key", t.streamKey).
-				Int64("stream_id", t.streamID).
-				Msg("Failed to update stream status to 'ended' in database")
-		} else {
-			log.Info().
-				Str("stream_key", t.streamKey).
-				Int64("stream_id", t.streamID).
-				Msg("✓ Stream status updated to 'ended' in database")
-		}
-	}
+	// Report progress: FFmpeg stopped
+	t.reportProgress("ffmpeg_stopped", "FFmpeg stopped, preparing to finalize stream...", 10, false)
 
 	// Upload any remaining segments (with retries for in-progress writes)
 	hlsDir := filepath.Join(t.workDir, "hls")
@@ -267,6 +272,9 @@ func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 	log.Info().
 		Str("stream_key", t.streamKey).
 		Msg("📤 Uploading final segments (retrying 5 times)...")
+
+	// Report progress: Uploading final segments
+	t.reportProgress("uploading_segments", "Uploading final segments...", 30, false)
 
 	// Try multiple times to catch any segments still being written
 	for i := 0; i < 5; i++ {
@@ -283,9 +291,15 @@ func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 		Int("total_uploaded", len(uploadedFiles)).
 		Msg("✓ Final segment upload completed")
 
+	// Report progress: Finalizing playlists
+	t.reportProgress("finalizing_playlists", "Finalizing playlists with EXT-X-ENDLIST...", 60, false)
+
 	// Finalize playlists by adding EXT-X-ENDLIST (marks stream as VOD)
 	log.Info().Str("stream_key", t.streamKey).Msg("📝 Finalizing playlists with EXT-X-ENDLIST...")
 	t.finalizePlaylists()
+
+	// Report progress: Cleanup
+	t.reportProgress("cleanup", "Cleaning up temporary files...", 90, false)
 
 	// Signal upload watcher to stop and wait for it
 	log.Debug().Str("stream_key", t.streamKey).Msg("Stopping upload watcher...")
@@ -302,6 +316,9 @@ func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 	log.Info().
 		Str("stream_key", t.streamKey).
 		Msg("✅ Graceful shutdown completed - stream available as VOD")
+
+	// Report final completion
+	t.reportProgress("completed", "Stream ended gracefully - VOD is ready!", 100, true)
 }
 
 func (t *Transcoder) buildFFmpegCommand(hlsDir string) *exec.Cmd {
@@ -701,6 +718,10 @@ func (t *Transcoder) finalizePlaylists() {
 		return
 	}
 
+	// Use a fresh context with timeout for finalization uploads (not t.uploadCtx which may be canceled)
+	finalizeCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	for _, file := range files {
 		if !strings.HasSuffix(file.Name(), ".m3u8") {
 			continue
@@ -759,7 +780,7 @@ func (t *Transcoder) finalizePlaylists() {
 		// Ensure VOD semantics and ENDLIST.
 		content = t.ensureVODAndEndlist(content)
 
-		if err := t.r2Client.UploadPlaylist(t.uploadCtx, r2Key, bytes.NewReader(content), contentType); err != nil {
+		if err := t.r2Client.UploadPlaylist(finalizeCtx, r2Key, bytes.NewReader(content), contentType); err != nil {
 			log.Error().Err(err).Str("file", filePath).Msg("Failed to upload finalized playlist")
 			continue
 		}
@@ -923,6 +944,9 @@ func (t *Transcoder) uploadAnalysisChunks() {
 	if t.r2Client == nil {
 		return
 	}
+
+	log.Info().Str("stream_key", t.streamKey).Msg("📤 Starting analysis chunks upload to R2...")
+
 	analysisDir := filepath.Join("/analysis", t.streamKey)
 	entries, err := os.ReadDir(analysisDir)
 	if err != nil {
@@ -932,6 +956,30 @@ func (t *Transcoder) uploadAnalysisChunks() {
 		return
 	}
 
+	// Create context with timeout to prevent indefinite blocking
+	uploadCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	totalFiles := 0
+	uploadedFiles := 0
+	failedFiles := 0
+
+	// Count total WAV files
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".wav") {
+			totalFiles++
+		}
+	}
+
+	log.Info().
+		Str("stream_key", t.streamKey).
+		Int("total_files", totalFiles).
+		Msg("Found analysis chunks to upload")
+
+	// Use concurrent uploads with semaphore to limit parallelism
+	var wg sync.WaitGroup
+	semaphore := make(chan struct{}, 5) // Limit to 5 concurrent uploads
+
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
@@ -940,24 +988,116 @@ func (t *Transcoder) uploadAnalysisChunks() {
 		if !strings.HasSuffix(strings.ToLower(name), ".wav") {
 			continue
 		}
-		localPath := filepath.Join(analysisDir, name)
-		r2Key := path.Join(t.streamKey, "analysis", name)
 
-		f, err := os.Open(localPath)
-		if err != nil {
-			log.Error().Err(err).Str("file", localPath).Msg("failed to open analysis chunk for upload")
-			continue
-		}
-		contentType := storage.GetContentType(name)
-		if err := t.r2Client.UploadFile(context.Background(), r2Key, f, contentType); err != nil {
-			log.Error().Err(err).Str("file", localPath).Str("key", r2Key).Msg("failed to upload analysis chunk to R2")
-			_ = f.Close()
-			continue
-		}
-		_ = f.Close()
-		log.Info().Str("file", localPath).Str("key", r2Key).Msg("uploaded analysis chunk to R2")
+		wg.Add(1)
+		go func(fileName string) {
+			defer wg.Done()
 
-		// For now we keep audio_chunks.file_path pointing at the shared volume path so
-		// live_translation can read local files; R2 copy is for archival only.
+			// Acquire semaphore
+			select {
+			case semaphore <- struct{}{}:
+				defer func() { <-semaphore }()
+			case <-uploadCtx.Done():
+				failedFiles++
+				return
+			}
+
+			localPath := filepath.Join(analysisDir, fileName)
+			r2Key := path.Join(t.streamKey, "analysis", fileName)
+
+			f, err := os.Open(localPath)
+			if err != nil {
+				log.Error().Err(err).Str("file", localPath).Msg("failed to open analysis chunk for upload")
+				failedFiles++
+				return
+			}
+			defer f.Close()
+
+			contentType := storage.GetContentType(fileName)
+
+			// Use timeout context for individual file upload
+			fileCtx, fileCancel := context.WithTimeout(uploadCtx, 30*time.Second)
+			defer fileCancel()
+
+			if err := t.r2Client.UploadFile(fileCtx, r2Key, f, contentType); err != nil {
+				log.Error().Err(err).Str("file", localPath).Str("key", r2Key).Msg("failed to upload analysis chunk to R2")
+				failedFiles++
+				return
+			}
+
+			uploadedFiles++
+			log.Debug().Str("file", fileName).Str("key", r2Key).Msg("uploaded analysis chunk to R2")
+		}(name)
 	}
+
+	// Wait for all uploads to complete or timeout
+	wg.Wait()
+
+	log.Info().
+		Str("stream_key", t.streamKey).
+		Int("total", totalFiles).
+		Int("uploaded", uploadedFiles).
+		Int("failed", failedFiles).
+		Msg("✓ Analysis chunks upload completed")
+
+	// For now we keep audio_chunks.file_path pointing at the shared volume path so
+	// live_translation can read local files; R2 copy is for archival only.
+}
+
+// reportProgress sends graceful shutdown progress updates to the CMS
+func (t *Transcoder) reportProgress(phase, message string, progress int, completed bool) {
+	if t.streamID == 0 {
+		return
+	}
+
+	// Get CMS configuration from env
+	cmsHost := os.Getenv("CMS_HOST")
+	if cmsHost == "" {
+		cmsHost = "http://localhost:3000"
+	}
+
+	payload := map[string]interface{}{
+		"phase":     phase,
+		"message":   message,
+		"progress":  progress,
+		"completed": completed,
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to marshal progress payload")
+		return
+	}
+
+	url := fmt.Sprintf("%s/api/live-streams/%d/ending-progress", cmsHost, t.streamID)
+
+	// Use a short timeout for progress updates (non-critical)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonData))
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create progress request")
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to report progress to CMS (non-critical)")
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Warn().Int("status", resp.StatusCode).Msg("CMS returned non-OK status for progress update")
+		return
+	}
+
+	log.Debug().
+		Str("phase", phase).
+		Int("progress", progress).
+		Bool("completed", completed).
+		Msg("Progress reported to CMS")
 }
