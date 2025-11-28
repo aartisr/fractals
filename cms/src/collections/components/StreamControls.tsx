@@ -4,13 +4,23 @@ import React, { useEffect, useState } from 'react'
 import { useFormFields, useDocumentInfo, Button } from '@payloadcms/ui'
 import './StreamControls.css'
 
+interface EndingStatus {
+  phase: string
+  message: string
+  progress?: number
+  startedAt?: string
+  updatedAt?: string
+  completedAt?: string
+}
+
 export const StreamControlsComponent: React.FC = () => {
   const { id } = useDocumentInfo()
   const status = useFormFields(([fields]) => fields?.status?.value as string)
   const streamKey = useFormFields(([fields]) => fields?.streamKey?.value as string)
   const masterPlaylistUrl = useFormFields(([fields]) => fields?.masterPlaylistUrl?.value as string)
+  const endingStatus = useFormFields(([fields]) => fields?.endingStatus?.value as EndingStatus)
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
 
   // On mount, sync status with live-transcoder and update record if out of sync
   useEffect(() => {
@@ -35,6 +45,14 @@ export const StreamControlsComponent: React.FC = () => {
     }
     sync()
   }, [id])
+
+  // Auto-refresh when stream status changes from 'ending' to 'ended'
+  useEffect(() => {
+    if (status === 'ended' && endingStatus?.completedAt) {
+      setMessage({ type: 'success', text: 'Stream ended gracefully! Refreshing...' })
+      setTimeout(() => window.location.reload(), 1500)
+    }
+  }, [status, endingStatus])
 
   const handleStartStream = async () => {
     if (!id) {
@@ -61,7 +79,6 @@ export const StreamControlsComponent: React.FC = () => {
 
       setMessage({ type: 'success', text: 'Stream started successfully! Refreshing...' })
       setTimeout(() => window.location.reload(), 1500)
-      setTimeout(() => window.location.reload(), 1500)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to start stream'
       setMessage({ type: 'error', text: errorMessage })
@@ -84,7 +101,6 @@ export const StreamControlsComponent: React.FC = () => {
     setMessage(null)
 
     try {
-      // First, stop the transcoder
       const stopResponse = await fetch(`/api/live-streams/${id}/stop`, {
         method: 'POST',
         headers: {
@@ -98,12 +114,11 @@ export const StreamControlsComponent: React.FC = () => {
         throw new Error(stopData.error || 'Failed to stop transcoder')
       }
 
-      setMessage({ type: 'success', text: 'Stream ended successfully! Refreshing...' })
-      setTimeout(() => window.location.reload(), 1500)
+      setMessage({ type: 'info', text: 'Initiating graceful shutdown. Please wait...' })
+      // Don't refresh - let polling handle it
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to end stream'
       setMessage({ type: 'error', text: errorMessage })
-    } finally {
       setLoading(false)
     }
   }
@@ -121,9 +136,28 @@ export const StreamControlsComponent: React.FC = () => {
       <div className="stream-controls__status">
         <span className="stream-controls__status-label">Status:</span>
         <span className={`stream-controls__status-badge stream-controls__status-badge--${status}`}>
-          {status === 'live' ? 'Live' : status === 'ended' ? 'Ended' : 'Idle'}
+          {status === 'live' ? '🔴 Live' : status === 'ending' ? '⏳ Ending...' : status === 'ended' ? '✓ Ended' : 'Idle'}
         </span>
       </div>
+
+      {status === 'ending' && endingStatus && (
+        <div className="stream-controls__ending-progress">
+          <div className="stream-controls__ending-message">
+            <strong>{endingStatus.message}</strong>
+          </div>
+          {endingStatus.progress !== undefined && (
+            <div className="stream-controls__progress-bar">
+              <div
+                className="stream-controls__progress-fill"
+                style={{ width: `${endingStatus.progress}%` }}
+              />
+            </div>
+          )}
+          <div className="stream-controls__ending-details">
+            Phase: {endingStatus.phase}
+          </div>
+        </div>
+      )}
 
       {streamKey && (
         <div className="stream-controls__info">
@@ -160,7 +194,7 @@ export const StreamControlsComponent: React.FC = () => {
       )}
 
       <div className="stream-controls__actions">
-        {status !== 'live' && status !== 'ended' && (
+        {status !== 'live' && status !== 'ended' && status !== 'ending' && (
           <Button
             onClick={handleStartStream}
             disabled={loading || !streamKey}
@@ -180,6 +214,12 @@ export const StreamControlsComponent: React.FC = () => {
           >
             {loading ? 'Ending...' : 'End Stream'}
           </Button>
+        )}
+
+        {status === 'ending' && (
+          <div className="stream-controls__ending-notice">
+            Stream is gracefully shutting down. Please do not close this page.
+          </div>
         )}
       </div>
 

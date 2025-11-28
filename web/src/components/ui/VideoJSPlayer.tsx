@@ -111,11 +111,9 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
     // Parse master playlist if provided, otherwise use props.sources
     if (props.masterPlaylistUrl) {
       try {
-        console.log('[VideoJSPlayer] Parsing master playlist:', props.masterPlaylistUrl);
         const result = await parseMasterPlaylist(props.masterPlaylistUrl);
 
         if (result.error || result.variants.length === 0) {
-          console.warn('[VideoJSPlayer] Failed to parse master playlist:', result.error);
           sources.value = [{
             src: props.masterPlaylistUrl,
             type: 'application/x-mpegURL',
@@ -123,7 +121,6 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
             ...(props.isLive ? { allowSeeksWithinUnsafeLiveWindow: true } : {})
           }];
         } else {
-          console.log('[VideoJSPlayer] Parsed', result.variants.length, 'quality variants');
           sources.value = variantsToVideoJSSources(
             result.variants,
             props.masterPlaylistUrl,
@@ -131,7 +128,6 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
           );
         }
       } catch (error) {
-        console.error('[VideoJSPlayer] Error parsing master playlist:', error);
         sources.value = [{
           src: props.masterPlaylistUrl,
           type: 'application/x-mpegURL',
@@ -152,11 +148,8 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
 
     // Don't initialize if we have no sources
     if (currentSources.length === 0) {
-      console.warn('[VideoJSPlayer] No sources available, skipping player initialization');
       return;
     }
-
-    console.log('[VideoJSPlayer] Initializing player with', currentSources.length, 'sources');
 
     // Dispose existing player if re-initializing
     if (playerRef.value && !playerRef.value.isDisposed()) {
@@ -183,7 +176,6 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
         if (currentSources[0].allowSeeksWithinUnsafeLiveWindow) {
           sourceConfig.allowSeeksWithinUnsafeLiveWindow = true;
         }
-        console.log('[VideoJSPlayer] Using source:', sourceConfig.src, sourceConfig.label || 'Auto');
         return sourceConfig;
       })()] : [],
       html5: {
@@ -218,16 +210,6 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
     });
 
     player.ready(() => {
-      console.log("Video.js player ready");
-
-      // Check if VHS is available
-      try {
-        const tech = player.tech({ IWillNotUseThisInPlugins: true });
-        console.log("VHS available:", !!(tech && (tech as any).vhs));
-      } catch (e) {
-        console.log("Could not check VHS availability");
-      }
-
       // Add mouse time display (controlBar is not typed in Player, so use type assertion)
       const controlBar = (player as any).controlBar;
       if (
@@ -267,7 +249,6 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
         }
       }
 
-      console.error("Video.js error:", err);
       errorMessage.value = message;
 
       if (props.onError) {

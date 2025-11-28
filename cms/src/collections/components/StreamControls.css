@@ -45,6 +45,12 @@
   animation: pulse 2s infinite;
 }
 
+.stream-controls__status-badge--ending {
+  background: #f59e0b;
+  color: white;
+  animation: pulse 1.5s infinite;
+}
+
 .stream-controls__status-badge--ended {
   background: var(--theme-elevation-600);
   color: var(--theme-text);
@@ -153,6 +159,57 @@
   background: #fee2e2;
   color: #991b1b;
   border: 1px solid #fca5a5;
+}
+
+.stream-controls__message--info {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.stream-controls__ending-progress {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--theme-elevation-100);
+  border-radius: 4px;
+  border-left: 3px solid #f59e0b;
+}
+
+.stream-controls__ending-message {
+  margin-bottom: 0.75rem;
+  color: var(--theme-text);
+  font-size: 0.9rem;
+}
+
+.stream-controls__progress-bar {
+  height: 8px;
+  background: var(--theme-elevation-300);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 0.75rem 0;
+}
+
+.stream-controls__progress-fill {
+  height: 100%;
+  background: #f59e0b;
+  transition: width 0.3s ease;
+}
+
+.stream-controls__ending-details {
+  font-size: 0.8rem;
+  color: var(--theme-text-secondary);
+  margin-top: 0.5rem;
+}
+
+.stream-controls__ending-notice {
+  padding: 0.75rem;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  color: #78350f;
+  font-size: 0.875rem;
+  text-align: center;
+  font-weight: 500;
 }
 
 .stream-controls__instructions {

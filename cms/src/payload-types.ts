@@ -222,7 +222,19 @@ export interface LiveStream {
   /**
    * Current status of the stream (controlled by Start/Stop buttons)
    */
-  status: 'idle' | 'live' | 'ended';
+  status: 'idle' | 'live' | 'ending' | 'ended';
+  /**
+   * Progress details during graceful shutdown
+   */
+  endingStatus?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   /**
    * Enable live transcription for this stream.
    */
@@ -231,6 +243,10 @@ export interface LiveStream {
    * Language code for live transcription (e.g. en, ta).
    */
   transcriptionLanguage?: string | null;
+  /**
+   * Target languages for live translation (e.g. ta, hi, fr). Leave empty to disable translation.
+   */
+  translationLanguages?: string[] | null;
   /**
    * Optional RTMP source URL. Leave empty if streaming directly to this server.
    */
@@ -563,8 +579,10 @@ export interface LiveStreamsSelect<T extends boolean = true> {
   startedAt?: T;
   visibility?: T;
   status?: T;
+  endingStatus?: T;
   transcriptionEnabled?: T;
   transcriptionLanguage?: T;
+  translationLanguages?: T;
   rtmpUrl?: T;
   masterPlaylistUrl?: T;
   thumbnailUrl?: T;

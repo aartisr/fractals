@@ -96,12 +96,27 @@ const stopStreamHandler = async (req: PayloadRequest) => {
       return Response.json({ error: 'Stream is not currently live' }, { status: 400 })
     }
 
+    // Update stream status to 'ending' immediately
+    await req.payload.update({
+      collection: 'live-streams',
+      id,
+      data: {
+        status: 'ending',
+        endingStatus: {
+          phase: 'initiating',
+          message: 'Initiating graceful shutdown...',
+          startedAt: new Date().toISOString(),
+        },
+      },
+      overrideAccess: true,
+    })
+
     // Get live transcoder configuration from env
     const transcoderHost = process.env.LIVE_TRANSCODER_HOST || 'localhost'
     const transcoderPort = process.env.LIVE_TRANSCODER_PORT || '8080'
     const transcoderUrl = `http://${transcoderHost}:${transcoderPort}`
 
-    // Call live transcoder API to stop the stream
+    // Call live transcoder API to stop the stream (non-blocking)
     const response = await fetch(`${transcoderUrl}/api/streams/stop`, {
       method: 'POST',
       headers: {
@@ -109,6 +124,7 @@ const stopStreamHandler = async (req: PayloadRequest) => {
       },
       body: JSON.stringify({
         streamKey: stream.streamKey,
+        streamId: id,
       }),
     })
 
@@ -117,19 +133,10 @@ const stopStreamHandler = async (req: PayloadRequest) => {
       throw new Error(`Failed to stop stream: ${error}`)
     }
 
-    // Update stream status to ended
-    const updatedStream = await req.payload.update({
-      collection: 'live-streams',
-      id,
-      data: {
-        status: 'ended',
-      },
-    })
-
     return Response.json({
       success: true,
-      message: 'Stream stopped successfully',
-      stream: updatedStream,
+      message: 'Stream is ending gracefully. Please wait...',
+      status: 'ending',
     })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to stop stream'
@@ -236,6 +243,10 @@ export const LiveStreams: CollectionConfig = {
           value: 'live',
         },
         {
+          label: 'Ending',
+          value: 'ending',
+        },
+        {
           label: 'Ended',
           value: 'ended',
         },
@@ -243,6 +254,15 @@ export const LiveStreams: CollectionConfig = {
       admin: {
         readOnly: true,
         description: 'Current status of the stream (controlled by Start/Stop buttons)',
+      },
+    },
+    {
+      name: 'endingStatus',
+      label: 'Graceful Shutdown Status',
+      type: 'json',
+      admin: {
+        readOnly: true,
+        description: 'Progress details during graceful shutdown',
       },
     },
     {
@@ -459,6 +479,52 @@ export const LiveStreams: CollectionConfig = {
       },
     },
     {
+      path: '/:id/ending-progress',
+      method: 'post',
+      handler: async (req: PayloadRequest) => {
+        const id = req.routeParams?.id as string
+        if (!id) {
+          return Response.json({ error: 'Stream ID is required' }, { status: 400 })
+        }
+
+        try {
+          let body: any = {}
+          if (req.json) {
+            body = await req.json()
+          }
+          const { phase, message, progress, completed } = body
+
+          const updateData: any = {
+            endingStatus: {
+              phase,
+              message,
+              progress: progress || 0,
+              updatedAt: new Date().toISOString(),
+            },
+          }
+
+          // If graceful shutdown is complete, update status to 'ended'
+          if (completed) {
+            updateData.status = 'ended'
+            updateData.endingStatus.completedAt = new Date().toISOString()
+          }
+
+          await req.payload.update({
+            collection: 'live-streams',
+            id,
+            data: updateData,
+            overrideAccess: true,
+          })
+
+          return Response.json({ success: true })
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to update ending progress'
+          req.payload.logger.error(`Error updating ending progress: ${errorMessage}`)
+          return Response.json({ error: errorMessage }, { status: 500 })
+        }
+      },
+    },
+    {
       path: '/:id/sync-status',
       method: 'get',
       handler: async (req: PayloadRequest) => {
@@ -491,20 +557,21 @@ export const LiveStreams: CollectionConfig = {
           const statusJSON: any = await statusResp.json()
 
           const running: boolean = Boolean(statusJSON?.running)
-          const nextStatus: 'idle' | 'live' | 'ended' = running ? 'live' : 'idle'
-          let updated = false
 
-          if (stream.status !== nextStatus) {
+          // Only update status if stream is running and current status is not 'live'
+          // Never overwrite 'ended' status - preserve it once set
+          let updated = false
+          if (running && stream.status !== 'live') {
             await req.payload.update({
               collection: 'live-streams',
               id,
-              data: { status: nextStatus },
+              data: { status: 'live' },
               overrideAccess: true,
             })
             updated = true
           }
 
-          return Response.json({ success: true, running, status: nextStatus, updated })
+          return Response.json({ success: true, running, status: stream.status, updated })
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to sync status'
           req.payload.logger.error(`Error syncing stream status: ${errorMessage}`)
