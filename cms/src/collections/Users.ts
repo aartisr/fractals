@@ -10,6 +10,21 @@ export const Users: CollectionConfig = {
   },
   fields: [
     // Email added by default
-    // Add more fields as needed
+    {
+      name: 'role',
+      label: 'Role',
+      type: 'select',
+      required: true,
+      defaultValue: 'user',
+      saveToJWT: true, // Save role to JWT for access control
+      options: [
+        { label: 'User', value: 'user' },
+        { label: 'Moderator', value: 'moderator' },
+        { label: 'Admin', value: 'admin' },
+      ],
+      admin: {
+        description: 'User role for access control',
+      },
+    },
   ],
 }

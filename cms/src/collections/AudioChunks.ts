@@ -5,6 +5,7 @@ export const AudioChunks: CollectionConfig = {
   admin: {
     useAsTitle: 'id',
     defaultColumns: ['stream', 'startMs', 'endMs'],
+    group: 'System',
   },
   access: {
     read: ({ req }) => Boolean(req?.user),

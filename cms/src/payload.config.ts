@@ -14,7 +14,35 @@ import { ECitizen } from './collections/ECitizen'
 import { Transcripts } from './collections/Transcripts'
 import { TranscriptSegments } from './collections/TranscriptSegments'
 import { LiveStreamViews } from './collections/LiveStreamViews'
+import { VideoViews } from './collections/VideoViews'
 import { AudioChunks } from './collections/AudioChunks'
+// Paystack-based payment collections
+import { SubscriptionPlans } from './collections/SubscriptionPlans'
+import { UserSubscriptions } from './collections/UserSubscriptions'
+import { SubscriptionTransactions } from './collections/SubscriptionTransactions'
+import { UserPaymentMethods } from './collections/UserPaymentMethods'
+import { SuperchatMessages } from './collections/SuperchatMessages'
+import { SuperchatTiers } from './collections/SuperchatTiers'
+import { PaymentEvents } from './collections/PaymentEvents'
+
+// Payment endpoints
+import { createSubscription } from './endpoints/subscriptions/create'
+import { cancelSubscription } from './endpoints/subscriptions/cancel'
+import { getManageLink } from './endpoints/subscriptions/manage-link'
+import { getCurrentSubscription } from './endpoints/subscriptions/current'
+import { setupPayment } from './endpoints/superchat/setup-payment'
+import { verifySetup } from './endpoints/superchat/verify-setup'
+import { sendSuperchat } from './endpoints/superchat/send'
+import {
+  getPaymentMethods,
+  setDefaultPaymentMethod,
+  deletePaymentMethod,
+} from './endpoints/superchat/payment-methods'
+import { getStreamSuperchats, toggleSuperchatVisibility } from './endpoints/superchat/stream-superchats'
+import { getSuperchatTiers } from './endpoints/superchat/tiers'
+import { paystackWebhook } from './endpoints/webhooks/paystack'
+// import { getContentAnalytics } from './endpoints/analytics-content'
+// import { getOverallAnalytics } from './endpoints/analytics-overall'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -25,12 +53,39 @@ export default buildConfig({
     importMap: {
       baseDir: path.resolve(dirname),
     },
+    components: {
+      views: {
+        Dashboard: {
+          Component: '/components/dashboard/ViewerAnalytics#default',
+        },
+      },
+    },
   },
   serverURL: process.env.SERVER_URL || 'http://localhost:3000',
   custom: {
     mediaBaseUrl: process.env.MEDIA_BASE_URL || 'cdn.url',
   },
-  collections: [Users, ECitizen, Categories, Videos, LiveStreams, LiveChat, LiveStreamViews, Transcripts, TranscriptSegments, AudioChunks],
+  collections: [
+    Users,
+    ECitizen,
+    Categories,
+    Videos,
+    LiveStreams,
+    LiveChat,
+    LiveStreamViews,
+    VideoViews,
+    Transcripts,
+    TranscriptSegments,
+    AudioChunks,
+    // Paystack-based payment collections
+    SubscriptionPlans,
+    UserSubscriptions,
+    SubscriptionTransactions,
+    UserPaymentMethods,
+    SuperchatMessages,
+    SuperchatTiers,
+    PaymentEvents,
+  ],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
@@ -44,5 +99,91 @@ export default buildConfig({
   plugins: [
     payloadCloudPlugin(),
     // storage-adapter-placeholder
+  ],
+  endpoints: [
+    // Subscription endpoints
+    {
+      path: '/subscriptions/create',
+      method: 'post',
+      handler: createSubscription,
+    },
+    {
+      path: '/subscriptions/cancel',
+      method: 'post',
+      handler: cancelSubscription,
+    },
+    {
+      path: '/subscriptions/manage-link',
+      method: 'get',
+      handler: getManageLink,
+    },
+    {
+      path: '/subscriptions/current',
+      method: 'get',
+      handler: getCurrentSubscription,
+    },
+    // Superchat endpoints
+    {
+      path: '/superchat/setup-payment',
+      method: 'post',
+      handler: setupPayment,
+    },
+    {
+      path: '/superchat/verify-setup',
+      method: 'get',
+      handler: verifySetup,
+    },
+    {
+      path: '/superchat/send',
+      method: 'post',
+      handler: sendSuperchat,
+    },
+    {
+      path: '/superchat/payment-methods',
+      method: 'get',
+      handler: getPaymentMethods,
+    },
+    {
+      path: '/superchat/payment-methods/set-default',
+      method: 'post',
+      handler: setDefaultPaymentMethod,
+    },
+    {
+      path: '/superchat/payment-methods/:id',
+      method: 'delete',
+      handler: deletePaymentMethod,
+    },
+    {
+      path: '/superchat/stream/:streamId',
+      method: 'get',
+      handler: getStreamSuperchats,
+    },
+    {
+      path: '/superchat/:id/visibility',
+      method: 'patch',
+      handler: toggleSuperchatVisibility,
+    },
+    {
+      path: '/superchat/tiers',
+      method: 'get',
+      handler: getSuperchatTiers,
+    },
+    // Webhook
+    {
+      path: '/webhooks/paystack',
+      method: 'post',
+      handler: paystackWebhook,
+    },
+    // Analytics endpoints
+    // {
+    //   path: '/analytics/content-stats',
+    //   method: 'get',
+    //   handler: getContentAnalytics,
+    // },
+    // {
+    //   path: '/analytics/viewer-stats',
+    //   method: 'get',
+    //   handler: getOverallAnalytics,
+    // },
   ],
 })

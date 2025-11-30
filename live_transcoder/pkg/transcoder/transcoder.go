@@ -108,7 +108,7 @@ func (t *Transcoder) Start() error {
 		FrameMs:       20,
 		SilenceThresh: 800,
 		MinSilenceMs:  1000,
-		MinChunkMs:    10000,
+		MinChunkMs:    500,  // Capture segments as short as 0.5 seconds (was 10 seconds!)
 		OutputDir:     chunkDir,
 	}
 
@@ -1082,6 +1082,12 @@ func (t *Transcoder) reportProgress(phase, message string, progress int, complet
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+
+	// Add Payload API Key header for authentication if available
+	// Format: "users API-Key {YOUR_API_KEY}"
+	if apiKey := os.Getenv("CMS_API_KEY"); apiKey != "" {
+		req.Header.Set("Authorization", apiKey)
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

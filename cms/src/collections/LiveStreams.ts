@@ -96,6 +96,29 @@ const stopStreamHandler = async (req: PayloadRequest) => {
       return Response.json({ error: 'Stream is not currently live' }, { status: 400 })
     }
 
+    // Get live transcoder configuration from env
+    const transcoderHost = process.env.LIVE_TRANSCODER_HOST || 'localhost'
+    const transcoderPort = process.env.LIVE_TRANSCODER_PORT || '8080'
+    const transcoderUrl = `http://${transcoderHost}:${transcoderPort}`
+
+    // First, verify the stream is actually running in the transcoder
+    const statusResponse = await fetch(`${transcoderUrl}/api/streams/${stream.streamKey}`)
+    if (statusResponse.ok) {
+      const statusData = await statusResponse.json()
+      if (!statusData.running) {
+        // Stream is not running in transcoder, update DB status to 'ended'
+        await req.payload.update({
+          collection: 'live-streams',
+          id,
+          data: { status: 'ended' },
+          overrideAccess: true,
+        })
+        return Response.json({
+          error: 'Stream is not currently active in the transcoder. Status updated to ended.'
+        }, { status: 400 })
+      }
+    }
+
     // Update stream status to 'ending' immediately
     await req.payload.update({
       collection: 'live-streams',
@@ -111,11 +134,6 @@ const stopStreamHandler = async (req: PayloadRequest) => {
       overrideAccess: true,
     })
 
-    // Get live transcoder configuration from env
-    const transcoderHost = process.env.LIVE_TRANSCODER_HOST || 'localhost'
-    const transcoderPort = process.env.LIVE_TRANSCODER_PORT || '8080'
-    const transcoderUrl = `http://${transcoderHost}:${transcoderPort}`
-
     // Call live transcoder API to stop the stream (non-blocking)
     const response = await fetch(`${transcoderUrl}/api/streams/stop`, {
       method: 'POST',
@@ -130,6 +148,16 @@ const stopStreamHandler = async (req: PayloadRequest) => {
 
     if (!response.ok) {
       const error = await response.text()
+      // Rollback status to 'live' if stop failed
+      await req.payload.update({
+        collection: 'live-streams',
+        id,
+        data: {
+          status: 'live',
+          endingStatus: null,
+        },
+        overrideAccess: true,
+      })
       throw new Error(`Failed to stop stream: ${error}`)
     }
 
@@ -489,7 +517,7 @@ export const LiveStreams: CollectionConfig = {
 
         try {
           let body: any = {}
-          if (req.json) {
+          if (req.json && typeof req.json === 'function') {
             body = await req.json()
           }
           const { phase, message, progress, completed } = body

@@ -9,12 +9,23 @@ interface Author {
   displayName: string;
 }
 
+interface SuperchatData {
+  type: 'superchat';
+  message: string;
+  amount: number;
+  tier: 'blue' | 'gold' | 'orange' | 'pink' | 'red';
+  highlight_color: string;
+  pin_duration_seconds: number;
+  superchat_id: string;
+}
+
 interface ChatMessage {
   author: Author;
   streamId: string;
   content: string;
-  type: 'user' | 'system' | 'moderator';
+  type: 'user' | 'system' | 'moderator' | 'superchat';
   timestamp: string;
+  superchatData?: SuperchatData;
 }
 
 interface LiveChatProps {
@@ -96,7 +107,20 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
       try {
         const data = JSON.parse(e.data);
         if (data.messages && Array.isArray(data.messages)) {
-          messages.value = data.messages;
+          // Parse superchat data for historical messages
+          const parsedMessages = data.messages.map((msg: ChatMessage) => {
+            if (msg.type === 'superchat' && msg.content) {
+              try {
+                const superchatData = JSON.parse(msg.content);
+                return { ...msg, superchatData };
+              } catch (parseErr) {
+                console.error('[LiveChat] Failed to parse superchat content in history:', parseErr);
+                return msg;
+              }
+            }
+            return msg;
+          });
+          messages.value = parsedMessages;
           setTimeout(() => scrollToBottom(), 100);
         }
       } catch (err) {
@@ -108,8 +132,20 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
       try {
         const data = JSON.parse(e.data);
         if (data.data) {
+          const msg = data.data;
+
+          // Parse superchat data if it's a superchat message
+          if (msg.type === 'superchat' && msg.content) {
+            try {
+              const superchatData = JSON.parse(msg.content);
+              msg.superchatData = superchatData;
+            } catch (parseErr) {
+              console.error('[LiveChat] Failed to parse superchat content:', parseErr);
+            }
+          }
+
           // Add new message to the list
-          messages.value = [...messages.value, data.data];
+          messages.value = [...messages.value, msg];
           setTimeout(() => scrollToBottom(), 100);
         }
       } catch (err) {
@@ -274,6 +310,33 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
                 </div>
                 <div class="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 text-gray-900 text-sm">
                   {msg.content}
+                </div>
+              </div>
+            ) : msg.type === 'superchat' && msg.superchatData ? (
+              <div
+                class="w-full border-2 rounded-lg overflow-hidden shadow-lg animate-pulse-once"
+                style={{ borderColor: msg.superchatData.highlight_color }}
+              >
+                {/* Superchat Header */}
+                <div
+                  class="px-3 py-2 text-white font-bold flex items-center justify-between"
+                  style={{ backgroundColor: msg.superchatData.highlight_color }}
+                >
+                  <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd" />
+                    </svg>
+                    <span>{msg.author.displayName}</span>
+                  </div>
+                  <div class="text-sm font-bold">
+                    ${(msg.superchatData.amount / 100).toFixed(2)}
+                  </div>
+                </div>
+
+                {/* Superchat Message */}
+                <div class="bg-white px-3 py-2 text-gray-900 text-sm font-medium">
+                  {msg.superchatData.message}
                 </div>
               </div>
             ) : (

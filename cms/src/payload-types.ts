@@ -74,9 +74,17 @@ export interface Config {
     'live-streams': LiveStream;
     'live-chat': LiveChat;
     'live-stream-views': LiveStreamView;
+    'video-views': VideoView;
     transcripts: Transcript;
     'transcript-segments': TranscriptSegment;
     'audio-chunks': AudioChunk;
+    'subscription-plans': SubscriptionPlan;
+    'user-subscriptions': UserSubscription;
+    'subscription-transactions': SubscriptionTransaction;
+    'user-payment-methods': UserPaymentMethod;
+    'superchat-messages': SuperchatMessage;
+    'superchat-tiers': SuperchatTier;
+    'payment-events': PaymentEvent;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -90,9 +98,17 @@ export interface Config {
     'live-streams': LiveStreamsSelect<false> | LiveStreamsSelect<true>;
     'live-chat': LiveChatSelect<false> | LiveChatSelect<true>;
     'live-stream-views': LiveStreamViewsSelect<false> | LiveStreamViewsSelect<true>;
+    'video-views': VideoViewsSelect<false> | VideoViewsSelect<true>;
     transcripts: TranscriptsSelect<false> | TranscriptsSelect<true>;
     'transcript-segments': TranscriptSegmentsSelect<false> | TranscriptSegmentsSelect<true>;
     'audio-chunks': AudioChunksSelect<false> | AudioChunksSelect<true>;
+    'subscription-plans': SubscriptionPlansSelect<false> | SubscriptionPlansSelect<true>;
+    'user-subscriptions': UserSubscriptionsSelect<false> | UserSubscriptionsSelect<true>;
+    'subscription-transactions': SubscriptionTransactionsSelect<false> | SubscriptionTransactionsSelect<true>;
+    'user-payment-methods': UserPaymentMethodsSelect<false> | UserPaymentMethodsSelect<true>;
+    'superchat-messages': SuperchatMessagesSelect<false> | SuperchatMessagesSelect<true>;
+    'superchat-tiers': SuperchatTiersSelect<false> | SuperchatTiersSelect<true>;
+    'payment-events': PaymentEventsSelect<false> | PaymentEventsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -135,6 +151,10 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: number;
+  /**
+   * User role for access control
+   */
+  role: 'user' | 'moderator' | 'admin';
   updatedAt: string;
   createdAt: string;
   enableAPIKey?: boolean | null;
@@ -361,6 +381,81 @@ export interface LiveStreamView {
   createdAt: string;
 }
 /**
+ * Video viewer sessions and analytics for on-demand content
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "video-views".
+ */
+export interface VideoView {
+  id: number;
+  /**
+   * Unique session identifier (UUID generated on client)
+   */
+  sessionId: string;
+  /**
+   * The video being viewed
+   */
+  video: number | Video;
+  /**
+   * Authenticated user (if logged in)
+   */
+  ecitizen?: (number | null) | Ecitizen;
+  /**
+   * Display name for anonymous viewers or authenticated user name
+   */
+  viewerName?: string | null;
+  /**
+   * Viewer IP address (for analytics)
+   */
+  ipAddress?: string | null;
+  /**
+   * Browser/device user agent
+   */
+  userAgent?: string | null;
+  /**
+   * Detected device type
+   */
+  deviceType?: ('desktop' | 'mobile' | 'tablet' | 'unknown') | null;
+  /**
+   * Country from IP geolocation (optional)
+   */
+  country?: string | null;
+  /**
+   * Video quality selected (e.g., 1080p, 720p, auto)
+   */
+  quality?: string | null;
+  /**
+   * When the viewer started watching
+   */
+  startedAt: string;
+  /**
+   * When the viewer stopped watching
+   */
+  endedAt?: string | null;
+  /**
+   * Last time we received a heartbeat from this session
+   */
+  lastHeartbeatAt?: string | null;
+  /**
+   * Total watch time in seconds (calculated on session end)
+   */
+  watchDurationSeconds?: number | null;
+  /**
+   * How far through the video the viewer watched (0-100%)
+   */
+  progressPercentage?: number | null;
+  /**
+   * Whether the viewer watched to the end (>90% progress)
+   */
+  completed?: boolean | null;
+  /**
+   * Whether this session is currently active (receiving heartbeats)
+   */
+  isActive?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "transcripts".
  */
@@ -418,6 +513,334 @@ export interface AudioChunk {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscription-plans".
+ */
+export interface SubscriptionPlan {
+  id: number;
+  /**
+   * e.g., "Premium Monthly", "Premium Yearly"
+   */
+  name: string;
+  /**
+   * Brief description of what this plan includes
+   */
+  description: string;
+  interval: 'monthly' | 'yearly';
+  /**
+   * Amount in cents (e.g., 999 = $9.99)
+   */
+  amount: number;
+  currency: string;
+  /**
+   * Plan code from Paystack (e.g., PLN_xxx)
+   */
+  paystack_plan_code: string;
+  /**
+   * List of features included in this plan
+   */
+  features?:
+    | {
+        feature: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Only active plans are shown to users
+   */
+  is_active?: boolean | null;
+  /**
+   * Order in which plans are displayed (lower = first)
+   */
+  display_order?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-subscriptions".
+ */
+export interface UserSubscription {
+  id: number;
+  /**
+   * User ID from auth.kailasa.ai
+   */
+  user: string;
+  plan: number | SubscriptionPlan;
+  /**
+   * SUB_xxx from Paystack
+   */
+  paystack_subscription_code?: string | null;
+  /**
+   * CUS_xxx from Paystack
+   */
+  paystack_customer_code?: string | null;
+  /**
+   * AUTH_xxx from Paystack
+   */
+  paystack_authorization_code?: string | null;
+  /**
+   * Email token for generating management links
+   */
+  paystack_email_token?: string | null;
+  status: 'active' | 'cancelled' | 'non-renewing' | 'expired';
+  current_period_start?: string | null;
+  current_period_end?: string | null;
+  /**
+   * When the next automatic charge will occur
+   */
+  next_payment_date?: string | null;
+  cancelled_at?: string | null;
+  /**
+   * Last 4 digits of payment card
+   */
+  last4?: string | null;
+  /**
+   * e.g., visa, mastercard
+   */
+  card_type?: string | null;
+  /**
+   * Issuing bank
+   */
+  card_bank?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscription-transactions".
+ */
+export interface SubscriptionTransaction {
+  id: number;
+  subscription: number | UserSubscription;
+  /**
+   * User ID from auth.kailasa.ai
+   */
+  user: string;
+  /**
+   * Unique reference from Paystack
+   */
+  transaction_reference: string;
+  amount: number;
+  status: 'success' | 'failed' | 'pending';
+  paystack_transaction_id?: number | null;
+  /**
+   * Full webhook data from Paystack
+   */
+  paystack_response?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Response message from payment gateway
+   */
+  gateway_response?: string | null;
+  /**
+   * Transaction fees charged by Paystack
+   */
+  fees?: number | null;
+  /**
+   * Amount after fees
+   */
+  net_amount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-payment-methods".
+ */
+export interface UserPaymentMethod {
+  id: number;
+  /**
+   * User ID from auth.kailasa.ai
+   */
+  user: string;
+  /**
+   * AUTH_xxx from Paystack - used for charging superchat
+   */
+  authorization_code: string;
+  last4: string;
+  /**
+   * MM format
+   */
+  exp_month?: string | null;
+  /**
+   * YYYY format
+   */
+  exp_year?: string | null;
+  /**
+   * e.g., visa, mastercard
+   */
+  card_type?: string | null;
+  /**
+   * Issuing bank
+   */
+  bank?: string | null;
+  /**
+   * Card brand
+   */
+  brand?: string | null;
+  /**
+   * Use this card for superchat by default
+   */
+  is_default?: boolean | null;
+  /**
+   * Can this payment method be used
+   */
+  is_active?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "superchat-messages".
+ */
+export interface SuperchatMessage {
+  id: number;
+  /**
+   * User ID from auth.kailasa.ai
+   */
+  user: string;
+  stream: number | LiveStream;
+  /**
+   * Superchat message (max 500 characters)
+   */
+  message: string;
+  /**
+   * Amount in cents (variable amount)
+   */
+  amount: number;
+  currency: string;
+  /**
+   * Auto-calculated hex color based on amount
+   */
+  highlight_color?: string | null;
+  /**
+   * How long to pin the message
+   */
+  pin_duration_seconds?: number | null;
+  /**
+   * Auto-calculated tier based on amount
+   */
+  tier?: ('blue' | 'gold' | 'orange' | 'pink' | 'red') | null;
+  transaction_reference?: string | null;
+  /**
+   * AUTH_xxx used for this charge
+   */
+  paystack_authorization_code?: string | null;
+  status: 'pending' | 'success' | 'failed' | 'refunded';
+  /**
+   * Show this superchat in the chat
+   */
+  is_visible?: boolean | null;
+  /**
+   * Currently pinned at top of chat
+   */
+  is_pinned?: boolean | null;
+  /**
+   * Auto-calculated: when to unpin
+   */
+  pinned_until?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Configure superchat tier levels and their visual styling
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "superchat-tiers".
+ */
+export interface SuperchatTier {
+  id: number;
+  /**
+   * e.g., "Blue", "Gold", "Red"
+   */
+  name: string;
+  /**
+   * Unique identifier for this tier
+   */
+  tier_id: 'blue' | 'gold' | 'orange' | 'pink' | 'red';
+  /**
+   * Minimum amount in cents for this tier (e.g., 1000 = $10.00)
+   */
+  min_amount: number;
+  /**
+   * Hex color code for this tier (e.g., #2196F3)
+   */
+  color: string;
+  /**
+   * How long to pin messages of this tier (in seconds)
+   */
+  pin_duration: number;
+  /**
+   * Whether this tier is currently active
+   */
+  is_active?: boolean | null;
+  /**
+   * Order for displaying tiers (lower = first)
+   */
+  display_order?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-events".
+ */
+export interface PaymentEvent {
+  id: number;
+  /**
+   * e.g., subscription.create, charge.success
+   */
+  event_type: string;
+  event_source: 'paystack' | 'system' | 'admin';
+  /**
+   * Related user ID (if applicable)
+   */
+  user?: string | null;
+  /**
+   * Related subscription (if applicable)
+   */
+  subscription?: (number | null) | UserSubscription;
+  /**
+   * Related superchat (if applicable)
+   */
+  superchat?: (number | null) | SuperchatMessage;
+  /**
+   * Original event name from Paystack webhook
+   */
+  paystack_event?: string | null;
+  /**
+   * Full webhook payload from Paystack
+   */
+  paystack_payload?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Has this event been processed
+   */
+  processed?: boolean | null;
+  processed_at?: string | null;
+  /**
+   * Error message if processing failed
+   */
+  error_message?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
@@ -452,6 +875,10 @@ export interface PayloadLockedDocument {
         value: number | LiveStreamView;
       } | null)
     | ({
+        relationTo: 'video-views';
+        value: number | VideoView;
+      } | null)
+    | ({
         relationTo: 'transcripts';
         value: number | Transcript;
       } | null)
@@ -462,6 +889,34 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'audio-chunks';
         value: number | AudioChunk;
+      } | null)
+    | ({
+        relationTo: 'subscription-plans';
+        value: number | SubscriptionPlan;
+      } | null)
+    | ({
+        relationTo: 'user-subscriptions';
+        value: number | UserSubscription;
+      } | null)
+    | ({
+        relationTo: 'subscription-transactions';
+        value: number | SubscriptionTransaction;
+      } | null)
+    | ({
+        relationTo: 'user-payment-methods';
+        value: number | UserPaymentMethod;
+      } | null)
+    | ({
+        relationTo: 'superchat-messages';
+        value: number | SuperchatMessage;
+      } | null)
+    | ({
+        relationTo: 'superchat-tiers';
+        value: number | SuperchatTier;
+      } | null)
+    | ({
+        relationTo: 'payment-events';
+        value: number | PaymentEvent;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -510,6 +965,7 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  role?: T;
   updatedAt?: T;
   createdAt?: T;
   enableAPIKey?: T;
@@ -626,6 +1082,30 @@ export interface LiveStreamViewsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "video-views_select".
+ */
+export interface VideoViewsSelect<T extends boolean = true> {
+  sessionId?: T;
+  video?: T;
+  ecitizen?: T;
+  viewerName?: T;
+  ipAddress?: T;
+  userAgent?: T;
+  deviceType?: T;
+  country?: T;
+  quality?: T;
+  startedAt?: T;
+  endedAt?: T;
+  lastHeartbeatAt?: T;
+  watchDurationSeconds?: T;
+  progressPercentage?: T;
+  completed?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "transcripts_select".
  */
 export interface TranscriptsSelect<T extends boolean = true> {
@@ -659,6 +1139,141 @@ export interface AudioChunksSelect<T extends boolean = true> {
   startMs?: T;
   endMs?: T;
   filePath?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscription-plans_select".
+ */
+export interface SubscriptionPlansSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  interval?: T;
+  amount?: T;
+  currency?: T;
+  paystack_plan_code?: T;
+  features?:
+    | T
+    | {
+        feature?: T;
+        id?: T;
+      };
+  is_active?: T;
+  display_order?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-subscriptions_select".
+ */
+export interface UserSubscriptionsSelect<T extends boolean = true> {
+  user?: T;
+  plan?: T;
+  paystack_subscription_code?: T;
+  paystack_customer_code?: T;
+  paystack_authorization_code?: T;
+  paystack_email_token?: T;
+  status?: T;
+  current_period_start?: T;
+  current_period_end?: T;
+  next_payment_date?: T;
+  cancelled_at?: T;
+  last4?: T;
+  card_type?: T;
+  card_bank?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscription-transactions_select".
+ */
+export interface SubscriptionTransactionsSelect<T extends boolean = true> {
+  subscription?: T;
+  user?: T;
+  transaction_reference?: T;
+  amount?: T;
+  status?: T;
+  paystack_transaction_id?: T;
+  paystack_response?: T;
+  gateway_response?: T;
+  fees?: T;
+  net_amount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-payment-methods_select".
+ */
+export interface UserPaymentMethodsSelect<T extends boolean = true> {
+  user?: T;
+  authorization_code?: T;
+  last4?: T;
+  exp_month?: T;
+  exp_year?: T;
+  card_type?: T;
+  bank?: T;
+  brand?: T;
+  is_default?: T;
+  is_active?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "superchat-messages_select".
+ */
+export interface SuperchatMessagesSelect<T extends boolean = true> {
+  user?: T;
+  stream?: T;
+  message?: T;
+  amount?: T;
+  currency?: T;
+  highlight_color?: T;
+  pin_duration_seconds?: T;
+  tier?: T;
+  transaction_reference?: T;
+  paystack_authorization_code?: T;
+  status?: T;
+  is_visible?: T;
+  is_pinned?: T;
+  pinned_until?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "superchat-tiers_select".
+ */
+export interface SuperchatTiersSelect<T extends boolean = true> {
+  name?: T;
+  tier_id?: T;
+  min_amount?: T;
+  color?: T;
+  pin_duration?: T;
+  is_active?: T;
+  display_order?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-events_select".
+ */
+export interface PaymentEventsSelect<T extends boolean = true> {
+  event_type?: T;
+  event_source?: T;
+  user?: T;
+  subscription?: T;
+  superchat?: T;
+  paystack_event?: T;
+  paystack_payload?: T;
+  processed?: T;
+  processed_at?: T;
+  error_message?: T;
   updatedAt?: T;
   createdAt?: T;
 }

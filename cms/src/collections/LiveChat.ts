@@ -16,6 +16,7 @@ export const LiveChat: CollectionConfig = {
     useAsTitle: 'content',
     defaultColumns: ['content', 'ecitizen', 'stream', 'type', 'createdAt'],
     description: 'Live chat messages for streams',
+    group: 'System',
   },
   fields: [
     {
@@ -66,6 +67,10 @@ export const LiveChat: CollectionConfig = {
         {
           label: 'Moderator Message',
           value: 'moderator',
+        },
+        {
+          label: 'Superchat',
+          value: 'superchat',
         },
       ],
       admin: {

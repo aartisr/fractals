@@ -13,7 +13,6 @@ export const onGet: RequestHandler = async ({ query, getWritableStream, env, coo
   const token = cookie.get('nandi_session_token')?.value;
 
   if (!chatServiceUrl) {
-    console.error('[Chat Stream] CHAT_SERVICE_URL not set');
     throw error(500, 'Chat service not configured');
   }
 
@@ -28,7 +27,6 @@ export const onGet: RequestHandler = async ({ query, getWritableStream, env, coo
   try {
     // Forward SSE request to chat service
     const url = `${chatServiceUrl}/chat/stream?streamId=${encodeURIComponent(streamId)}`;
-    console.log(`[Chat Stream] Connecting to ${url}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -41,7 +39,6 @@ export const onGet: RequestHandler = async ({ query, getWritableStream, env, coo
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error(`[Chat Stream] Upstream error ${response.status}: ${errText}`);
       status(response.status);
       headers.set('Content-Type', 'text/plain');
       const writer = getWritableStream().getWriter();
@@ -77,13 +74,12 @@ export const onGet: RequestHandler = async ({ query, getWritableStream, env, coo
         await writer.write(value);
       }
     } catch (writeErr) {
-      console.error('[Chat Stream] Error writing to stream:', writeErr);
+      // Stream write error - connection likely closed by client
     } finally {
       reader.releaseLock();
       writer.close();
     }
   } catch (err) {
-    console.error('[Chat Stream API] Error:', err);
     // If headers haven't been sent, we can try to send an error response
     try {
         status(500);

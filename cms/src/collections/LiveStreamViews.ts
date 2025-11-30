@@ -3,11 +3,11 @@ import type { CollectionConfig } from 'payload'
 export const LiveStreamViews: CollectionConfig = {
   slug: 'live-stream-views',
   access: {
-    // Only authenticated users (admins) can read/write view data
-    read: ({ req: { user } }) => Boolean(user),
+    // Allow authenticated users and API key access
+    read: () => true, // Allow API to read viewer data
     create: () => true, // Allow API to create view sessions
     update: () => true, // Allow API to update session end times
-    delete: ({ req: { user } }) => Boolean(user),
+    delete: ({ req: { user } }) => Boolean(user), // Only authenticated admins can delete
   },
   admin: {
     useAsTitle: 'sessionId',

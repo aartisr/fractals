@@ -259,8 +259,11 @@ func (h *HTTPHandler) HandleSendMessage(w http.ResponseWriter, r *http.Request) 
 		req.Type = "user"
 	}
 
-	// Sanitize content
-	sanitizedContent := h.sanitizeContent(req.Content)
+	// Sanitize content (skip for superchat as it contains JSON)
+	sanitizedContent := req.Content
+	if req.Type != "superchat" {
+		sanitizedContent = h.sanitizeContent(req.Content)
+	}
 
     // Upsert ecitizen and save to database
     ecitizenID, err := h.db.GetOrCreateECitizen(ctx, id.Email, id.FirstName, id.LastName)

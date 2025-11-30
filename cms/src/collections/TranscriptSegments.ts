@@ -5,6 +5,7 @@ export const TranscriptSegments: CollectionConfig = {
   admin: {
     useAsTitle: 'id',
     defaultColumns: ['transcript', 'startMs', 'endMs'],
+    group: 'System',
   },
   access: {
     read: () => true,

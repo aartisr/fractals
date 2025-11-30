@@ -1,8 +1,12 @@
 import { component$, useStyles$, useSignal, useVisibleTask$, $ } from '@builder.io/qwik';
 import { routeLoader$, type DocumentHead, Link } from '@builder.io/qwik-city';
 import { payload } from '~/utils/payload-sdk';
+import { getSessionFromAuthService } from '~/utils/auth-service';
 import { VideoJSPlayer } from '~/components/ui/VideoJSPlayer';
 import { LiveChat } from '~/components/ui/LiveChat';
+import { SuperchatInput } from '~/components/ui/SuperchatInput';
+import { LiveViewerCount } from '~/components/ui/LiveViewerCount';
+import { useViewerSession } from '~/hooks/useViewerSession';
 import { LuArrowLeft, LuCalendar, LuShare2, LuHeart } from '@qwikest/icons/lucide';
 
 type TranscriptSegment = {
@@ -59,6 +63,48 @@ export const useLiveStreamLoader = routeLoader$(async ({ params, status }) => {
   return safe;
 });
 
+/**
+ * Server-side data loader for current user info (optional)
+ */
+export const useCurrentUserLoader = routeLoader$(async ({ cookie, env }) => {
+  const sessionToken = cookie.get('nandi_session_token')?.value;
+
+  if (!sessionToken) {
+    return null; // Not authenticated, return null
+  }
+
+  const authBase = env.get('AUTH_BASE');
+  const clientId = env.get('AUTH_CLIENT_ID');
+
+  if (!authBase || !clientId) {
+    console.warn('[User Loader] Auth configuration missing');
+    return null;
+  }
+
+  try {
+    // Get user data from auth service
+    const data = await getSessionFromAuthService(sessionToken, clientId, authBase);
+    const user = data.user;
+
+    if (user && !user.is_anonymous) {
+      // Construct full name from first_name and last_name
+      const firstName = user.first_name || '';
+      const lastName = user.last_name || '';
+      const fullName = `${firstName} ${lastName}`.trim() || user.email || 'Devotee';
+
+      return {
+        id: user.id,
+        name: fullName,
+        email: user.email,
+      };
+    }
+  } catch (err) {
+    console.warn('[User Loader] Failed to get user info:', err);
+  }
+
+  return null;
+});
+
 const styles = `
   .frame {
     position: relative;
@@ -89,6 +135,17 @@ export default component$(() => {
 
   // --- Datos del stream ---
   const stream = useLiveStreamLoader();
+  const currentUser = useCurrentUserLoader();
+
+  // --- Viewer tracking ---
+  // Track viewers for ALL streams (live, ended, idle) to get view counts
+  const isLive = stream.value?.status === 'live';
+
+  const viewerSession = useViewerSession({
+    streamId: stream.value?.id ? String(stream.value.id) : '',
+    viewerName: currentUser.value?.name || 'Anonymous',
+    enabled: !!stream.value?.id, // Track ALL streams (live and VOD)
+  });
 
   if (!stream.value) {
     return (
@@ -107,8 +164,6 @@ export default component$(() => {
       </div>
     );
   }
-
-  const isLive = stream.value.status === 'live';
 
   return (
     <div class="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50">
@@ -136,7 +191,7 @@ export default component$(() => {
                 <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                   {stream.value.title}
                 </h1>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   <span
                     class={`inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full ${
                       stream.value.status === 'live'
@@ -159,6 +214,10 @@ export default component$(() => {
                     >
                       {stream.value.visibility}
                     </span>
+                  )}
+                  {/* Live Viewer Count */}
+                  {stream.value.status === 'live' && stream.value.id && (
+                    <LiveViewerCount streamId={String(stream.value.id)} />
                   )}
                 </div>
               </div>
@@ -258,14 +317,17 @@ export default component$(() => {
             </div>
           </div>
 
-          {/* Right Column: Live Chat */}
-          <div class="lg:col-span-1">
+          {/* Right Column: Live Chat & Superchat */}
+          <div class="lg:col-span-1 space-y-4">
             {stream.value?.id && (
-              <LiveChat
-                streamId={String(stream.value.id)}
-                currentUserId="anonymous"
-                currentUserName="Anonymous"
-              />
+              <>
+                <LiveChat
+                  streamId={String(stream.value.id)}
+                  currentUserId={currentUser.value?.id || 'anonymous'}
+                  currentUserName={currentUser.value?.name || 'Anonymous'}
+                />
+                <SuperchatInput streamId={String(stream.value.id)} />
+              </>
             )}
           </div>
         </div>

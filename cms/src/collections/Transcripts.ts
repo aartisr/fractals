@@ -5,6 +5,7 @@ export const Transcripts: CollectionConfig = {
   admin: {
     useAsTitle: 'id',
     defaultColumns: ['stream', 'language', 'version'],
+    group: 'System',
   },
   access: {
     read: () => true,
