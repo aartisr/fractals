@@ -12,9 +12,29 @@
 import type { RequestHandler } from "@builder.io/qwik-city";
 import { exchangeAuthCode } from "~/utils/auth-service";
 
+function extractAuthFromRedirectTo(redirectTo: string, baseUrl: string) {
+    try {
+        const parsed = new URL(redirectTo, baseUrl);
+        const embeddedAuthCode = parsed.searchParams.get("auth_code");
+        if (!embeddedAuthCode) {
+            return { embeddedAuthCode: undefined, cleanedRedirectTo: redirectTo };
+        }
+
+        parsed.searchParams.delete("auth_code");
+        const cleanedRedirectTo = parsed.pathname + parsed.search + parsed.hash;
+        return { embeddedAuthCode, cleanedRedirectTo };
+    } catch {
+        // If parsing fails, keep the original redirectTo untouched
+        return { embeddedAuthCode: undefined, cleanedRedirectTo: redirectTo };
+    }
+}
+
 export const onGet: RequestHandler = async ({ url, cookie, redirect, env, error }) => {
-    const authCode = url.searchParams.get("auth_code");
-    const redirectTo = url.searchParams.get("redirect_to") || "/playlists";
+    const redirectToParam = url.searchParams.get("redirect_to") || "/playlists";
+    const { embeddedAuthCode, cleanedRedirectTo } = extractAuthFromRedirectTo(redirectToParam, url.origin);
+
+    const authCode = url.searchParams.get("auth_code") || embeddedAuthCode;
+    const redirectTo = cleanedRedirectTo || "/playlists";
 
     if (!authCode) {
         throw error(400, "Missing auth_code parameter");

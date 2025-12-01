@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"live_transcoder/pkg/chunker"
 	"live_transcoder/pkg/config"
@@ -260,7 +261,7 @@ func (t *Transcoder) Stop() {
 func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 	log.Info().
 		Str("stream_key", t.streamKey).
-		Msg("🛑 FFmpeg stopped - starting graceful shutdown...")
+		Msg("FFmpeg stopped - starting graceful shutdown...")
 
 	// Report progress: FFmpeg stopped
 	t.reportProgress("ffmpeg_stopped", "FFmpeg stopped, preparing to finalize stream...", 10, false)
@@ -271,7 +272,7 @@ func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 
 	log.Info().
 		Str("stream_key", t.streamKey).
-		Msg("📤 Uploading final segments (retrying 5 times)...")
+		Msg("Uploading final segments (retrying 5 times)...")
 
 	// Report progress: Uploading final segments
 	t.reportProgress("uploading_segments", "Uploading final segments...", 30, false)
@@ -289,14 +290,14 @@ func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 	log.Info().
 		Str("stream_key", t.streamKey).
 		Int("total_uploaded", len(uploadedFiles)).
-		Msg("✓ Final segment upload completed")
+		Msg("Final segment upload completed")
 
 	// Report progress: Finalizing playlists
 	t.reportProgress("finalizing_playlists", "Finalizing playlists with EXT-X-ENDLIST...", 60, false)
 
 	// Finalize playlists by adding EXT-X-ENDLIST (marks stream as VOD)
-	log.Info().Str("stream_key", t.streamKey).Msg("📝 Finalizing playlists with EXT-X-ENDLIST...")
-	t.finalizePlaylists()
+	log.Info().Str("stream_key", t.streamKey).Msg("Finalizing playlists with EXT-X-ENDLIST...")
+	finalized := t.finalizePlaylists()
 
 	// Report progress: Cleanup
 	t.reportProgress("cleanup", "Cleaning up temporary files...", 90, false)
@@ -305,20 +306,29 @@ func (t *Transcoder) gracefulShutdown(uploadDone chan struct{}) {
 	log.Debug().Str("stream_key", t.streamKey).Msg("Stopping upload watcher...")
 	t.uploadCancel()
 	<-uploadDone
-	log.Debug().Str("stream_key", t.streamKey).Msg("✓ Upload watcher stopped")
+	log.Debug().Str("stream_key", t.streamKey).Msg("Upload watcher stopped")
 
 	// Clean up temp directory
-	log.Info().Str("stream_key", t.streamKey).Msg("🧹 Cleaning up temp directory...")
-	if t.workDir != "" {
-		os.RemoveAll(t.workDir)
+	if finalized {
+		log.Info().Str("stream_key", t.streamKey).Msg("Cleaning up temp directory...")
+		if t.workDir != "" {
+			os.RemoveAll(t.workDir)
+		}
+	} else {
+		log.Warn().Str("stream_key", t.streamKey).Msg("Skipping temp cleanup to allow manual retry of playlist uploads")
+	}
+
+	finalMsg := "Graceful shutdown completed - stream available as VOD"
+	if !finalized {
+		finalMsg = "Graceful shutdown completed with pending playlist uploads; manual intervention required"
 	}
 
 	log.Info().
 		Str("stream_key", t.streamKey).
-		Msg("✅ Graceful shutdown completed - stream available as VOD")
+		Msg(finalMsg)
 
 	// Report final completion
-	t.reportProgress("completed", "Stream ended gracefully - VOD is ready!", 100, true)
+	t.reportProgress("completed", finalMsg, 100, finalized)
 }
 
 func (t *Transcoder) buildFFmpegCommand(hlsDir string) *exec.Cmd {
@@ -577,40 +587,29 @@ func (t *Transcoder) uploadDirectoryWithStabilityCheck(dir, prefix string, uploa
 		r2Key := t.buildR2Key(prefix, file.Name())
 		contentType := storage.GetContentType(file.Name())
 
-		// Create timeout context for playlist upload (10 seconds)
-		playlistTimeout, cancel := context.WithTimeout(t.uploadCtx, 10*time.Second)
-
 		// Handle playlists specially - rewrite paths
+		var rewritten []byte
 		if file.Name() == "master.m3u8" {
-			rewritten, err := t.rewriteMasterPlaylist(filePath)
+			rewritten, err = t.rewriteMasterPlaylist(filePath)
 			if err != nil {
-				cancel()
 				log.Error().Err(err).Str("file", filePath).Msg("Failed to rewrite master playlist")
-				continue
-			}
-
-			if err := t.r2Client.UploadPlaylist(playlistTimeout, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
-				cancel()
-				log.Error().Err(err).Str("file", filePath).Msg("Failed to upload file")
 				continue
 			}
 		} else if strings.HasPrefix(file.Name(), "stream_") {
 			// Rewrite quality playlists
-			rewritten, err := t.rewriteQualityPlaylist(filePath)
+			rewritten, err = t.rewriteQualityPlaylist(filePath)
 			if err != nil {
-				cancel()
 				log.Error().Err(err).Str("file", filePath).Msg("Failed to rewrite quality playlist")
-				continue
-			}
-
-			if err := t.r2Client.UploadPlaylist(playlistTimeout, r2Key, bytes.NewReader(rewritten), contentType); err != nil {
-				cancel()
-				log.Error().Err(err).Str("file", filePath).Msg("Failed to upload file")
 				continue
 			}
 		}
 
-		cancel()
+		// Retry playlists with a longer timeout to tolerate slow responses
+		if err := t.uploadPlaylistWithRetry(t.uploadCtx, r2Key, rewritten, contentType, 3, 30*time.Second); err != nil {
+			log.Error().Err(err).Str("file", filePath).Msg("Failed to upload playlist after retries")
+			continue
+		}
+
 		uploadedFiles[filePath] = true
 		log.Debug().Str("file", file.Name()).Str("key", r2Key).Msg("Uploaded playlist")
 	}
@@ -709,18 +708,20 @@ func (t *Transcoder) uploadDirectory(dir, prefix string, uploadedFiles map[strin
 	}
 }
 
-func (t *Transcoder) finalizePlaylists() {
+func (t *Transcoder) finalizePlaylists() bool {
 	hlsDir := filepath.Join(t.workDir, "hls")
 
 	files, err := os.ReadDir(hlsDir)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read HLS directory for finalization")
-		return
+		return false
 	}
 
 	// Use a fresh context with timeout for finalization uploads (not t.uploadCtx which may be canceled)
 	finalizeCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
+	allSucceeded := true
 
 	for _, file := range files {
 		if !strings.HasSuffix(file.Name(), ".m3u8") {
@@ -733,6 +734,7 @@ func (t *Transcoder) finalizePlaylists() {
 		content, err := os.ReadFile(filePath)
 		if err != nil {
 			log.Error().Err(err).Str("file", filePath).Msg("Failed to read playlist")
+			allSucceeded = false
 			continue
 		}
 
@@ -767,12 +769,14 @@ func (t *Transcoder) finalizePlaylists() {
 			content, err = t.rewriteMasterPlaylistContent(content)
 			if err != nil {
 				log.Error().Err(err).Str("file", filePath).Msg("Failed to rewrite master playlist")
+				allSucceeded = false
 				continue
 			}
 		} else if strings.HasPrefix(file.Name(), "stream_") {
 			content, err = t.rewriteQualityPlaylistContent(content)
 			if err != nil {
 				log.Error().Err(err).Str("file", filePath).Msg("Failed to rewrite quality playlist")
+				allSucceeded = false
 				continue
 			}
 		}
@@ -780,16 +784,19 @@ func (t *Transcoder) finalizePlaylists() {
 		// Ensure VOD semantics and ENDLIST.
 		content = t.ensureVODAndEndlist(content)
 
-		if err := t.r2Client.UploadPlaylist(finalizeCtx, r2Key, bytes.NewReader(content), contentType); err != nil {
-			log.Error().Err(err).Str("file", filePath).Msg("Failed to upload finalized playlist")
+		if err := t.uploadPlaylistWithRetry(finalizeCtx, r2Key, content, contentType, 5, 30*time.Second); err != nil {
+			log.Error().Err(err).Str("file", filePath).Msg("Failed to upload finalized playlist after retries")
+			allSucceeded = false
 			continue
 		}
 
 		log.Info().
 			Str("file", file.Name()).
 			Str("key", r2Key).
-			Msg("✓ Playlist finalized with EXT-X-ENDLIST")
+			Msg("Playlist finalized with EXT-X-ENDLIST")
 	}
+
+	return allSucceeded
 }
 
 func (t *Transcoder) buildR2Key(defaultPrefix, filename string) string {
@@ -936,6 +943,37 @@ func (t *Transcoder) ensureVODAndEndlist(content []byte) []byte {
 	}
 
 	return []byte(strings.Join(out, "\n") + "\n")
+}
+
+// uploadPlaylistWithRetry retries uploads with per-attempt timeout and simple backoff.
+func (t *Transcoder) uploadPlaylistWithRetry(baseCtx context.Context, key string, content []byte, contentType string, attempts int, perAttemptTimeout time.Duration) error {
+	var lastErr error
+
+	for attempt := 1; attempt <= attempts; attempt++ {
+		attemptCtx, cancel := context.WithTimeout(baseCtx, perAttemptTimeout)
+		err := t.r2Client.UploadPlaylist(attemptCtx, key, bytes.NewReader(content), contentType)
+		cancel()
+
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+
+		// If parent context is canceled, do not continue retrying.
+		if errors.Is(attemptCtx.Err(), context.Canceled) || errors.Is(baseCtx.Err(), context.Canceled) {
+			break
+		}
+
+		backoff := time.Duration(attempt) * time.Second
+		select {
+		case <-baseCtx.Done():
+			return baseCtx.Err()
+		case <-time.After(backoff):
+		}
+	}
+
+	return lastErr
 }
 
 // uploadAnalysisChunks uploads local analysis WAVs to R2 and updates audio_chunks.file_path
