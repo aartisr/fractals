@@ -181,55 +181,55 @@ export default component$(() => {
       </div>
 
       {/* Main Content */}
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Stream Title and Status - Full width */}
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-3 break-words">
+              {stream.value.title}
+            </h1>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span
+                class={`inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full ${
+                  stream.value.status === 'live'
+                    ? 'bg-red-100 text-red-700'
+                    : stream.value.status === 'ended'
+                    ? 'bg-gray-100 text-gray-700'
+                    : 'bg-blue-100 text-blue-700'
+                }`}
+              >
+                {stream.value.status === 'live' && <span class="w-2 h-2 bg-red-600 rounded-full animate-pulse" />}
+                {String(stream.value.status).toUpperCase()}
+              </span>
+              {stream.value.visibility && (
+                <span
+                  class={`px-3 py-1 text-sm font-semibold rounded-full ${
+                    stream.value.visibility === 'public'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  {stream.value.visibility}
+                </span>
+              )}
+              {/* Live Viewer Count */}
+              {stream.value.status === 'live' && stream.value.id && (
+                <LiveViewerCount streamId={String(stream.value.id)} />
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            class="p-3 rounded-full hover:bg-orange-100 transition-colors"
+            aria-label="Add to favorites"
+          >
+            <LuHeart class="w-6 h-6 text-orange-600" />
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Left Column: Video Player, Transcript, and Info */}
           <div class="lg:col-span-2 space-y-6">
-            {/* Stream Title and Status - Above Video Player */}
-            <div class="flex items-start justify-between gap-4">
-              <div class="flex-1">
-                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                  {stream.value.title}
-                </h1>
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span
-                    class={`inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full ${
-                      stream.value.status === 'live'
-                        ? 'bg-red-100 text-red-700'
-                        : stream.value.status === 'ended'
-                        ? 'bg-gray-100 text-gray-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}
-                  >
-                    {stream.value.status === 'live' && <span class="w-2 h-2 bg-red-600 rounded-full animate-pulse" />}
-                    {String(stream.value.status).toUpperCase()}
-                  </span>
-                  {stream.value.visibility && (
-                    <span
-                      class={`px-3 py-1 text-sm font-semibold rounded-full ${
-                        stream.value.visibility === 'public'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {stream.value.visibility}
-                    </span>
-                  )}
-                  {/* Live Viewer Count */}
-                  {stream.value.status === 'live' && stream.value.id && (
-                    <LiveViewerCount streamId={String(stream.value.id)} />
-                  )}
-                </div>
-              </div>
-              <button
-                type="button"
-                class="p-3 rounded-full hover:bg-orange-100 transition-colors"
-                aria-label="Add to favorites"
-              >
-                <LuHeart class="w-6 h-6 text-orange-600" />
-              </button>
-            </div>
-
             {/* Video Player */}
             <div class="relative">
               {/* Live Badge */}
@@ -248,6 +248,8 @@ export default component$(() => {
                     poster={stream.value.thumbnailUrl}
                     autoplay={isLive}
                     muted={false}
+                    onPlay$={viewerSession.handlePlay}
+                    onPause$={viewerSession.handlePause}
                   />
                 </div>
               ) : (

@@ -34,6 +34,8 @@ export interface VideoJSPlayerProps {
   isLive?: boolean; // Enable DVR seeking for live streams
   onReady?: (player: Player) => void;
   onError?: (error: any) => void;
+  onPlay$?: () => void;
+  onPause$?: () => void;
 }
 
 export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
@@ -156,12 +158,17 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
       playerRef.value.dispose();
     }
 
+    // For autoplay we default to muted to satisfy browser policies
+    const shouldAutoplay = props.autoplay ?? false;
+    const shouldStartMuted = shouldAutoplay ? true : (props.muted ?? false);
+    videoElement.muted = shouldStartMuted;
+
     // Initialize Video.js with sources in options
     const player = videojs(videoElement, {
       controls: props.controls ?? true,
-      autoplay: props.autoplay ?? false,
+      autoplay: shouldAutoplay,
       preload: "auto",
-      muted: props.muted ?? false,
+      muted: shouldStartMuted,
       fluid: props.fluid ?? true,
       aspectRatio: props.aspectRatio ?? "16:9",
       playbackRates: props.playbackRates ?? [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2],
@@ -227,6 +234,14 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
         player.poster(props.poster);
       }
 
+      // Attempt playback; if blocked by autoplay policy, retry muted
+      if (shouldAutoplay && typeof player.play === "function") {
+        player.play()?.catch?.(() => {
+          player.muted(true);
+          player.play()?.catch?.(() => {});
+        });
+      }
+
       // Call onReady callback
       if (props.onReady) {
         props.onReady(player);
@@ -255,6 +270,19 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
         props.onError(err);
       }
     });
+
+    // Pause/Play event listeners for watch time tracking
+    if (props.onPlay$) {
+      player.on("play", () => {
+        props.onPlay$?.();
+      });
+    }
+
+    if (props.onPause$) {
+      player.on("pause", () => {
+        props.onPause$?.();
+      });
+    }
 
   playerRef.value = noSerialize(player);
 

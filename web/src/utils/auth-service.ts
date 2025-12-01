@@ -115,11 +115,19 @@ export function buildSignInUrl(
   authBase: string,
   clientId: string,
   redirectUri: string,
-  errorCallbackUrl?: string
+  errorCallbackUrl?: string,
+  redirectTo?: string
 ): string {
+  // If redirectTo is provided, append it to the redirect_uri
+  let finalRedirectUri = redirectUri;
+  if (redirectTo) {
+    const separator = redirectUri.includes('?') ? '&' : '?';
+    finalRedirectUri = `${redirectUri}${separator}redirect_to=${encodeURIComponent(redirectTo)}`;
+  }
+
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: redirectUri,
+    redirect_uri: finalRedirectUri,
   });
 
   if (errorCallbackUrl) {
@@ -136,11 +144,19 @@ export function buildGoogleSignInUrl(
   authBase: string,
   clientId: string,
   redirectUri: string,
-  errorCallbackUrl?: string
+  errorCallbackUrl?: string,
+  redirectTo?: string
 ): string {
+  // If redirectTo is provided, append it to the redirect_uri
+  let finalRedirectUri = redirectUri;
+  if (redirectTo) {
+    const separator = redirectUri.includes('?') ? '&' : '?';
+    finalRedirectUri = `${redirectUri}${separator}redirect_to=${encodeURIComponent(redirectTo)}`;
+  }
+
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: redirectUri,
+    redirect_uri: finalRedirectUri,
   });
 
   if (errorCallbackUrl) {

@@ -305,7 +305,7 @@ export interface LiveChat {
   /**
    * Type of message
    */
-  type: 'user' | 'system' | 'moderator';
+  type: 'user' | 'system' | 'moderator' | 'superchat';
   /**
    * Soft delete timestamp - set by moderators
    */
@@ -370,9 +370,13 @@ export interface LiveStreamView {
    */
   lastHeartbeatAt?: string | null;
   /**
-   * Total watch time in seconds (calculated on session end)
+   * Total watch time in seconds excluding paused time (calculated on session end)
    */
   watchDurationSeconds?: number | null;
+  /**
+   * Total time the video was paused in seconds
+   */
+  pausedDurationSeconds?: number | null;
   /**
    * Whether this session is currently active (receiving heartbeats)
    */
@@ -437,9 +441,13 @@ export interface VideoView {
    */
   lastHeartbeatAt?: string | null;
   /**
-   * Total watch time in seconds (calculated on session end)
+   * Total watch time in seconds excluding paused time (calculated on session end)
    */
   watchDurationSeconds?: number | null;
+  /**
+   * Total time the video was paused in seconds
+   */
+  pausedDurationSeconds?: number | null;
   /**
    * How far through the video the viewer watched (0-100%)
    */
@@ -1076,6 +1084,7 @@ export interface LiveStreamViewsSelect<T extends boolean = true> {
   endedAt?: T;
   lastHeartbeatAt?: T;
   watchDurationSeconds?: T;
+  pausedDurationSeconds?: T;
   isActive?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1098,6 +1107,7 @@ export interface VideoViewsSelect<T extends boolean = true> {
   endedAt?: T;
   lastHeartbeatAt?: T;
   watchDurationSeconds?: T;
+  pausedDurationSeconds?: T;
   progressPercentage?: T;
   completed?: T;
   isActive?: T;

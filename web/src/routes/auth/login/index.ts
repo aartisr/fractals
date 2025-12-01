@@ -6,7 +6,7 @@
 import type { RequestHandler } from '@builder.io/qwik-city';
 import { buildSignInUrl } from '~/utils/auth-service';
 
-export const onGet: RequestHandler = async ({ redirect, env }) => {
+export const onGet: RequestHandler = async ({ url, redirect, env }) => {
   const authBase = env.get('AUTH_BASE');
   const clientId = env.get('AUTH_CLIENT_ID');
   const redirectUri = env.get('AUTH_REDIRECT_URI');
@@ -16,7 +16,10 @@ export const onGet: RequestHandler = async ({ redirect, env }) => {
     throw new Error('Auth configuration missing. Check environment variables.');
   }
 
-  const signInUrl = buildSignInUrl(authBase, clientId, redirectUri, errorUrl);
+  // Get the desired redirect destination from query params
+  const redirectTo = url.searchParams.get('redirect');
+
+  const signInUrl = buildSignInUrl(authBase, clientId, redirectUri, errorUrl, redirectTo || undefined);
 
   throw redirect(302, signInUrl);
 };

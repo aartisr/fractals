@@ -1,4 +1,5 @@
 import { component$, useSignal, useVisibleTask$, $, useComputed$ } from '@builder.io/qwik';
+import { useLocation } from '@builder.io/qwik-city';
 import { LuSend, LuLoader2 } from '@qwikest/icons/lucide';
 
 interface Author {
@@ -35,6 +36,7 @@ interface LiveChatProps {
 }
 
 export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, currentUserName }) => {
+  const loc = useLocation();
   const messages = useSignal<ChatMessage[]>([]);
   const messageInput = useSignal('');
   const isLoading = useSignal(false);
@@ -397,7 +399,7 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
         {isAuthenticated.value === false ? (
           <div class="text-xs text-red-600 mt-2 flex items-center gap-2">
             <span>You are not signed in.</span>
-            <a href="/auth/login" class="text-orange-600 font-semibold underline">Sign in to chat</a>
+            <a href={`/auth/login?redirect=${encodeURIComponent(loc.url.pathname)}`} class="text-orange-600 font-semibold underline">Sign in to chat</a>
           </div>
         ) : (
           <div class="text-xs text-gray-500 mt-2">

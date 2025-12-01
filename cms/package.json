@@ -30,6 +30,7 @@
     "payload": "3.59.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "recharts": "^3.5.1",
     "sharp": "0.34.2"
   },
   "devDependencies": {

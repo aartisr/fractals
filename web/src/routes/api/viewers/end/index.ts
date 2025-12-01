@@ -21,9 +21,10 @@ export const onPost: RequestHandler = async ({ request, env, error, json }) => {
 
   try {
     const body = await request.json();
-    const { sessionId, contentType = 'livestream' } = body as {
+    const { sessionId, contentType = 'livestream', totalPausedTimeMs = 0 } = body as {
       sessionId: string;
       contentType?: ContentType;
+      totalPausedTimeMs?: number;
     };
 
     if (!sessionId) {
@@ -57,10 +58,15 @@ export const onPost: RequestHandler = async ({ request, env, error, json }) => {
     const viewerSession = findResult.docs[0];
     const viewerId = viewerSession.id;
 
-    // Calculate watch duration
+    // Calculate total session duration
     const endedAt = new Date();
     const startedAt = new Date(viewerSession.startedAt);
-    const watchDurationSeconds = Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000);
+    const totalSessionTimeMs = endedAt.getTime() - startedAt.getTime();
+
+    // Calculate actual watch duration (excluding paused time)
+    const pausedTimeSeconds = Math.floor(totalPausedTimeMs / 1000);
+    const totalSessionSeconds = Math.floor(totalSessionTimeMs / 1000);
+    const watchDurationSeconds = Math.max(0, totalSessionSeconds - pausedTimeSeconds);
 
     // Update session with end time and duration
     const updateResponse = await fetch(`${cmsApiUrl}/api/${collection}/${viewerId}`, {
@@ -72,6 +78,7 @@ export const onPost: RequestHandler = async ({ request, env, error, json }) => {
       body: JSON.stringify({
         endedAt: endedAt.toISOString(),
         watchDurationSeconds,
+        pausedDurationSeconds: pausedTimeSeconds,
         isActive: false,
       }),
     });

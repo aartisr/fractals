@@ -41,8 +41,8 @@ import {
 import { getStreamSuperchats, toggleSuperchatVisibility } from './endpoints/superchat/stream-superchats'
 import { getSuperchatTiers } from './endpoints/superchat/tiers'
 import { paystackWebhook } from './endpoints/webhooks/paystack'
-// import { getContentAnalytics } from './endpoints/analytics-content'
-// import { getOverallAnalytics } from './endpoints/analytics-overall'
+import { getContentAnalytics } from './endpoints/analytics-content'
+import { getOverallAnalytics } from './endpoints/analytics-overall'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -175,15 +175,15 @@ export default buildConfig({
       handler: paystackWebhook,
     },
     // Analytics endpoints
-    // {
-    //   path: '/analytics/content-stats',
-    //   method: 'get',
-    //   handler: getContentAnalytics,
-    // },
-    // {
-    //   path: '/analytics/viewer-stats',
-    //   method: 'get',
-    //   handler: getOverallAnalytics,
-    // },
+    {
+      path: '/analytics/content-stats',
+      method: 'get',
+      handler: getContentAnalytics,
+    },
+    {
+      path: '/analytics/viewer-stats',
+      method: 'get',
+      handler: getOverallAnalytics,
+    },
   ],
 })

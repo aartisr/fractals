@@ -8,13 +8,13 @@ interface SubscriptionPlan {
   id: string;
   name: string;
   description: string;
-  price_monthly: number;
-  price_yearly: number;
+  price_monthly?: number;
+  amount?: number; // fallback price (in cents)
+  interval?: 'monthly'; // plans are monthly-only in UI
   features: string[];
   is_active: boolean;
   display_order: number;
   stripe_price_id_monthly?: string;
-  stripe_price_id_yearly?: string;
 }
 
 interface CurrentSubscription {
@@ -44,8 +44,29 @@ export const useSubscriptionPlansLoader = routeLoader$(async () => {
       limit: 100,
     });
 
+    // Normalize plans to ensure prices/features are parsed for UI
+    const normalizedPlans = (result.docs || []).map((doc: any) => {
+      const priceMonthly = typeof doc.price_monthly === 'number'
+        ? doc.price_monthly
+        : Number(doc.amount) || 0;
+
+      const features = Array.isArray(doc.features)
+        ? doc.features
+            .map((f: any) => (typeof f === 'string' ? f : f?.feature))
+            .filter(Boolean)
+        : [];
+
+      return {
+        ...doc,
+        price_monthly: priceMonthly,
+        amount: typeof doc.amount === 'number' ? doc.amount : Number(doc.amount) || 0,
+        interval: 'monthly',
+        features,
+      } as SubscriptionPlan;
+    });
+
     return {
-      plans: result.docs || [],
+      plans: normalizedPlans,
       success: true,
     };
   } catch (error) {
@@ -209,12 +230,6 @@ export default component$(() => {
           </div>
         </div>
 
-        {/* Support Section */}
-        <div class="mt-12 text-center">
-          <p class="text-gray-600">
-            Need help? <a href="/contact" class="text-orange-600 font-semibold hover:underline">Contact our support team</a>
-          </p>
-        </div>
       </div>
     </div>
   );

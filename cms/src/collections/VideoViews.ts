@@ -11,7 +11,7 @@ export const VideoViews: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'sessionId',
-    defaultColumns: ['video', 'viewerName', 'startedAt', 'watchDurationSeconds'],
+    defaultColumns: ['video', 'viewerName', 'startedAt', 'watchDurationSeconds', 'pausedDurationSeconds'],
     description: 'Video viewer sessions and analytics for on-demand content',
     group: 'Analytics',
   },
@@ -166,7 +166,16 @@ export const VideoViews: CollectionConfig = {
       type: 'number',
       required: false,
       admin: {
-        description: 'Total watch time in seconds (calculated on session end)',
+        description: 'Total watch time in seconds excluding paused time (calculated on session end)',
+      },
+    },
+    {
+      name: 'pausedDurationSeconds',
+      label: 'Paused Duration (seconds)',
+      type: 'number',
+      required: false,
+      admin: {
+        description: 'Total time the video was paused in seconds',
       },
     },
     {

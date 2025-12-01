@@ -1,4 +1,5 @@
 import { component$, useSignal, useVisibleTask$, $ } from '@builder.io/qwik';
+import { useLocation } from '@builder.io/qwik-city';
 import { LuDollarSign, LuSend, LuLoader2 } from '@qwikest/icons/lucide';
 import { formatCurrency } from '~/utils/currency';
 
@@ -27,6 +28,7 @@ interface SuperchatInputProps {
 }
 
 export const SuperchatInput = component$<SuperchatInputProps>(({ streamId }) => {
+  const loc = useLocation();
   // State
   const tiers = useSignal<SuperchatTier[]>([]);
   const paymentMethods = useSignal<PaymentMethod[]>([]);
@@ -199,7 +201,7 @@ export const SuperchatInput = component$<SuperchatInputProps>(({ streamId }) => 
             Support the stream by sending a highlighted message
           </p>
           <a
-            href="/auth/login"
+            href={`/auth/login?redirect=${encodeURIComponent(loc.url.pathname)}`}
             class="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold rounded-lg hover:scale-105 transition-all"
           >
             Sign in to send Super Chat

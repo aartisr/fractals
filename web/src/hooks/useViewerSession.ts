@@ -19,6 +19,7 @@ export interface ViewerSessionOptions {
   viewerName?: string;
   enabled?: boolean;
   contentType?: ContentType;
+  onPlayerReady$?: (callbacks: { onPlay: () => void; onPause: () => void }) => void;
 }
 
 export function useViewerSession(options: ViewerSessionOptions) {
@@ -27,7 +28,8 @@ export function useViewerSession(options: ViewerSessionOptions) {
     videoId,
     viewerName = 'Anonymous',
     enabled = true,
-    contentType = 'livestream'
+    contentType = 'livestream',
+    onPlayerReady$
   } = options;
 
   const contentId = streamId || videoId;
@@ -36,6 +38,9 @@ export function useViewerSession(options: ViewerSessionOptions) {
   const isTracking = useSignal(false);
   const currentQuality = useSignal<string>('auto');
   const isOwner = useSignal(false); // Track if this tab created the session
+  const isPaused = useSignal(false); // Track if video is paused
+  const pauseStartTime = useSignal<number | null>(null); // Timestamp when paused
+  const totalPausedTime = useSignal(0); // Total accumulated paused time in ms
 
   // Generate a unique session ID
   const generateSessionId = $(() => {
@@ -126,6 +131,25 @@ export function useViewerSession(options: ViewerSessionOptions) {
     }
   });
 
+  // Handle play event
+  const handlePlay = $(() => {
+    if (isPaused.value && pauseStartTime.value !== null) {
+      // Calculate how long we were paused
+      const pauseDuration = Date.now() - pauseStartTime.value;
+      totalPausedTime.value += pauseDuration;
+      console.log('[ViewerSession] Resumed after', Math.floor(pauseDuration / 1000), 'seconds');
+    }
+    isPaused.value = false;
+    pauseStartTime.value = null;
+  });
+
+  // Handle pause event
+  const handlePause = $(() => {
+    isPaused.value = true;
+    pauseStartTime.value = Date.now();
+    console.log('[ViewerSession] Paused');
+  });
+
   // Send heartbeat
   const sendHeartbeat = $(async (quality?: string) => {
     if (!enabled || !sessionId.value) return;
@@ -140,6 +164,8 @@ export function useViewerSession(options: ViewerSessionOptions) {
           sessionId: sessionId.value,
           quality: quality || currentQuality.value,
           contentType,
+          isPaused: isPaused.value,
+          totalPausedTimeMs: totalPausedTime.value,
         }),
       });
 
@@ -159,6 +185,12 @@ export function useViewerSession(options: ViewerSessionOptions) {
   const endSession = $(async () => {
     if (!enabled || !sessionId.value) return;
 
+    // If currently paused, add the final pause duration
+    let finalPausedTime = totalPausedTime.value;
+    if (isPaused.value && pauseStartTime.value !== null) {
+      finalPausedTime += Date.now() - pauseStartTime.value;
+    }
+
     try {
       const response = await fetch('/api/viewers/end', {
         method: 'POST',
@@ -168,12 +200,14 @@ export function useViewerSession(options: ViewerSessionOptions) {
         body: JSON.stringify({
           sessionId: sessionId.value,
           contentType,
+          totalPausedTimeMs: finalPausedTime,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
         console.log('[ViewerSession] Session ended. Duration:', data.watchDurationSeconds, 'seconds');
+        console.log('[ViewerSession] Paused time:', Math.floor(finalPausedTime / 1000), 'seconds');
         isTracking.value = false;
         sessionId.value = null;
       } else {
@@ -196,6 +230,14 @@ export function useViewerSession(options: ViewerSessionOptions) {
 
     let heartbeatInterval: NodeJS.Timeout;
     let hasStarted = false;
+
+    // Register pause/play callbacks with parent component
+    if (onPlayerReady$) {
+      onPlayerReady$({
+        onPlay: handlePlay,
+        onPause: handlePause,
+      });
+    }
 
     // Start session after a brief delay to ensure player is ready
     const startTimeout = setTimeout(async () => {
@@ -260,8 +302,11 @@ export function useViewerSession(options: ViewerSessionOptions) {
     sessionId,
     isTracking,
     currentQuality,
+    isPaused,
     updateQuality,
     startSession,
     endSession,
+    handlePlay,
+    handlePause,
   };
 }

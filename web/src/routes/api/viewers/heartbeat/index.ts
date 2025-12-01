@@ -21,10 +21,12 @@ export const onPost: RequestHandler = async ({ request, env, error, json }) => {
 
   try {
     const body = await request.json();
-    const { sessionId, quality, contentType = 'livestream' } = body as {
+    const { sessionId, quality, contentType = 'livestream', isPaused, totalPausedTimeMs } = body as {
       sessionId: string;
       quality?: string;
       contentType?: ContentType;
+      isPaused?: boolean;
+      totalPausedTimeMs?: number;
     };
 
     if (!sessionId) {
@@ -57,7 +59,7 @@ export const onPost: RequestHandler = async ({ request, env, error, json }) => {
 
     const viewerId = findResult.docs[0].id;
 
-    // Update lastHeartbeatAt and quality
+    // Update lastHeartbeatAt, quality, and pause state
     const updateData: any = {
       lastHeartbeatAt: new Date().toISOString(),
       isActive: true,
@@ -65,6 +67,11 @@ export const onPost: RequestHandler = async ({ request, env, error, json }) => {
 
     if (quality) {
       updateData.quality = quality;
+    }
+
+    // Update paused duration if provided
+    if (typeof totalPausedTimeMs === 'number') {
+      updateData.pausedDurationSeconds = Math.floor(totalPausedTimeMs / 1000);
     }
 
     const updateResponse = await fetch(`${cmsApiUrl}/api/${collection}/${viewerId}`, {

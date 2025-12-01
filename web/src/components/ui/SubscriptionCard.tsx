@@ -6,13 +6,13 @@ interface SubscriptionPlan {
   id: string;
   name: string;
   description: string;
-  price_monthly: number;
-  price_yearly: number;
+  price_monthly?: number;
+  amount?: number; // fallback single price (in cents)
+  interval?: 'monthly';
   features: string[];
   is_active: boolean;
   display_order: number;
   stripe_price_id_monthly?: string;
-  stripe_price_id_yearly?: string;
 }
 
 interface CurrentSubscription {
@@ -31,17 +31,15 @@ interface SubscriptionCardProps {
 }
 
 export const SubscriptionCard = component$<SubscriptionCardProps>(({ plan, currentSubscription }) => {
-  const selectedInterval = useSignal<'monthly' | 'yearly'>('monthly');
   const isLoading = useSignal(false);
   const error = useSignal('');
 
   const isCurrentPlan = currentSubscription?.plan?.id === plan.id;
   const isActive = currentSubscription?.status === 'active';
 
-  const price = selectedInterval.value === 'monthly' ? plan.price_monthly : plan.price_yearly;
-  const savings = selectedInterval.value === 'yearly'
-    ? ((plan.price_monthly * 12 - plan.price_yearly) / 100).toFixed(2)
-    : null;
+  // Resolve monthly price (single-interval UI)
+  const price = plan.price_monthly ?? plan.amount ?? 0;
+  const hasPrice = price > 0;
 
   const subscribe = $(async () => {
     isLoading.value = true;
@@ -65,7 +63,7 @@ export const SubscriptionCard = component$<SubscriptionCardProps>(({ plan, curre
         credentials: 'include',
         body: JSON.stringify({
           planId: plan.id,
-          interval: selectedInterval.value,
+          interval: 'monthly',
         }),
       });
 
@@ -119,43 +117,14 @@ export const SubscriptionCard = component$<SubscriptionCardProps>(({ plan, curre
         <h3 class="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
         <p class="text-sm text-gray-600 mb-6">{plan.description}</p>
 
-        {/* Interval Toggle */}
-        <div class="flex items-center justify-center gap-2 mb-6 p-2 bg-gray-100 rounded-lg">
-          <button
-            type="button"
-            onClick$={() => (selectedInterval.value = 'monthly')}
-            class={`flex-1 px-4 py-2 rounded-md text-sm font-semibold transition-all ${
-              selectedInterval.value === 'monthly'
-                ? 'bg-white text-orange-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            type="button"
-            onClick$={() => (selectedInterval.value = 'yearly')}
-            class={`flex-1 px-4 py-2 rounded-md text-sm font-semibold transition-all ${
-              selectedInterval.value === 'yearly'
-                ? 'bg-white text-orange-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Yearly
-          </button>
-        </div>
-
         {/* Price */}
         <div class="mb-6 text-center">
           <div class="flex items-baseline justify-center gap-1">
-            <span class="text-4xl font-bold text-gray-900">{formatCurrency(price)}</span>
-            <span class="text-gray-600">/ {selectedInterval.value === 'monthly' ? 'month' : 'year'}</span>
+            <span class="text-4xl font-bold text-gray-900">
+              {hasPrice ? formatCurrency(price) : '$—'}
+            </span>
+            <span class="text-gray-600">/ month</span>
           </div>
-          {savings && (
-            <p class="mt-2 text-sm text-green-600 font-semibold">
-              Save ${savings} per year
-            </p>
-          )}
         </div>
 
         {/* Features */}

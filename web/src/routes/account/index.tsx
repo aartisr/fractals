@@ -1,5 +1,5 @@
 import { component$, useSignal, useVisibleTask$, $ } from '@builder.io/qwik';
-import { type DocumentHead, Link } from '@builder.io/qwik-city';
+import { type DocumentHead, Link, useLocation } from '@builder.io/qwik-city';
 import {
   LuArrowLeft,
   LuCreditCard,
@@ -13,6 +13,7 @@ import {
   LuLoader2
 } from '@qwikest/icons/lucide';
 import { formatCurrency } from '~/utils/currency';
+import { useUserContext } from '../plugin@auth';
 
 interface Subscription {
   id: string;
@@ -40,6 +41,9 @@ interface PaymentMethod {
 }
 
 export default component$(() => {
+  const loc = useLocation();
+  const userContext = useUserContext();
+
   // State
   const subscription = useSignal<Subscription | null>(null);
   const paymentMethods = useSignal<PaymentMethod[]>([]);
@@ -55,6 +59,29 @@ export default component$(() => {
   // Payment method actions state
   const deletingMethodId = useSignal<string | null>(null);
   const settingDefaultId = useSignal<string | null>(null);
+
+  // Guard: force login for account page
+  if (!userContext.value.isAuthenticated || !userContext.value.user) {
+    return (
+      <div class="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-orange-100 text-center">
+          <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <LuAlertCircle class="w-8 h-8 text-orange-600" />
+          </div>
+          <h1 class="text-2xl font-bold text-gray-900 mb-2">Sign in required</h1>
+          <p class="text-gray-600 mb-6">
+            Please sign in to view your account and manage subscriptions.
+          </p>
+          <a
+            href={`/auth/login?redirect=${encodeURIComponent(loc.url.pathname)}`}
+            class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-amber-600 transition-all shadow-md hover:shadow-lg"
+          >
+            Sign In
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   // Load account data
   useVisibleTask$(async () => {

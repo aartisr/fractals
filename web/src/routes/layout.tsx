@@ -1,4 +1,5 @@
 import { component$, Slot, useVisibleTask$, useSignal, $ } from '@builder.io/qwik';
+import { useLocation } from '@builder.io/qwik-city';
 import {
   LuMenu,
   LuSearch,
@@ -15,11 +16,14 @@ import {
   LuTwitter,
   LuFacebook,
   LuInstagram,
-  LuYoutube
+  LuYoutube,
+  LuCreditCard,
+  LuStar
 } from '@qwikest/icons/lucide';
 import { useUserContext } from './plugin@auth';
 
 export default component$(() => {
+  const loc = useLocation();
   const sidebarOpen = useSignal(true); // Abierto por defecto
   const userContext = useUserContext(); // Auth context from plugin
 
@@ -192,6 +196,32 @@ export default component$(() => {
               </div>
               {sidebarOpen.value && <span class="text-sm font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">All Videos</span>}
             </a>
+
+            {/* Subscriptions */}
+            <a
+              href="/subscriptions"
+              onClick$={closeSidebarOnMobile}
+              class="group flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-orange-50/50 hover:shadow-sm transition-all duration-300 justify-center lg:justify-start"
+              title="Subscriptions"
+            >
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0">
+                <LuStar class="w-4 h-4 text-emerald-600" />
+              </div>
+              {sidebarOpen.value && <span class="text-sm font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Subscriptions</span>}
+            </a>
+
+            {/* Account */}
+            <a
+              href="/account"
+              onClick$={closeSidebarOnMobile}
+              class="group flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-orange-50/50 hover:shadow-sm transition-all duration-300 justify-center lg:justify-start"
+              title="Account"
+            >
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-100 to-yellow-100 flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0">
+                <LuCreditCard class="w-4 h-4 text-amber-600" />
+              </div>
+              {sidebarOpen.value && <span class="text-sm font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Account</span>}
+            </a>
           </div>
         </nav>
 
@@ -233,7 +263,7 @@ export default component$(() => {
             </div>
           ) : (
             <a
-              href="/auth/login"
+              href={`/auth/login?redirect=${encodeURIComponent(loc.url.pathname)}`}
               onClick$={closeSidebarOnMobile}
               class="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-orange-300/50 hover:scale-105 transition-all duration-300"
               style="animation: pulse-glow 3s ease-in-out infinite;"

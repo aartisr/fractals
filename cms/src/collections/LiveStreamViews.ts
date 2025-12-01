@@ -11,7 +11,7 @@ export const LiveStreamViews: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'sessionId',
-    defaultColumns: ['stream', 'viewerName', 'startedAt', 'endedAt', 'watchDurationSeconds'],
+    defaultColumns: ['stream', 'viewerName', 'startedAt', 'endedAt', 'watchDurationSeconds', 'pausedDurationSeconds'],
     description: 'Live stream viewer sessions and analytics',
     group: 'Analytics',
   },
@@ -166,7 +166,16 @@ export const LiveStreamViews: CollectionConfig = {
       type: 'number',
       required: false,
       admin: {
-        description: 'Total watch time in seconds (calculated on session end)',
+        description: 'Total watch time in seconds excluding paused time (calculated on session end)',
+      },
+    },
+    {
+      name: 'pausedDurationSeconds',
+      label: 'Paused Duration (seconds)',
+      type: 'number',
+      required: false,
+      admin: {
+        description: 'Total time the video was paused in seconds',
       },
     },
     {

@@ -43,6 +43,19 @@ export const Videos: CollectionConfig = {
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['title', 'category', 'date'],
+    components: {
+      views: {
+        edit: {
+          analytics: {
+            Component: '/components/analytics/IndividualContentAnalytics#default',
+            path: '/analytics',
+            tab: {
+              label: 'Analytics',
+            },
+          },
+        },
+      },
+    },
   },
   fields: [
     {
