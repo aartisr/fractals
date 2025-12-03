@@ -12,7 +12,6 @@ interface SubscriptionPlan {
   features: string[];
   is_active: boolean;
   display_order: number;
-  stripe_price_id_monthly?: string;
 }
 
 interface CurrentSubscription {
@@ -49,8 +48,8 @@ export const SubscriptionCard = component$<SubscriptionCardProps>(({ plan, curre
       // Check authentication
       const meResp = await fetch('/api/me', { method: 'GET' });
       if (!meResp.ok) {
-        // Redirect to login
-        window.location.href = '/auth/login?redirect=/subscriptions';
+        // Redirect to login with plan ID so we can auto-subscribe after login
+        window.location.href = `/auth/login?redirect=/subscriptions&planId=${plan.id}`;
         return;
       }
 

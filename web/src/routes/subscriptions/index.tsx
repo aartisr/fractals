@@ -1,5 +1,5 @@
-import { component$ } from '@builder.io/qwik';
-import { routeLoader$, type DocumentHead, Link } from '@builder.io/qwik-city';
+import { component$, useSignal, useVisibleTask$ } from '@builder.io/qwik';
+import { routeLoader$, type DocumentHead, Link, useLocation } from '@builder.io/qwik-city';
 import { payload } from '~/utils/payload-sdk';
 import { SubscriptionCard } from '~/components/ui/SubscriptionCard';
 import { LuArrowLeft, LuCheck } from '@qwikest/icons/lucide';
@@ -112,9 +112,59 @@ export const useCurrentSubscriptionLoader = routeLoader$<CurrentSubscription | n
 export default component$(() => {
   const plansData = useSubscriptionPlansLoader();
   const currentSubscription = useCurrentSubscriptionLoader();
+  const location = useLocation();
+  const toast = useSignal<string | null>(null);
+  const autoSubscribePlanId = useSignal<string | null>(null);
+
+  // Check for planId in URL params and auto-subscribe after login
+  useVisibleTask$(({ track }) => {
+    track(() => location.url.searchParams);
+
+    const planId = location.url.searchParams.get('planId');
+
+    if (planId) {
+      // Show toast that user is logged in
+      toast.value = 'You are now logged in. Proceeding to subscribe...';
+
+      // Set the plan ID to auto-subscribe
+      autoSubscribePlanId.value = planId;
+
+      // Auto-trigger subscription after a brief delay for toast visibility
+      setTimeout(() => {
+        const plan = plansData.value.plans.find(p => p.id === planId);
+        if (plan) {
+          // Find the subscription card and trigger subscribe
+          const subscribeBtn = document.querySelector(`[data-plan-id="${planId}"] button`);
+          if (subscribeBtn instanceof HTMLButtonElement) {
+            subscribeBtn.click();
+          }
+        }
+
+        // Clear URL params
+        const newUrl = new URL(location.url);
+        newUrl.searchParams.delete('planId');
+        window.history.replaceState({}, '', newUrl.toString());
+      }, 1500);
+
+      // Hide toast after 3 seconds
+      setTimeout(() => {
+        toast.value = null;
+      }, 3000);
+    }
+  });
 
   return (
     <div class="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50">
+      {/* Toast Notification */}
+      {toast.value && (
+        <div class="fixed top-4 right-4 z-50 animate-slide-in-right">
+          <div class="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+            <LuCheck class="w-5 h-5" />
+            <span class="font-medium">{toast.value}</span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div class="bg-white border-b border-orange-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -168,11 +218,12 @@ export default component$(() => {
         {plansData.value.plans.length > 0 ? (
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {plansData.value.plans.map((plan: SubscriptionPlan) => (
-              <SubscriptionCard
-                key={plan.id}
-                plan={plan}
-                currentSubscription={currentSubscription.value}
-              />
+              <div key={plan.id} data-plan-id={plan.id}>
+                <SubscriptionCard
+                  plan={plan}
+                  currentSubscription={currentSubscription.value}
+                />
+              </div>
             ))}
           </div>
         ) : (

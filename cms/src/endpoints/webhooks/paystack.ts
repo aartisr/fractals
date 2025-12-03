@@ -107,17 +107,42 @@ export const paystackWebhook: PayloadHandler = async (req) => {
 
 /**
  * Handle subscription.create event
+ * Creates subscription record in database so user can manage/cancel it later
  */
 async function handleSubscriptionCreate(payload: any, event: any, eventId: string) {
   const data = event.data
+
+  console.log('[Webhook] Subscription created:', {
+    subscription_code: data.subscription_code,
+    customer_email: data.customer?.email,
+    plan_code: data.plan?.plan_code,
+    amount: data.amount,
+  })
+
+  // Get user_id and plan_id from metadata
   const userId = data.metadata?.user_id
   const planId = data.metadata?.plan_id
 
   if (!userId || !planId) {
-    throw new Error('Missing user_id or plan_id in metadata')
+    console.error('[Webhook] Missing user_id or plan_id in subscription.create metadata:', {
+      subscription_code: data.subscription_code,
+      customer_email: data.customer?.email,
+      metadata: data.metadata,
+    })
+
+    await payload.update({
+      collection: 'payment-events',
+      id: eventId,
+      data: {
+        processed: false,
+        needs_manual_review: true,
+        error_message: `Missing user_id or plan_id in metadata. Subscription code: ${data.subscription_code}`,
+      },
+    })
+    return
   }
 
-  // Create or update subscription
+  // Check if subscription already exists
   const existingSubscriptions = await payload.find({
     collection: 'user-subscriptions',
     where: {
@@ -130,7 +155,7 @@ async function handleSubscriptionCreate(payload: any, event: any, eventId: strin
   let subscription
 
   if (existingSubscriptions.docs.length > 0) {
-    // Update existing
+    // Update existing subscription
     subscription = await payload.update({
       collection: 'user-subscriptions',
       id: existingSubscriptions.docs[0].id,
@@ -148,7 +173,7 @@ async function handleSubscriptionCreate(payload: any, event: any, eventId: strin
       },
     })
   } else {
-    // Create new
+    // Create new subscription record
     subscription = await payload.create({
       collection: 'user-subscriptions',
       data: {
@@ -169,7 +194,9 @@ async function handleSubscriptionCreate(payload: any, event: any, eventId: strin
     })
   }
 
-  // Update payment event
+  console.log('[Webhook] Subscription record created/updated:', subscription.id)
+
+  // Mark event as processed
   await payload.update({
     collection: 'payment-events',
     id: eventId,
@@ -184,11 +211,17 @@ async function handleSubscriptionCreate(payload: any, event: any, eventId: strin
 
 /**
  * Handle subscription.disable event
+ * Updates subscription status to cancelled when user cancels
  */
 async function handleSubscriptionDisable(payload: any, event: any, eventId: string) {
   const data = event.data
 
-  // Find subscription
+  console.log('[Webhook] Subscription disabled:', {
+    subscription_code: data.subscription_code,
+    customer_email: data.customer?.email,
+  })
+
+  // Find the subscription
   const subscriptions = await payload.find({
     collection: 'user-subscriptions',
     where: {
@@ -199,12 +232,22 @@ async function handleSubscriptionDisable(payload: any, event: any, eventId: stri
   })
 
   if (subscriptions.docs.length === 0) {
-    throw new Error(`Subscription not found: ${data.subscription_code}`)
+    console.error('[Webhook] Subscription not found for disable event:', data.subscription_code)
+    await payload.update({
+      collection: 'payment-events',
+      id: eventId,
+      data: {
+        processed: true,
+        processed_at: new Date().toISOString(),
+        error_message: `Subscription not found: ${data.subscription_code}`,
+      },
+    })
+    return
   }
 
   const subscription = subscriptions.docs[0]
 
-  // Update subscription
+  // Update subscription status to cancelled
   await payload.update({
     collection: 'user-subscriptions',
     id: subscription.id,
@@ -214,7 +257,9 @@ async function handleSubscriptionDisable(payload: any, event: any, eventId: stri
     },
   })
 
-  // Update payment event
+  console.log('[Webhook] Subscription cancelled:', subscription.id)
+
+  // Mark event as processed
   await payload.update({
     collection: 'payment-events',
     id: eventId,
@@ -229,11 +274,17 @@ async function handleSubscriptionDisable(payload: any, event: any, eventId: stri
 
 /**
  * Handle subscription.not_renew event
+ * Updates subscription status to non-renewing
  */
 async function handleSubscriptionNotRenew(payload: any, event: any, eventId: string) {
   const data = event.data
 
-  // Find subscription
+  console.log('[Webhook] Subscription set to not renew:', {
+    subscription_code: data.subscription_code,
+    customer_email: data.customer?.email,
+  })
+
+  // Find the subscription
   const subscriptions = await payload.find({
     collection: 'user-subscriptions',
     where: {
@@ -244,12 +295,22 @@ async function handleSubscriptionNotRenew(payload: any, event: any, eventId: str
   })
 
   if (subscriptions.docs.length === 0) {
-    throw new Error(`Subscription not found: ${data.subscription_code}`)
+    console.error('[Webhook] Subscription not found for not_renew event:', data.subscription_code)
+    await payload.update({
+      collection: 'payment-events',
+      id: eventId,
+      data: {
+        processed: true,
+        processed_at: new Date().toISOString(),
+        error_message: `Subscription not found: ${data.subscription_code}`,
+      },
+    })
+    return
   }
 
   const subscription = subscriptions.docs[0]
 
-  // Update subscription
+  // Update subscription status to non-renewing
   await payload.update({
     collection: 'user-subscriptions',
     id: subscription.id,
@@ -258,7 +319,9 @@ async function handleSubscriptionNotRenew(payload: any, event: any, eventId: str
     },
   })
 
-  // Update payment event
+  console.log('[Webhook] Subscription set to non-renewing:', subscription.id)
+
+  // Mark event as processed
   await payload.update({
     collection: 'payment-events',
     id: eventId,
@@ -380,6 +443,12 @@ async function handlePaymentMethodSetup(payload: any, event: any, eventId: strin
 async function handleSubscriptionPayment(payload: any, event: any, eventId: string) {
   const data = event.data
 
+  console.log('[Webhook] Subscription payment received:', {
+    reference: data.reference,
+    amount: data.amount,
+    customer_email: data.customer?.email,
+  })
+
   // Find subscription by authorization code or customer code
   const subscriptions = await payload.find({
     collection: 'user-subscriptions',
@@ -400,7 +469,10 @@ async function handleSubscriptionPayment(payload: any, event: any, eventId: stri
   })
 
   if (subscriptions.docs.length === 0) {
-    console.warn('No subscription found for charge, skipping transaction log')
+    console.warn('[Webhook] No subscription found for charge, skipping transaction log:', {
+      reference: data.reference,
+      customer_email: data.customer?.email,
+    })
     await payload.update({
       collection: 'payment-events',
       id: eventId,
@@ -451,6 +523,12 @@ async function handleSubscriptionPayment(payload: any, event: any, eventId: stri
 async function handleInvoicePaymentFailed(payload: any, event: any, eventId: string) {
   const data = event.data
 
+  console.log('[Webhook] Subscription payment failed:', {
+    subscription_code: data.subscription_code,
+    amount: data.amount,
+    customer_email: data.customer?.email,
+  })
+
   // Find subscription
   const subscriptions = await payload.find({
     collection: 'user-subscriptions',
@@ -462,7 +540,17 @@ async function handleInvoicePaymentFailed(payload: any, event: any, eventId: str
   })
 
   if (subscriptions.docs.length === 0) {
-    throw new Error(`Subscription not found: ${data.subscription_code}`)
+    console.error('[Webhook] Subscription not found for failed payment:', data.subscription_code)
+    await payload.update({
+      collection: 'payment-events',
+      id: eventId,
+      data: {
+        processed: true,
+        processed_at: new Date().toISOString(),
+        error_message: `Subscription not found: ${data.subscription_code}`,
+      },
+    })
+    return
   }
 
   const subscription = subscriptions.docs[0]

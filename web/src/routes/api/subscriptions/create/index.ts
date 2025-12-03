@@ -1,37 +1,45 @@
-/**
- * Subscription Create API Proxy
- * POST /api/subscriptions/create
- *
- * Proxies request to CMS backend via internal Docker network
- */
+import type { RequestHandler } from '@builder.io/qwik-city'
 
-import type { RequestHandler } from '@builder.io/qwik-city';
+export const onPost: RequestHandler = async ({ request, cookie, env }) => {
+  const cmsUrl = env.get('CMS_URL') || 'http://cms:3000'
 
-export const onPost: RequestHandler = async ({ request, json, error, env, cookie }) => {
-  const cmsUrl = env.get('CMS_URL') || 'http://cms:3000';
+  // Get nandi_session_token from cookie
+  const nandiSessionToken = cookie.get('nandi_session_token')?.value
+
+  if (!nandiSessionToken) {
+    return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
 
   try {
-    const body = await request.json();
-    const sessionToken = cookie.get('nandi_session_token')?.value;
+    const body = await request.json()
 
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-
-    if (sessionToken) {
-      headers['Cookie'] = `nandi_session_token=${sessionToken}`;
-    }
-
+    // Forward request to CMS
     const response = await fetch(`${cmsUrl}/api/subscriptions/create`, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `nandi_session_token=${nandiSessionToken}`,
+      },
       body: JSON.stringify(body),
-    });
+    })
 
-    const data = await response.json();
-    json(response.status, data);
-  } catch (err) {
-    console.error('[Proxy] Create subscription error:', err);
-    throw error(500, `Failed to create subscription: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    const data = await response.json()
+
+    return new Response(JSON.stringify(data), {
+      status: response.status,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  } catch (error: any) {
+    console.error('Error proxying subscription create:', error)
+    return new Response(
+      JSON.stringify({ error: 'Failed to create subscription', message: error.message }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    )
   }
-};
+}

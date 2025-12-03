@@ -28,7 +28,6 @@ import { PaymentEvents } from './collections/PaymentEvents'
 // Payment endpoints
 import { createSubscription } from './endpoints/subscriptions/create'
 import { cancelSubscription } from './endpoints/subscriptions/cancel'
-import { getManageLink } from './endpoints/subscriptions/manage-link'
 import { getCurrentSubscription } from './endpoints/subscriptions/current'
 import { setupPayment } from './endpoints/superchat/setup-payment'
 import { verifySetup } from './endpoints/superchat/verify-setup'
@@ -111,11 +110,6 @@ export default buildConfig({
       path: '/subscriptions/cancel',
       method: 'post',
       handler: cancelSubscription,
-    },
-    {
-      path: '/subscriptions/manage-link',
-      method: 'get',
-      handler: getManageLink,
     },
     {
       path: '/subscriptions/current',

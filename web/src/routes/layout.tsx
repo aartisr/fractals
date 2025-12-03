@@ -198,7 +198,7 @@ export default component$(() => {
             </a>
 
             {/* Subscriptions */}
-            <a
+            {/* <a
               href="/subscriptions"
               onClick$={closeSidebarOnMobile}
               class="group flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-orange-50/50 hover:shadow-sm transition-all duration-300 justify-center lg:justify-start"
@@ -208,10 +208,10 @@ export default component$(() => {
                 <LuStar class="w-4 h-4 text-emerald-600" />
               </div>
               {sidebarOpen.value && <span class="text-sm font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Subscriptions</span>}
-            </a>
+            </a> */}
 
             {/* Account */}
-            <a
+            {/* <a
               href="/account"
               onClick$={closeSidebarOnMobile}
               class="group flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-orange-50/50 hover:shadow-sm transition-all duration-300 justify-center lg:justify-start"
@@ -221,7 +221,7 @@ export default component$(() => {
                 <LuCreditCard class="w-4 h-4 text-amber-600" />
               </div>
               {sidebarOpen.value && <span class="text-sm font-medium text-gray-700 group-hover:text-orange-600 transition-colors whitespace-nowrap">Account</span>}
-            </a>
+            </a> */}
           </div>
         </nav>
 

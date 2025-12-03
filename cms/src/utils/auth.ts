@@ -54,7 +54,7 @@ export async function validateToken(token: string): Promise<AuthUser | null> {
     const response = await fetch(`${AUTH_SERVICE_URL}/auth/get-session?client_id=${AUTH_CLIENT_ID}`, {
       method: 'GET',
       headers: {
-        'Cookie': `nandi_session=${token}`,
+        'Cookie': `nandi_session_token=${token}`,
       },
     })
 

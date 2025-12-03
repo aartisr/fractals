@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useFormFields, useDocumentInfo, Button } from '@payloadcms/ui'
 import './StreamControls.css'
 
@@ -21,11 +21,16 @@ export const StreamControlsComponent: React.FC = () => {
   const endingStatus = useFormFields(([fields]) => fields?.endingStatus?.value as EndingStatus)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
+  const hasReloadedRef = useRef(false)
 
   // On mount, sync status with live-transcoder and update record if out of sync
+  // Skip sync if stream has already ended to prevent infinite reload loops
   useEffect(() => {
     const sync = async () => {
       if (!id) return
+      // Don't sync if stream has already ended - this prevents reload loops
+      if (status === 'ended') return
+
       try {
         const resp = await fetch(`/api/live-streams/${id}/sync-status`)
         const data = await resp.json()
@@ -44,11 +49,13 @@ export const StreamControlsComponent: React.FC = () => {
       }
     }
     sync()
-  }, [id])
+  }, [id, status])
 
   // Auto-refresh when stream status changes from 'ending' to 'ended'
+  // Only reload once to prevent infinite reload loops
   useEffect(() => {
-    if (status === 'ended' && endingStatus?.completedAt) {
+    if (status === 'ended' && endingStatus?.completedAt && !hasReloadedRef.current) {
+      hasReloadedRef.current = true
       setMessage({ type: 'success', text: 'Stream ended gracefully! Refreshing...' })
       setTimeout(() => window.location.reload(), 1500)
     }
