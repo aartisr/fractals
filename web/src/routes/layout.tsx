@@ -268,6 +268,7 @@ export default component$(() => {
               class="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-orange-300/50 hover:scale-105 transition-all duration-300"
               style="animation: pulse-glow 3s ease-in-out infinite;"
               title="Sign In"
+              reload
             >
               <LuLogIn class="w-4 h-4 flex-shrink-0" />
               {sidebarOpen.value && <span class="whitespace-nowrap">Sign In</span>}
