@@ -7,10 +7,13 @@ import { component$ } from '@builder.io/qwik';
 import { type DocumentHead, useLocation } from '@builder.io/qwik-city';
 import { useUserContext } from '../plugin@auth';
 import { LuUser, LuMail, LuCalendar, LuShield } from '@qwikest/icons/lucide';
+import { buildLoginUrl } from '~/utils/auth-service';
 
 export default component$(() => {
   const loc = useLocation();
   const userContext = useUserContext();
+  const location = useLocation();
+  const loginHref = buildLoginUrl(`${location.url.pathname}${location.url.search}`);
 
   // If not authenticated, show login prompt
   if (!userContext.value.isAuthenticated || !userContext.value.user) {
@@ -25,7 +28,7 @@ export default component$(() => {
             Please sign in to access your dashboard and personalized content.
           </p>
           <a
-            href={`/auth/login?redirect=${encodeURIComponent(loc.url.pathname)}`}
+            href={loginHref}
             class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-amber-600 transition-all shadow-md hover:shadow-lg"
           >
             Sign In

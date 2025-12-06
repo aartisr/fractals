@@ -1,6 +1,7 @@
 import { component$, useSignal, useVisibleTask$, $, useComputed$ } from '@builder.io/qwik';
 import { useLocation } from '@builder.io/qwik-city';
 import { LuSend, LuLoader2 } from '@qwikest/icons/lucide';
+import { buildLoginUrl } from '~/utils/auth-service';
 
 interface Author {
   id: number;
@@ -45,7 +46,10 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
   const isAuthenticated = useSignal<boolean | null>(null);
   const userDisplayName = useSignal<string>('You');
   const reconnecting = useSignal(false);
+  const authCheckInFlight = useSignal(false);
   const chatContainerRef = useSignal<HTMLDivElement>();
+  const location = useLocation();
+  const loginHref = buildLoginUrl(`${location.url.pathname}${location.url.search}`);
 
   // Display-only label
   const userName = useComputed$(() => currentUserName || 'You');
@@ -155,6 +159,26 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
       }
     });
 
+    const revalidateSession = async () => {
+      if (authCheckInFlight.value || isAuthenticated.value === false) {
+        return;
+      }
+      authCheckInFlight.value = true;
+      try {
+        const meResp = await fetch('/api/me', { method: 'GET' });
+        if (!meResp.ok) {
+          isAuthenticated.value = false;
+          reconnecting.value = false;
+          error.value = 'Your session expired. Please sign in again to continue chatting.';
+          eventSource.close();
+        }
+      } catch (recheckErr) {
+        console.error('[LiveChat] Failed to re-check auth:', recheckErr);
+      } finally {
+        authCheckInFlight.value = false;
+      }
+    };
+
     eventSource.addEventListener('error', async (e) => {
       console.error('[LiveChat] SSE error:', e);
       isConnected.value = false;
@@ -177,11 +201,11 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
       if (isAuthenticated.value === false) {
         error.value = 'Please sign in to participate in live chat.';
       } else {
-        // Small reconnect indicator instead of red error bar
         reconnecting.value = true;
         error.value = '';
+        void revalidateSession();
       }
-      // EventSource will auto-reconnect
+      // EventSource will auto-reconnect unless we close it above
     });
 
     isLoading.value = false;
@@ -361,10 +385,18 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
         ))}
       </div>
 
-      {/* Error Message */}
+      {/* Error/Auth Message */}
       {error.value && (
-        <div class="px-4 py-2 bg-red-50 border-t border-red-200 text-red-600 text-sm">
-          {error.value}
+        <div class="px-4 py-3 bg-gradient-to-r from-amber-50 to-orange-50 border-t border-orange-200 text-orange-800 text-sm flex items-center justify-between gap-3">
+          <span>{error.value}</span>
+          {isAuthenticated.value === false && (
+            <a 
+              href={loginHref} 
+              class="px-4 py-1.5 bg-orange-600 text-white text-xs font-semibold rounded-full hover:bg-orange-700 transition-colors whitespace-nowrap"
+            >
+              Sign In
+            </a>
+          )}
         </div>
       )}
 
@@ -399,7 +431,7 @@ export const LiveChat = component$<LiveChatProps>(({ streamId, currentUserId, cu
         {isAuthenticated.value === false ? (
           <div class="text-xs text-red-600 mt-2 flex items-center gap-2">
             <span>You are not signed in.</span>
-            <a href={`/auth/login?redirect=${encodeURIComponent(loc.url.pathname)}`} class="text-orange-600 font-semibold underline">Sign in to chat</a>
+            <a href={loginHref} class="text-orange-600 font-semibold underline">Sign in to chat</a>
           </div>
         ) : (
           <div class="text-xs text-gray-500 mt-2">

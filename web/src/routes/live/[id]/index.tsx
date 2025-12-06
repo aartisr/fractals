@@ -1,13 +1,9 @@
 import { component$, useStyles$, useSignal, useVisibleTask$, $ } from '@builder.io/qwik';
 import { routeLoader$, type DocumentHead, Link } from '@builder.io/qwik-city';
 import { payload } from '~/utils/payload-sdk';
-import { getSessionFromAuthService } from '~/utils/auth-service';
 import { VideoJSPlayer } from '~/components/ui/VideoJSPlayer';
 import { LiveChat } from '~/components/ui/LiveChat';
-import { SuperchatInput } from '~/components/ui/SuperchatInput';
-import { LiveViewerCount } from '~/components/ui/LiveViewerCount';
-import { useViewerSession } from '~/hooks/useViewerSession';
-import { LuArrowLeft, LuCalendar, LuShare2, LuHeart } from '@qwikest/icons/lucide';
+import { LuArrowLeft, LuCalendar, LuShare2, LuHeart, LuSignalHigh } from '@qwikest/icons/lucide';
 
 type TranscriptSegment = {
   id: number;
@@ -63,48 +59,6 @@ export const useLiveStreamLoader = routeLoader$(async ({ params, status }) => {
   return safe;
 });
 
-/**
- * Server-side data loader for current user info (optional)
- */
-export const useCurrentUserLoader = routeLoader$(async ({ cookie, env }) => {
-  const sessionToken = cookie.get('nandi_session_token')?.value;
-
-  if (!sessionToken) {
-    return null; // Not authenticated, return null
-  }
-
-  const authBase = env.get('AUTH_BASE');
-  const clientId = env.get('AUTH_CLIENT_ID');
-
-  if (!authBase || !clientId) {
-    console.warn('[User Loader] Auth configuration missing');
-    return null;
-  }
-
-  try {
-    // Get user data from auth service
-    const data = await getSessionFromAuthService(sessionToken, clientId, authBase);
-    const user = data.user;
-
-    if (user && !user.is_anonymous) {
-      // Construct full name from first_name and last_name
-      const firstName = user.first_name || '';
-      const lastName = user.last_name || '';
-      const fullName = `${firstName} ${lastName}`.trim() || user.email || 'Devotee';
-
-      return {
-        id: user.id,
-        name: fullName,
-        email: user.email,
-      };
-    }
-  } catch (err) {
-    console.warn('[User Loader] Failed to get user info:', err);
-  }
-
-  return null;
-});
-
 const styles = `
   .frame {
     position: relative;
@@ -128,6 +82,51 @@ const styles = `
     z-index: -1;
     border-radius: 18px;
   }
+
+  .live-badge {
+    padding: 0.5rem 1.25rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 0 20px rgba(239,68,68,0.5), 0 4px 12px rgba(0,0,0,0.3);
+    animation: liveGlow 2s ease-in-out infinite;
+  }
+
+  .live-badge__pulse {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: white;
+    animation: livePulse 1s ease-in-out infinite;
+  }
+
+  @keyframes livePulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.3);
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes liveGlow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(239,68,68,0.5), 0 4px 12px rgba(0,0,0,0.3);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(239,68,68,0.7), 0 4px 16px rgba(0,0,0,0.4);
+    }
+  }
 `;
 
 export default component$(() => {
@@ -135,17 +134,6 @@ export default component$(() => {
 
   // --- Datos del stream ---
   const stream = useLiveStreamLoader();
-  const currentUser = useCurrentUserLoader();
-
-  // --- Viewer tracking ---
-  // Track viewers for ALL streams (live, ended, idle) to get view counts
-  const isLive = stream.value?.status === 'live';
-
-  const viewerSession = useViewerSession({
-    streamId: stream.value?.id ? String(stream.value.id) : '',
-    viewerName: currentUser.value?.name || 'Anonymous',
-    enabled: !!stream.value?.id, // Track ALL streams (live and VOD)
-  });
 
   if (!stream.value) {
     return (
@@ -165,6 +153,8 @@ export default component$(() => {
     );
   }
 
+  const isLive = stream.value.status === 'live';
+
   return (
     <div class="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50">
       {/* Back Navigation */}
@@ -181,75 +171,68 @@ export default component$(() => {
       </div>
 
       {/* Main Content */}
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Stream Title and Status - Full width */}
-        <div class="flex items-start justify-between gap-4">
-          <div class="flex-1">
-            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-3 break-words">
-              {stream.value.title}
-            </h1>
-            <div class="flex items-center gap-2 flex-wrap">
-              <span
-                class={`inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full ${
-                  stream.value.status === 'live'
-                    ? 'bg-red-100 text-red-700'
-                    : stream.value.status === 'ended'
-                    ? 'bg-gray-100 text-gray-700'
-                    : 'bg-blue-100 text-blue-700'
-                }`}
-              >
-                {stream.value.status === 'live' && <span class="w-2 h-2 bg-red-600 rounded-full animate-pulse" />}
-                {String(stream.value.status).toUpperCase()}
-              </span>
-              {stream.value.visibility && (
-                <span
-                  class={`px-3 py-1 text-sm font-semibold rounded-full ${
-                    stream.value.visibility === 'public'
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  {stream.value.visibility}
-                </span>
-              )}
-              {/* Live Viewer Count */}
-              {stream.value.status === 'live' && stream.value.id && (
-                <LiveViewerCount streamId={String(stream.value.id)} />
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
-            class="p-3 rounded-full hover:bg-orange-100 transition-colors"
-            aria-label="Add to favorites"
-          >
-            <LuHeart class="w-6 h-6 text-orange-600" />
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Video Player, Transcript, and Info */}
           <div class="lg:col-span-2 space-y-6">
+            {/* Title Above Player */}
+            <div class="flex items-start gap-4">
+              <div class="flex-1">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+                  {stream.value.title}
+                </h1>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span
+                    class={`inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full ${
+                      stream.value.status === 'live'
+                        ? 'bg-red-100 text-red-700'
+                        : stream.value.status === 'ended'
+                        ? 'bg-gray-100 text-gray-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}
+                  >
+                    {stream.value.status === 'live' && <span class="w-2 h-2 bg-red-600 rounded-full animate-pulse" />}
+                    {String(stream.value.status).toUpperCase()}
+                  </span>
+                  {stream.value.date && (
+                    <span class="inline-flex items-center gap-1 text-sm text-gray-600">
+                      <LuCalendar class="w-4 h-4" />
+                      {new Date(stream.value.date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Video Player */}
             <div class="relative">
               {/* Live Badge */}
               {isLive && (
-                <div class="absolute top-8 left-8 z-10 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-orange-500 text-white text-sm font-semibold rounded-full shadow-xl">
-                  <span class="w-2 h-2 bg-white rounded-full animate-pulse" />
-                  LIVE NOW
+                <div class="absolute top-8 left-8 z-10">
+                  <div class="live-badge shadow-2xl">
+                    <span class="live-badge__pulse" aria-hidden="true" />
+                    <LuSignalHigh class="w-4 h-4" />
+                    Live Now
+                  </div>
                 </div>
               )}
 
               {stream.value.masterPlaylistUrl ? (
                 <div class="aspect-video bg-black rounded-lg overflow-hidden">
                   <VideoJSPlayer
-                    masterPlaylistUrl={stream.value.masterPlaylistUrl}
-                    isLive={isLive}
+                    sources={[
+                      {
+                        src: stream.value.masterPlaylistUrl,
+                        type: 'application/x-mpegURL',
+                      },
+                    ]}
                     poster={stream.value.thumbnailUrl}
                     autoplay={isLive}
                     muted={false}
-                    onPlay$={viewerSession.handlePlay}
-                    onPause$={viewerSession.handlePause}
                   />
                 </div>
               ) : (
@@ -270,22 +253,27 @@ export default component$(() => {
 
             {/* Stream Info */}
             <div class="p-6 bg-white/50 rounded-xl">
-              {/* Metadata */}
-              <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-6">
-                {stream.value.date && (
-                  <div class="flex items-center gap-1">
-                    <LuCalendar class="w-4 h-4" />
-                    <span>
-                      {new Date(stream.value.date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: 'numeric',
-                        minute: 'numeric',
-                      })}
+              <div class="flex items-start justify-between gap-4 mb-4">
+                <div class="flex-1 flex items-center gap-3">
+                  {stream.value.visibility && (
+                    <span
+                      class={`px-3 py-1 text-sm font-semibold rounded-full ${
+                        stream.value.visibility === 'public'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {stream.value.visibility}
                     </span>
-                  </div>
-                )}
+                  )}
+                </div>
+                <button
+                  type="button"
+                  class="p-3 rounded-full hover:bg-orange-100 transition-colors"
+                  aria-label="Add to favorites"
+                >
+                  <LuHeart class="w-6 h-6 text-orange-600" />
+                </button>
               </div>
 
               {/* Description */}
@@ -319,17 +307,14 @@ export default component$(() => {
             </div>
           </div>
 
-          {/* Right Column: Live Chat & Superchat */}
-          <div class="lg:col-span-1 space-y-4">
+          {/* Right Column: Live Chat */}
+          <div class="lg:col-span-1">
             {stream.value?.id && (
-              <>
-                <LiveChat
-                  streamId={String(stream.value.id)}
-                  currentUserId={currentUser.value?.id || 'anonymous'}
-                  currentUserName={currentUser.value?.name || 'Anonymous'}
-                />
-                <SuperchatInput streamId={String(stream.value.id)} />
-              </>
+              <LiveChat
+                streamId={String(stream.value.id)}
+                currentUserId="anonymous"
+                currentUserName="Anonymous"
+              />
             )}
           </div>
         </div>
@@ -426,10 +411,7 @@ const TranscriptSnapshot = component$<{ streamId: number }>(({ streamId }) => {
     });
 
     eventSource.addEventListener('error', (e) => {
-      // Only log if we were previously connected (indicates actual error, not initial connection)
-      if (isConnected.value) {
-        console.warn('[Transcription] SSE connection lost, reconnecting...');
-      }
+      console.error('[Transcription] SSE error:', e);
       isConnected.value = false;
       if (!isCancelled) {
         error.value = 'Connection lost, reconnecting...';
@@ -541,14 +523,11 @@ const TranscriptSnapshot = component$<{ streamId: number }>(({ streamId }) => {
 
 function formatMs(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600)
-    .toString()
-    .padStart(2, '0');
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const minutes = Math.floor(totalSeconds / 60)
     .toString()
     .padStart(2, '0');
   const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-  return `${hours}:${minutes}:${seconds}`;
+  return `${minutes}:${seconds}`;
 }
 
 function getLanguageName(code: string): string {

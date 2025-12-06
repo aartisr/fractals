@@ -4,6 +4,7 @@
  */
 
 import type { RequestHandler } from '@builder.io/qwik-city';
+import { normalizeReturnTo } from '~/utils/auth-service';
 
 export const onGet: RequestHandler = async ({ query, cookie, redirect, env }) => {
   const authCode = query.get('auth_code');
@@ -51,8 +52,11 @@ export const onGet: RequestHandler = async ({ query, cookie, redirect, env }) =>
       maxAge: 60 * 60 * 24, // 1 day
     });
 
-    // Redirect to home page after successful authentication
-    throw redirect(302, baseUrl);
+    const normalizedReturnTo = normalizeReturnTo(query.get('returnTo'), baseUrl);
+    const destination = new URL(normalizedReturnTo, baseUrl).toString();
+
+    // Redirect to the intended page (always keep same origin)
+    throw redirect(302, destination);
   } catch (error) {
     console.error('Authentication error:', error);
     throw redirect(302, env.get('AUTH_ERROR_URL') || '/');

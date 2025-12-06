@@ -138,6 +138,59 @@ export function buildSignInUrl(
 }
 
 /**
+ * Append a relative return path to the redirect URI so we can remember where to send
+ * the user after authentication.
+ */
+export function appendReturnToParam(redirectUri: string, returnTo: string): string {
+  if (!returnTo) {
+    return redirectUri;
+  }
+
+  try {
+    const url = new URL(redirectUri);
+    url.searchParams.set('returnTo', returnTo);
+    return url.toString();
+  } catch (err) {
+    console.error('[auth-service] Failed to append returnTo to redirect URI:', err);
+    return redirectUri;
+  }
+}
+
+/**
+ * Normalize a returnTo string to a relative path that stays within this host.
+ */
+export function normalizeReturnTo(returnTo: string | null | undefined, baseUrl: string): string {
+  if (!returnTo) {
+    return '/';
+  }
+
+  try {
+    const base = new URL(baseUrl);
+    const target = new URL(returnTo, base);
+    if (target.origin !== base.origin) {
+      return '/';
+    }
+    return `${target.pathname}${target.search}`;
+  } catch (err) {
+    console.error('[auth-service] Failed to normalize returnTo path:', err);
+    return '/';
+  }
+}
+
+/**
+ * Build a login link that preserves the desired return path.
+ */
+export function buildLoginUrl(returnTo?: string): string {
+  if (!returnTo) {
+    return '/auth/login';
+  }
+
+  const params = new URLSearchParams();
+  params.set('returnTo', returnTo);
+  return `/auth/login?${params.toString()}`;
+}
+
+/**
  * Build Google OAuth sign-in URL
  */
 export function buildGoogleSignInUrl(

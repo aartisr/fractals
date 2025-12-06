@@ -1,5 +1,5 @@
 import { component$, Slot, useVisibleTask$, useSignal, $ } from '@builder.io/qwik';
-import { useLocation } from '@builder.io/qwik-city';
+import { Link, useLocation } from '@builder.io/qwik-city';
 import {
   LuMenu,
   LuSearch,
@@ -21,11 +21,21 @@ import {
   LuStar
 } from '@qwikest/icons/lucide';
 import { useUserContext } from './plugin@auth';
+import { buildLoginUrl } from '../utils/auth-service';
+
+const legalLinks = [
+  { label: 'Privacy Policy', slug: 'privacy-policy' },
+  { label: 'Terms of Service', slug: 'terms-of-service' },
+  { label: 'Cookie Policy', slug: 'cookie-policy' },
+  { label: 'Contact Us', slug: 'contact-us' },
+];
 
 export default component$(() => {
   const loc = useLocation();
   const sidebarOpen = useSignal(true); // Abierto por defecto
   const userContext = useUserContext(); // Auth context from plugin
+  const location = useLocation();
+  const loginHref = buildLoginUrl(`${location.url.pathname}${location.url.search}`);
 
   // Handler para cerrar sidebar en mobile al hacer click en un link
   const closeSidebarOnMobile = $(() => {
@@ -263,7 +273,7 @@ export default component$(() => {
             </div>
           ) : (
             <a
-              href={`/auth/login?redirect=${encodeURIComponent(loc.url.pathname)}`}
+              href={loginHref}
               onClick$={closeSidebarOnMobile}
               class="w-full flex items-center justify-center gap-1.5 px-2 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-orange-300/50 hover:scale-105 transition-all duration-300"
               style="animation: pulse-glow 3s ease-in-out infinite;"
@@ -345,11 +355,15 @@ export default component$(() => {
             <div>
               <h4 class="font-serif font-medium text-gray-900 mb-4">Legal</h4>
               <ul class="space-y-3 text-sm">
-                {['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Contact Us'].map((item) => (
-                  <li key={item}>
-                    <a href="#" class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2">
-                      <span class="w-1 h-1 bg-orange-400 rounded-full"></span>{item}
-                    </a>
+                {legalLinks.map((item) => (
+                  <li key={item.slug}>
+                    <Link
+                      href={`/legal/${item.slug}`}
+                      class="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-2"
+                    >
+                      <span class="w-1 h-1 bg-orange-400 rounded-full"></span>
+                      {item.label}
+                    </Link>
                   </li>
                 ))}
               </ul>

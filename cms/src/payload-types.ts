@@ -73,6 +73,7 @@ export interface Config {
     videos: Video;
     'live-streams': LiveStream;
     'live-chat': LiveChat;
+    'legal-pages': LegalPage;
     'live-stream-views': LiveStreamView;
     'video-views': VideoView;
     transcripts: Transcript;
@@ -97,6 +98,7 @@ export interface Config {
     videos: VideosSelect<false> | VideosSelect<true>;
     'live-streams': LiveStreamsSelect<false> | LiveStreamsSelect<true>;
     'live-chat': LiveChatSelect<false> | LiveChatSelect<true>;
+    'legal-pages': LegalPagesSelect<false> | LegalPagesSelect<true>;
     'live-stream-views': LiveStreamViewsSelect<false> | LiveStreamViewsSelect<true>;
     'video-views': VideoViewsSelect<false> | VideoViewsSelect<true>;
     transcripts: TranscriptsSelect<false> | TranscriptsSelect<true>;
@@ -310,6 +312,50 @@ export interface LiveChat {
    * Soft delete timestamp - set by moderators
    */
   deletedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legal-pages".
+ */
+export interface LegalPage {
+  id: number;
+  title: string;
+  /**
+   * Used for the `/legal/{slug}` URL.
+   */
+  slug: string;
+  /**
+   * Short description to use in listings or meta description fallback.
+   */
+  summary?: string | null;
+  /**
+   * Main page content rendered on the website.
+   */
+  body: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  /**
+   * Optional value for the page title meta tag.
+   */
+  metaTitle?: string | null;
+  /**
+   * Optional description for the meta description tag.
+   */
+  metaDescription?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -879,6 +925,10 @@ export interface PayloadLockedDocument {
         value: number | LiveChat;
       } | null)
     | ({
+        relationTo: 'legal-pages';
+        value: number | LegalPage;
+      } | null)
+    | ({
         relationTo: 'live-stream-views';
         value: number | LiveStreamView;
       } | null)
@@ -1063,6 +1113,20 @@ export interface LiveChatSelect<T extends boolean = true> {
   stream?: T;
   type?: T;
   deletedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legal-pages_select".
+ */
+export interface LegalPagesSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  summary?: T;
+  body?: T;
+  metaTitle?: T;
+  metaDescription?: T;
   updatedAt?: T;
   createdAt?: T;
 }

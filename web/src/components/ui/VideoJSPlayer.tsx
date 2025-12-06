@@ -217,6 +217,25 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
     });
 
     player.ready(() => {
+      console.log("Video.js player ready");
+
+      // Check if VHS is available
+      try {
+        const tech = player.tech({ IWillNotUseThisInPlugins: true });
+        console.log("VHS available:", !!(tech && (tech as any).vhs));
+      } catch (e) {
+        console.log("Could not check VHS availability");
+      }
+
+      // Check PIP support and hide button if not available (Firefox workaround)
+      const pipSupported = 'pictureInPictureEnabled' in document && (document as any).pictureInPictureEnabled;
+      if (!pipSupported) {
+        const controlBar = (player as any).controlBar;
+        if (controlBar && controlBar.pictureInPictureToggle) {
+          controlBar.pictureInPictureToggle.hide();
+        }
+      }
+
       // Add mouse time display (controlBar is not typed in Player, so use type assertion)
       const controlBar = (player as any).controlBar;
       if (
@@ -320,20 +339,41 @@ export const VideoJSPlayer = component$<VideoJSPlayerProps>((props) => {
             overflow: hidden;
             background-color: #000;
             box-shadow: 0 8px 24px rgba(0,0,0,.35);
+            position: relative;
           }
 
-          .vjs-custom-theme .vjs-big-play-button {
-            border-radius: 999px;
-            width: 80px;
-            height: 80px;
-            background: rgba(19,26,42,.55);
+          /* Force center the big play button */
+          .video-js .vjs-big-play-button,
+          .video-js.vjs-custom-theme .vjs-big-play-button,
+          .vjs-big-play-button {
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            right: auto !important;
+            bottom: auto !important;
+            margin: 0 !important;
+            margin-top: -45px !important;
+            margin-left: -45px !important;
+            width: 90px !important;
+            height: 90px !important;
+            border-radius: 50% !important;
+            background: rgba(19,26,42,.65) !important;
             backdrop-filter: blur(6px);
-            border: none;
-            transition: transform .15s ease;
+            border: none !important;
+            transition: transform .15s ease, box-shadow .15s ease;
+            box-shadow: 0 12px 30px rgba(0,0,0,.45);
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 5 !important;
+            transform: none !important;
           }
 
-          .vjs-custom-theme .vjs-big-play-button:hover {
-            transform: scale(1.06);
+          .video-js .vjs-big-play-button:hover,
+          .video-js.vjs-custom-theme .vjs-big-play-button:hover {
+            transform: scale(1.06) !important;
+            margin-top: -45px !important;
+            margin-left: -45px !important;
           }
 
           .vjs-custom-theme .vjs-control-bar {

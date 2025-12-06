@@ -16,6 +16,8 @@ import { TranscriptSegments } from './collections/TranscriptSegments'
 import { LiveStreamViews } from './collections/LiveStreamViews'
 import { VideoViews } from './collections/VideoViews'
 import { AudioChunks } from './collections/AudioChunks'
+import { LegalPages } from './collections/LegalPages'
+
 // Paystack-based payment collections
 import { SubscriptionPlans } from './collections/SubscriptionPlans'
 import { UserSubscriptions } from './collections/UserSubscriptions'
@@ -71,6 +73,7 @@ export default buildConfig({
     Videos,
     LiveStreams,
     LiveChat,
+    LegalPages,
     LiveStreamViews,
     VideoViews,
     Transcripts,

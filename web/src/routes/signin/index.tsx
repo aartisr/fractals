@@ -1,10 +1,13 @@
 import { component$ } from '@builder.io/qwik';
-import { DocumentHead, Link } from '@builder.io/qwik-city';
+import { DocumentHead, Link, useLocation } from '@builder.io/qwik-city';
 import { LuMail, LuLock, LuArrowLeft, LuLogIn } from '@qwikest/icons/lucide';
 import { useUserContext } from '~/routes/plugin@auth';
+import { buildLoginUrl } from '~/utils/auth-service';
 
 export default component$(() => {
   const userContext = useUserContext();
+  const location = useLocation();
+  const loginHref = buildLoginUrl(`${location.url.pathname}${location.url.search}`);
 
   // Si ya está autenticado, mostrar mensaje
   if (userContext.value.isAuthenticated) {
@@ -66,7 +69,7 @@ export default component$(() => {
           {/* Email/Password Sign In */}
           <div class="space-y-4">
             <a
-              href="/auth/login"
+              href={loginHref}
               class="w-full flex justify-center items-center gap-3 py-4 px-4 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium rounded-xl hover:shadow-2xl hover:scale-105 transition-all duration-300"
             >
               <LuMail class="w-5 h-5" />
@@ -93,7 +96,7 @@ export default component$(() => {
           {/* Social Sign In */}
           <div class="space-y-3">
             <a
-              href="/auth/login"
+              href={loginHref}
               class="w-full inline-flex justify-center items-center gap-3 py-4 px-4 border-2 border-orange-200 rounded-xl bg-white hover:bg-orange-50 hover:border-orange-400 transition-all duration-300"
             >
               <svg class="w-5 h-5" viewBox="0 0 24 24">
@@ -113,7 +116,7 @@ export default component$(() => {
           {/* Sign Up Link */}
           <p class="mt-6 text-center text-sm text-gray-600">
             New to divine wisdom?{' '}
-            <a href="/auth/login" class="font-medium text-orange-600 hover:text-orange-700 transition-colors font-serif">
+            <a href={loginHref} class="font-medium text-orange-600 hover:text-orange-700 transition-colors font-serif">
               Create sacred account
             </a>
           </p>

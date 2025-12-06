@@ -6,11 +6,14 @@
 import { component$ } from '@builder.io/qwik';
 import { useLocation, type DocumentHead } from '@builder.io/qwik-city';
 import { LuAlertCircle, LuHome, LuRefreshCw } from '@qwikest/icons/lucide';
+import { buildLoginUrl } from '~/utils/auth-service';
 
 export default component$(() => {
   const loc = useLocation();
   const error = loc.url.searchParams.get('error') || 'unknown_error';
   const errorDescription = loc.url.searchParams.get('error_description') || 'An unexpected error occurred during authentication.';
+  const returnTo = loc.url.searchParams.get('returnTo') || '/';
+  const loginHref = buildLoginUrl(returnTo);
 
   return (
     <div class="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 flex items-center justify-center p-4">
@@ -39,7 +42,7 @@ export default component$(() => {
           {/* Action Buttons */}
           <div class="flex flex-col sm:flex-row gap-3 w-full">
             <a
-              href="/auth/login"
+              href={loginHref}
               class="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-amber-600 transition-all shadow-md hover:shadow-lg"
             >
               <LuRefreshCw class="w-5 h-5" />
