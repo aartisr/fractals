@@ -6,15 +6,12 @@
  */
 
 import type { PayloadRequest } from 'payload'
+import { isMockAuthEnabled, getMockAuthUser, type MockAuthUser } from '../../../shared/mock-auth'
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'https://auth.kailasa.ai'
 const AUTH_CLIENT_ID = process.env.AUTH_CLIENT_ID || ''
 
-export interface AuthUser {
-  id: string
-  email: string
-  first_name?: string
-  last_name?: string
+export interface AuthUser extends MockAuthUser {
   role?: string
 }
 
@@ -109,6 +106,18 @@ export async function validateToken(token: string): Promise<AuthUser | null> {
  * ```
  */
 export async function authenticateRequest(req: PayloadRequest): Promise<AuthUser | null> {
+  // Check if mock auth is enabled (for local development)
+  if (isMockAuthEnabled()) {
+    const mockUser = getMockAuthUser()
+    const authUser: AuthUser = {
+      ...mockUser,
+      role: 'admin',
+    }
+    req.user = authUser as any
+    return authUser
+  }
+
+  // PRODUCTION MODE - Use real auth service
   const token = getSessionToken(req)
 
   if (!token) {
@@ -180,15 +189,7 @@ export async function authenticateAndSetUser(req: PayloadRequest): Promise<boole
  * }
  * ```
  */
-export async function requireAuth(req: PayloadRequest): Promise<AuthUser> {
+export async function requireAuth(req: PayloadRequest): Promise<AuthUser | null> {
   const user = await authenticateRequest(req)
-
-  if (!user) {
-    throw Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  // Also set req.user for compatibility
-  req.user = user as any
-
   return user
 }

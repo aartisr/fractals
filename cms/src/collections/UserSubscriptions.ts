@@ -6,6 +6,10 @@ export const UserSubscriptions: CollectionConfig = {
     useAsTitle: 'id',
     defaultColumns: ['user', 'plan', 'status', 'next_payment_date'],
     group: 'Payments & Subscriptions',
+    preview: async (data: Record<string, unknown>) => {
+      const planName = (data.plan as Record<string, unknown>)?.name || 'Unknown Plan'
+      return `${data.user} - ${planName}`
+    },
   },
   access: {
     read: ({ req: { user } }) => {
@@ -36,6 +40,11 @@ export const UserSubscriptions: CollectionConfig = {
       type: 'relationship',
       relationTo: 'subscription-plans',
       required: true,
+      admin: {
+        position: 'sidebar',
+        description: 'Click to view plan details and features',
+        allowCreate: false,
+      },
     },
     // Paystack details
     {

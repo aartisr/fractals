@@ -4,9 +4,10 @@
  */
 
 import type { RequestHandler } from '@builder.io/qwik-city';
+import { getEnv } from '~/utils/env';
 
-export const onGet: RequestHandler = async ({ json, env }) => {
-  const authBase = env.get('AUTH_BASE');
+export const onGet: RequestHandler = async ({ json }) => {
+  const authBase = getEnv('AUTH_BASE');
 
   if (!authBase) {
     json(500, {

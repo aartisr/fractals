@@ -75,11 +75,17 @@ export const SubscriptionPlans: CollectionConfig = {
           name: 'feature',
           type: 'text',
           required: true,
+          admin: {
+            width: '100%',
+            placeholder: 'e.g., Unlimited access, Priority support, etc.',
+          },
         },
       ],
       admin: {
         description: 'List of features included in this plan',
+        initCollapsed: false,
       },
+      minRows: 1,
     },
     {
       name: 'is_active',

@@ -8,12 +8,13 @@
  */
 
 import type { RequestHandler } from '@builder.io/qwik-city';
+import { getEnv } from '~/utils/env';
 
 type ContentType = 'livestream' | 'video';
 
-export const onGet: RequestHandler = async ({ query, env, error, json }) => {
-  const cmsApiUrl = env.get('CMS_URL') || 'http://localhost:3000';
-  const cmsApiKey = env.get('CMS_API_KEY');
+export const onGet: RequestHandler = async ({ query, error, json }) => {
+  const cmsApiUrl = getEnv('CMS_URL', 'http://localhost:3000');
+  const cmsApiKey = getEnv('CMS_API_KEY');
 
   if (!cmsApiKey) {
     console.error('[Viewer Count] CMS_API_KEY not set');

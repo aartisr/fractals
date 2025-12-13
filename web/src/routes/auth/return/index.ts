@@ -14,6 +14,7 @@
 
 import type { RequestHandler } from "@builder.io/qwik-city";
 import { exchangeAuthCode, normalizeReturnTo } from "~/utils/auth-service";
+import { getEnv } from "~/utils/env";
 
 function extractAuthFromRedirectTo(redirectTo: string, baseUrl: string) {
     try {
@@ -55,7 +56,7 @@ export const onGet: RequestHandler = async ({ url, cookie, redirect, env, error 
     }
 
     const redirectTo = url.searchParams.get("redirect_to");
-    const baseUrl = env.get("BASE_URL") || "http://localhost:5173";
+    const baseUrl = getEnv("BASE_URL", "http://localhost:5173");
 
     // Determine final destination, preferring returnTo, then redirect_to, then default
     const destination = normalizeReturnTo(returnTo || redirectTo, baseUrl) || "/playlists";
@@ -65,9 +66,9 @@ export const onGet: RequestHandler = async ({ url, cookie, redirect, env, error 
         throw error(400, "Missing auth_code parameter");
     }
 
-    const authBase = env.get("AUTH_BASE");
-    const clientId = env.get("AUTH_CLIENT_ID");
-    const clientSecret = env.get("AUTH_CLIENT_SECRET");
+    const authBase = getEnv("AUTH_BASE");
+    const clientId = getEnv("AUTH_CLIENT_ID");
+    const clientSecret = getEnv("AUTH_CLIENT_SECRET");
 
     if (!authBase || !clientId || !clientSecret) {
         throw error(500, "Auth configuration missing");

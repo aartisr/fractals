@@ -4,9 +4,10 @@
  */
 
 import type { RequestHandler } from '@builder.io/qwik-city';
+import { getEnv } from '~/utils/env';
 
-export const onPost: RequestHandler = async ({ request, json, env, cookie }) => {
-  const chatServiceUrl = env.get('CHAT_SERVICE_URL');
+export const onPost: RequestHandler = async ({ request, json, cookie }) => {
+  const chatServiceUrl = getEnv('CHAT_SERVICE_URL');
   const token = cookie.get('nandi_session_token')?.value;
 
   if (!chatServiceUrl) {

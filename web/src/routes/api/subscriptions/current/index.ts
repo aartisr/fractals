@@ -6,17 +6,21 @@
  */
 
 import type { RequestHandler } from '@builder.io/qwik-city';
+import { getEnv } from '~/utils/env';
 
-export const onGet: RequestHandler = async ({ json, error, env, cookie }) => {
-  const cmsUrl = env.get('CMS_URL') || 'http://cms:3000';
+export const onGet: RequestHandler = async ({ json, error, cookie }) => {
+  const cmsUrl = getEnv('CMS_URL', 'http://localhost:3000');
 
   try {
     const sessionToken = cookie.get('nandi_session_token')?.value;
 
-    const headers: HeadersInit = {};
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
 
+    // Pass session token if available, otherwise CMS will use mock auth
     if (sessionToken) {
-      headers['Cookie'] = `nandi_session_token=${sessionToken}`;
+      headers['Authorization'] = `Bearer ${sessionToken}`;
     }
 
     const response = await fetch(`${cmsUrl}/api/subscriptions/current`, {

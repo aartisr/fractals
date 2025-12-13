@@ -21,12 +21,13 @@ interface VerificationResult {
   message: string;
   reference?: string;
   status?: string;
+  metadata?: any;
 }
 
 /**
  * Server-side verification of payment
  */
-export const useVerificationLoader = routeLoader$<VerificationResult>(async ({ query, env, redirect }) => {
+export const useVerificationLoader = routeLoader$<VerificationResult>(async ({ query, request }) => {
   const reference = query.get('reference');
 
   if (!reference) {
@@ -36,49 +37,73 @@ export const useVerificationLoader = routeLoader$<VerificationResult>(async ({ q
     };
   }
 
-  const paystackSecretKey = env.get('PAYSTACK_SECRET_KEY');
-
-  if (!paystackSecretKey) {
-    console.error('[Subscription Callback] PAYSTACK_SECRET_KEY not configured');
-    return {
-      success: false,
-      message: 'Payment verification not configured',
-      reference,
-    };
-  }
-
   try {
-    // Verify transaction with Paystack
+    console.log('[Subscription Callback] Verifying payment reference:', reference);
+
+    // Get the origin from the request
+    const origin = new URL(request.url).origin;
+    
+    // Verify transaction via web app API endpoint
     const verifyResponse = await fetch(
-      `https://api.paystack.co/transaction/verify/${reference}`,
+      `${origin}/api/subscriptions/verify`,
       {
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${paystackSecretKey}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ reference }),
       }
     );
 
-    if (!verifyResponse.ok) {
-      throw new Error('Failed to verify payment');
-    }
-
     const verifyData = await verifyResponse.json();
+    console.log('[Subscription Callback] Verification response:', verifyData);
 
-    if (verifyData.status && verifyData.data.status === 'success') {
-      // Payment successful - webhook will create the subscription
-      // Redirect to subscriptions page after a brief delay to show success
+    if (verifyData.success && verifyData.status === 'success') {
+      // Payment successful - trigger subscription creation via webhook
+      const metadata = verifyData.metadata || {}
+      
+      if (metadata.user_id && metadata.plan_id) {
+        try {
+          console.log('[Subscription Callback] Creating subscription via webhook with metadata:', metadata);
+          
+          const webhookResponse = await fetch(
+            `${origin}/api/subscriptions/webhook`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                reference,
+                user_id: metadata.user_id,
+                plan_id: metadata.plan_id,
+              }),
+            }
+          )
+          
+          const webhookData = await webhookResponse.json()
+          console.log('[Subscription Callback] Webhook response:', webhookData)
+        } catch (webhookError) {
+          console.error('[Subscription Callback] Webhook error:', webhookError)
+          // Don't fail the flow if webhook fails - subscription might have been created
+        }
+      } else {
+        console.warn('[Subscription Callback] Missing metadata.user_id or metadata.plan_id')
+      }
+
       return {
         success: true,
         message: 'Payment successful! Your subscription is being activated...',
         reference,
         status: 'success',
+        metadata,
       };
     } else {
       return {
         success: false,
-        message: 'Payment verification failed. Please contact support.',
+        message: verifyData.message || 'Payment verification failed. Please contact support.',
         reference,
-        status: verifyData.data.status,
+        status: verifyData.status,
       };
     }
   } catch (error) {
@@ -124,12 +149,10 @@ export default component$(() => {
               <p class="text-xs text-gray-500 mt-4">
                 You will be redirected automatically in a few seconds...
               </p>
+              
+              {/* Auto-redirect script */}
+              <script dangerouslySetInnerHTML={`setTimeout(function() { window.location.href = '/subscriptions'; }, 3000);`} />
             </div>
-
-            {/* Auto-redirect after 3 seconds */}
-            <script>
-              {`setTimeout(() => { window.location.href = '/subscriptions'; }, 3000);`}
-            </script>
           </>
         ) : (
           <>

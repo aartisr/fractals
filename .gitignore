@@ -15,3 +15,5 @@ build/
 .vscode/
 .idea/
 opencode.json
+nithyananda-tv.sql
+docker-compose-postgres.yml

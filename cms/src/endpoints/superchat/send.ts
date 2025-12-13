@@ -1,5 +1,5 @@
 import type { PayloadHandler } from 'payload'
-import { requireAuth } from '@/utils/auth'
+import { requireAuthenticatedUser, handleAuthError } from '@/utils/subscription-auth'
 
 /**
  * POST /api/superchat/send
@@ -17,31 +17,31 @@ import { requireAuth } from '@/utils/auth'
  * - charge: Paystack charge response
  */
 export const sendSuperchat: PayloadHandler = async (req) => {
-  const user = await requireAuth(req)
-  const { payload } = req
-  const body = req.json ? await req.json() : {}
-  const { streamId, message, amount, paymentMethodId } = body
-
-  // Validate input
-  if (!streamId || !message || !amount) {
-    return Response.json({
-      error: 'streamId, message, and amount are required',
-    }, { status: 400 })
-  }
-
-  if (amount < 100) {
-    return Response.json({
-      error: 'Minimum superchat amount is $1.00 (100 cents)',
-    }, { status: 400 })
-  }
-
-  if (message.length > 500) {
-    return Response.json({
-      error: 'Message must be 500 characters or less',
-    }, { status: 400 })
-  }
-
   try {
+    const user = requireAuthenticatedUser(req)
+    const { payload } = req
+    const body = req.json ? await req.json() : {}
+    const { streamId, message, amount, paymentMethodId } = body
+
+    // Validate input
+    if (!streamId || !message || !amount) {
+      return Response.json({
+        error: 'streamId, message, and amount are required',
+      }, { status: 400 })
+    }
+
+    if (amount < 100) {
+      return Response.json({
+        error: 'Minimum superchat amount is $1.00 (100 cents)',
+      }, { status: 400 })
+    }
+
+    if (message.length > 500) {
+      return Response.json({
+        error: 'Message must be 500 characters or less',
+      }, { status: 400 })
+    }
+    try {
     // Verify stream exists (allow superchats on any stream regardless of status)
     const stream = await payload.findByID({
       collection: 'live-streams',
@@ -263,11 +263,15 @@ export const sendSuperchat: PayloadHandler = async (req) => {
       superchat,
       charge: paystackData.data,
     }, { status: 200 })
-  } catch (error: any) {
+    } catch (innerError) {
+      console.error('Error sending superchat:', innerError)
+      throw innerError
+    }
+  } catch (error) {
     console.error('Error sending superchat:', error)
-    return Response.json({
+    return handleAuthError(error) || Response.json({
       error: 'Failed to send superchat',
-      message: error.message,
+      message: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 })
   }
 }

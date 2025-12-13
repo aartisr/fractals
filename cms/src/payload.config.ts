@@ -31,6 +31,8 @@ import { PaymentEvents } from './collections/PaymentEvents'
 import { createSubscription } from './endpoints/subscriptions/create'
 import { cancelSubscription } from './endpoints/subscriptions/cancel'
 import { getCurrentSubscription } from './endpoints/subscriptions/current'
+import { verifySubscription } from './endpoints/subscriptions/verify'
+import { subscriptionWebhook } from './endpoints/subscriptions/webhook'
 import { setupPayment } from './endpoints/superchat/setup-payment'
 import { verifySetup } from './endpoints/superchat/verify-setup'
 import { sendSuperchat } from './endpoints/superchat/send'
@@ -118,6 +120,16 @@ export default buildConfig({
       path: '/subscriptions/current',
       method: 'get',
       handler: getCurrentSubscription,
+    },
+    {
+      path: '/subscriptions/verify',
+      method: 'post',
+      handler: verifySubscription,
+    },
+    {
+      path: '/subscriptions/webhook',
+      method: 'post',
+      handler: subscriptionWebhook,
     },
     // Superchat endpoints
     {

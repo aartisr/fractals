@@ -7,7 +7,7 @@ const CMS_URL = (globalThis as any)?.process?.env?.CMS_URL || import.meta.env?.C
 const CMS_API_KEY = (globalThis as any)?.process?.env?.CMS_API_KEY || import.meta.env?.CMS_API_KEY
 
 export const payload = new PayloadSDK<GeneratedTypes>({
-  baseURL: `${CMS_URL?.replace(/\/$/, '') || 'http://localhost:3001'}/api`,
+  baseURL: `${CMS_URL?.replace(/\/$/, '') || 'http://localhost:3000'}/api`,
   baseInit: CMS_API_KEY ? {
     headers: {
       'Authorization': `users API-Key ${CMS_API_KEY}`,

@@ -619,6 +619,9 @@ export interface UserSubscription {
    * User ID from auth.kailasa.ai
    */
   user: string;
+  /**
+   * Click to view plan details and features
+   */
   plan: number | SubscriptionPlan;
   /**
    * SUB_xxx from Paystack

@@ -1,5 +1,5 @@
 import type { PayloadHandler } from 'payload'
-import { requireAuth } from '@/utils/auth'
+import { requireAuthenticatedUser, handleAuthError } from '@/utils/subscription-auth'
 
 /**
  * GET /api/superchat/payment-methods
@@ -9,10 +9,10 @@ import { requireAuth } from '@/utils/auth'
  * - paymentMethods: array of payment method objects
  */
 export const getPaymentMethods: PayloadHandler = async (req) => {
-  const user = await requireAuth(req)
-  const { payload } = req
-
   try {
+    const user = await requireAuthenticatedUser(req)
+    const { payload } = req
+
     const paymentMethods = await payload.find({
       collection: 'user-payment-methods',
       where: {
@@ -48,11 +48,11 @@ export const getPaymentMethods: PayloadHandler = async (req) => {
     return Response.json({
       paymentMethods: transformedMethods,
     }, { status: 200 })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error getting payment methods:', error)
-    return Response.json({
+    return handleAuthError(error) || Response.json({
       error: 'Failed to get payment methods',
-      message: error.message,
+      message: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 })
   }
 }
@@ -69,16 +69,16 @@ export const getPaymentMethods: PayloadHandler = async (req) => {
  * - paymentMethod: updated payment method object
  */
 export const setDefaultPaymentMethod: PayloadHandler = async (req) => {
-  const user = await requireAuth(req)
-  const { payload } = req
-  const body = req.json ? await req.json() : {}
-  const { paymentMethodId } = body
-
-  if (!paymentMethodId) {
-    return Response.json({ error: 'paymentMethodId is required' }, { status: 400 })
-  }
-
   try {
+    const user = await requireAuthenticatedUser(req)
+    const { payload } = req
+    const body = req.json ? await req.json() : {}
+    const { paymentMethodId } = body
+
+    if (!paymentMethodId) {
+      return Response.json({ error: 'paymentMethodId is required' }, { status: 400 })
+    }
+
     const paymentMethod = await payload.findByID({
       collection: 'user-payment-methods',
       id: paymentMethodId,
@@ -102,11 +102,11 @@ export const setDefaultPaymentMethod: PayloadHandler = async (req) => {
       success: true,
       paymentMethod: updatedPaymentMethod,
     }, { status: 200 })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error setting default payment method:', error)
-    return Response.json({
+    return handleAuthError(error) || Response.json({
       error: 'Failed to set default payment method',
-      message: error.message,
+      message: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 })
   }
 }
@@ -119,18 +119,18 @@ export const setDefaultPaymentMethod: PayloadHandler = async (req) => {
  * - success: boolean
  */
 export const deletePaymentMethod: PayloadHandler = async (req) => {
-  const user = await requireAuth(req)
-  const { payload } = req
-  // Extract ID from URL path
-  const url = new URL(req.url || '', 'http://localhost')
-  const pathParts = url.pathname.split('/')
-  const id = pathParts[pathParts.length - 1]
-
-  if (!id) {
-    return Response.json({ error: 'Payment method ID is required' }, { status: 400 })
-  }
-
   try {
+    const user = await requireAuthenticatedUser(req)
+    const { payload } = req
+    // Extract ID from URL path
+    const url = new URL(req.url || '', 'http://localhost')
+    const pathParts = url.pathname.split('/')
+    const id = pathParts[pathParts.length - 1]
+
+    if (!id) {
+      return Response.json({ error: 'Payment method ID is required' }, { status: 400 })
+    }
+
     const paymentMethod = await payload.findByID({
       collection: 'user-payment-methods',
       id: id,
@@ -154,11 +154,11 @@ export const deletePaymentMethod: PayloadHandler = async (req) => {
     return Response.json({
       success: true,
     }, { status: 200 })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error deleting payment method:', error)
-    return Response.json({
+    return handleAuthError(error) || Response.json({
       error: 'Failed to delete payment method',
-      message: error.message,
+      message: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 })
   }
 }

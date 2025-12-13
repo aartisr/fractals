@@ -4,8 +4,9 @@
  */
 
 import type { RequestHandler } from '@builder.io/qwik-city';
+import { getEnv } from '~/utils/env';
 
-export const onGet: RequestHandler = async ({ query, json, env }) => {
+export const onGet: RequestHandler = async ({ query, json }) => {
   const streamId = query.get('streamId');
 
   if (!streamId) {
@@ -18,8 +19,7 @@ export const onGet: RequestHandler = async ({ query, json, env }) => {
 
   try {
     // Get transcription service URL from environment
-    const base =
-      env.get('TRANSCRIPTION_API_URL') ||
+    const base = getEnv('TRANSCRIPTION_API_URL') ||
       'http://live-translation-api:8090';
 
     const url = `${base}/transcription/${encodeURIComponent(streamId)}/languages`;

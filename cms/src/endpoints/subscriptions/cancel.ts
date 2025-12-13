@@ -1,5 +1,11 @@
 import type { PayloadHandler } from 'payload'
-import { requireAuth } from '@/utils/auth'
+import {
+  requireAuthenticatedUser,
+  requireSubscriptionOwnership,
+  getUserActiveSubscription,
+  validatePaystackCode,
+  handleAuthError,
+} from '@/utils/subscription-auth'
 
 /**
  * POST /api/subscriptions/cancel
@@ -13,59 +19,24 @@ import { requireAuth } from '@/utils/auth'
  * - subscription: updated subscription object
  */
 export const cancelSubscription: PayloadHandler = async (req) => {
-  const user = await requireAuth(req)
-  const { payload } = req
-  const body = req.json ? await req.json() : {}
-  const { subscriptionId } = body
-
   try {
+    const user = await requireAuthenticatedUser(req)
+    const body = req.json ? await req.json() : {}
+    const { subscriptionId } = body
+
     let subscription
 
     if (subscriptionId) {
-      // Fetch specific subscription
-      subscription = await payload.findByID({
-        collection: 'user-subscriptions',
-        id: subscriptionId,
-      })
-
-      // Verify ownership
-      if (subscription.user !== String(user.id)) {
-        return Response.json({ error: 'Not authorized to cancel this subscription' }, { status: 403 })
-      }
+      // Verify user owns this subscription
+      subscription = await requireSubscriptionOwnership(req, subscriptionId)
     } else {
-      // Find user's active subscription
-      const subscriptions = await payload.find({
-        collection: 'user-subscriptions',
-        where: {
-          and: [
-            {
-              user: {
-                equals: String(user.id),
-              },
-            },
-            {
-              status: {
-                in: ['active', 'non-renewing'],
-              },
-            },
-          ],
-        },
-        limit: 1,
-      })
-
-      if (subscriptions.docs.length === 0) {
-        return Response.json({ error: 'No active subscription found' }, { status: 404 })
-      }
-
-      subscription = subscriptions.docs[0]
+      // Get user's active subscription
+      subscription = await getUserActiveSubscription(req)
     }
 
-    if (!subscription.paystack_subscription_code) {
-      return Response.json(
-        { error: 'Invalid subscription: missing Paystack subscription code' },
-        { status: 400 }
-      )
-    }
+    // Validate Paystack subscription code
+    validatePaystackCode(subscription)
+    const { payload } = req
 
     // Cancel subscription on Paystack
     const paystackResponse = await fetch(`https://api.paystack.co/subscription/disable`, {
@@ -116,12 +87,6 @@ export const cancelSubscription: PayloadHandler = async (req) => {
     })
   } catch (error: any) {
     console.error('Error cancelling subscription:', error)
-    return Response.json(
-      {
-        error: 'Failed to cancel subscription',
-        message: error.message,
-      },
-      { status: 500 }
-    )
+    return handleAuthError(error)
   }
 }

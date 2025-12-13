@@ -6,9 +6,10 @@
  */
 
 import type { RequestHandler } from '@builder.io/qwik-city';
+import { getEnv } from '~/utils/env';
 
-export const onGet: RequestHandler = async ({ json, error, env }) => {
-  const cmsUrl = env.get('CMS_URL') || 'http://cms:3000';
+export const onGet: RequestHandler = async ({ json, error, cookie }) => {
+  const cmsUrl = getEnv('CMS_URL', 'http://cms:3000');
 
   try {
     const response = await fetch(`${cmsUrl}/api/superchat/tiers`, {

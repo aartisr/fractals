@@ -1,5 +1,5 @@
 import type { PayloadHandler } from 'payload'
-import { requireAuth } from '@/utils/auth'
+import { requireAuthenticatedUser, handleAuthError } from '@/utils/subscription-auth'
 
 /**
  * POST /api/superchat/setup-payment
@@ -11,11 +11,11 @@ import { requireAuth } from '@/utils/auth'
  * - reference: Transaction reference
  */
 export const setupPayment: PayloadHandler = async (req) => {
-  const user = await requireAuth(req)
-  const { payload } = req
-
   try {
-    // Get user email from auth.kailasa.ai (now available from requireAuth)
+    const user = await requireAuthenticatedUser(req)
+    const { payload } = req
+
+    // Get user email from auth.kailasa.ai (now available from requireAuthenticatedUser)
     const userEmail = user.email || `user-${user.id}@kailasa.ai`
 
     // Initialize a $1.00 (100 cents) authorization transaction
@@ -61,11 +61,11 @@ export const setupPayment: PayloadHandler = async (req) => {
       access_code: paystackData.data.access_code,
       reference: paystackData.data.reference,
     }, { status: 200 })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error setting up payment method:', error)
-    return Response.json({
+    return handleAuthError(error) || Response.json({
       error: 'Failed to initialize payment method setup',
-      message: error.message,
+      message: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 })
   }
 }

@@ -1,5 +1,5 @@
 import type { PayloadHandler } from 'payload'
-import { requireAuth } from '@/utils/auth'
+import { getUserActiveSubscription, handleAuthError } from '@/utils/subscription-auth'
 
 /**
  * GET /api/subscriptions/current
@@ -10,38 +10,8 @@ import { requireAuth } from '@/utils/auth'
  * - null if no active subscription
  */
 export const getCurrentSubscription: PayloadHandler = async (req) => {
-  const user = await requireAuth(req)
-  const { payload } = req
-
   try {
-    // Find user's active subscription
-    const subscriptions = await payload.find({
-      collection: 'user-subscriptions',
-      where: {
-        and: [
-          {
-            user: {
-              equals: String(user.id),
-            },
-          },
-          {
-            status: {
-              in: ['active', 'non-renewing'],
-            },
-          },
-        ],
-      },
-      limit: 1,
-      depth: 2, // Include plan details
-    })
-
-    if (subscriptions.docs.length === 0) {
-      return Response.json({
-        subscription: null,
-      }, { status: 200 })
-    }
-
-    const subscription = subscriptions.docs[0]
+    const subscription = await getUserActiveSubscription(req)
 
     // Optionally fetch latest status from Paystack
     if (subscription.paystack_subscription_code) {
@@ -76,6 +46,7 @@ export const getCurrentSubscription: PayloadHandler = async (req) => {
 
           // Update if changed
           if (localStatus !== subscription.status) {
+            const { payload } = req
             await payload.update({
               collection: 'user-subscriptions',
               id: subscription.id,
@@ -95,14 +66,12 @@ export const getCurrentSubscription: PayloadHandler = async (req) => {
       }
     }
 
-    return Response.json({
-      subscription,
-    }, { status: 200 })
+    return Response.json({ subscription }, { status: 200 })
   } catch (error: any) {
-    console.error('Error getting current subscription:', error)
-    return Response.json({
-      error: 'Failed to get current subscription',
-      message: error.message,
-    }, { status: 500 })
+    // No active subscription is not an error - return null
+    if (error.message?.includes('No active subscription')) {
+      return Response.json({ subscription: null }, { status: 200 })
+    }
+    return handleAuthError(error)
   }
 }

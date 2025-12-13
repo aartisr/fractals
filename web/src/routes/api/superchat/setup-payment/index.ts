@@ -7,9 +7,10 @@
  */
 
 import type { RequestHandler } from '@builder.io/qwik-city';
+import { getEnv } from '~/utils/env';
 
-export const onPost: RequestHandler = async ({ request, json, error, env, cookie }) => {
-  const cmsUrl = env.get('CMS_URL') || 'http://cms:3000';
+export const onPost: RequestHandler = async ({ request, json, error, cookie }) => {
+  const cmsUrl = getEnv('CMS_URL', 'http://cms:3000');
 
   try {
     // Get the request body

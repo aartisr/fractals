@@ -3,6 +3,7 @@ import { routeLoader$, type DocumentHead, Link, useLocation } from '@builder.io/
 import { payload } from '~/utils/payload-sdk';
 import { SubscriptionCard } from '~/components/ui/SubscriptionCard';
 import { LuArrowLeft, LuCheck } from '@qwikest/icons/lucide';
+import { getEnv } from '~/utils/env';
 
 interface SubscriptionPlan {
   id: string;
@@ -19,13 +20,15 @@ interface SubscriptionPlan {
 
 interface CurrentSubscription {
   id: string;
+  user?: string;
   plan: {
     id: string;
     name: string;
+    interval?: string;
   };
   status: string;
-  interval: 'monthly' | 'yearly';
   current_period_end?: string;
+  paystack_subscription_code?: string;
 }
 
 /**
@@ -82,28 +85,35 @@ export const useSubscriptionPlansLoader = routeLoader$(async () => {
 /**
  * Loader to check current user's subscription status
  */
-export const useCurrentSubscriptionLoader = routeLoader$<CurrentSubscription | null>(async ({ cookie, env }) => {
-  const sessionToken = cookie.get('nandi_session_token')?.value;
-
-  if (!sessionToken) {
-    return null; // Not authenticated
-  }
-
-  const cmsApiUrl = env.get('PUBLIC_CMS_API_URL') || 'http://localhost:3000';
-
+export const useCurrentSubscriptionLoader = routeLoader$<CurrentSubscription | null>(async ({ cookie, request }) => {
   try {
-    const response = await fetch(`${cmsApiUrl}/api/subscriptions/current`, {
-      headers: {
-        'Authorization': `Bearer ${sessionToken}`,
-      },
+    const origin = new URL(request.url).origin;
+    const sessionToken = cookie.get('nandi_session_token')?.value;
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    // Pass session token if available, otherwise CMS will use mock auth
+    if (sessionToken) {
+      headers['Authorization'] = `Bearer ${sessionToken}`;
+    }
+
+    // Call the web app's current subscription proxy endpoint
+    const response = await fetch(`${origin}/api/subscriptions/current`, {
+      method: 'GET',
+      headers,
     });
 
     if (response.ok) {
       const data = await response.json();
+      console.log('[Subscriptions Loader] Current subscription:', data);
       return (data.subscription as CurrentSubscription) || null;
+    } else {
+      console.warn('[Subscriptions Loader] Failed to fetch subscription:', response.status);
     }
   } catch (err) {
-    console.warn('[Subscriptions] Failed to get current subscription:', err);
+    console.warn('[Subscriptions Loader] Failed to get current subscription:', err);
   }
 
   return null;

@@ -1,5 +1,5 @@
 import type { PayloadHandler } from 'payload'
-import { requireAuth } from '@/utils/auth'
+import { requireAuthenticatedUser, handleAuthError } from '@/utils/subscription-auth'
 
 /**
  * POST /api/subscriptions/create
@@ -14,24 +14,42 @@ import { requireAuth } from '@/utils/auth'
  * - reference: Transaction reference
  */
 export const createSubscription: PayloadHandler = async (req) => {
-  const user = await requireAuth(req)
-  const { payload } = req
-  const body = req.json ? await req.json() : {}
-  const { planId } = body
-
-  if (!planId) {
-    return Response.json({ error: 'planId is required' }, { status: 400 })
-  }
-
   try {
-    // Fetch the plan
-    const plan = await payload.findByID({
-      collection: 'subscription-plans',
-      id: planId,
-    })
+    const user = await requireAuthenticatedUser(req)
+    const { payload } = req
+    const body = req.json ? await req.json() : {}
+    const { planId } = body
+
+    if (!planId) {
+      throw {
+        status: 400,
+        message: 'planId is required',
+      }
+    }
+
+    console.log('[subscriptions/create] Authenticated user:', { id: user.id, email: user.email })
+    
+    // Fetch the plan using REST API instead of payload.findByID
+    const planNumId = Number(planId)
+    console.log('[subscriptions/create] Fetching plan:', planNumId)
+    
+    const planResponse = await fetch(`http://localhost:3000/api/subscription-plans/${planNumId}`)
+    if (!planResponse.ok) {
+      console.error('[subscriptions/create] Plan fetch failed:', planResponse.status)
+      throw {
+        status: 404,
+        message: 'Plan not found',
+      }
+    }
+    
+    const plan = await planResponse.json()
+    console.log('[subscriptions/create] Found plan:', plan)
 
     if (!plan || !plan.is_active) {
-      return Response.json({ error: 'Plan not found or inactive' }, { status: 404 })
+      throw {
+        status: 404,
+        message: 'Plan not found or inactive',
+      }
     }
 
     // Check if user already has an active subscription
@@ -54,36 +72,47 @@ export const createSubscription: PayloadHandler = async (req) => {
     })
 
     if (existingSubscriptions.docs.length > 0) {
-      return Response.json(
-        {
-          error: 'User already has an active subscription',
-          subscription: existingSubscriptions.docs[0],
-        },
-        { status: 400 }
-      )
+      throw {
+        status: 400,
+        message: 'User already has an active subscription',
+      }
     }
 
     // Get user email from auth.kailasa.ai (now available from requireAuth)
     const userEmail = user.email || `user-${user.id}@kailasa.ai`
+    const userId = String(user.id)
+
+    console.log('[subscriptions/create] User details:', {
+      userId,
+      userEmail,
+      planId,
+      planName: plan.name,
+      planAmount: plan.amount,
+    })
 
     // Initialize Paystack transaction
+    const paystackBody: any = {
+      email: userEmail,
+      amount: plan.amount, // Amount already in cents for USD
+      metadata: {
+        user_id: userId,
+        plan_id: planId,
+        plan_name: plan.name,
+      },
+      callback_url: `${process.env.WEB_URL}/subscription/callback`,
+    }
+    
+    // Don't include plan code for now - requires setup in Paystack dashboard
+    // In production, validate that the plan code exists in Paystack before using it
+    console.log('[subscriptions/create] Creating standalone Paystack transaction (no plan code)')
+
     const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        email: userEmail,
-        amount: plan.amount, // Amount already in cents for USD
-        plan: plan.paystack_plan_code,
-        metadata: {
-          user_id: user.id,
-          plan_id: planId,
-          plan_name: plan.name,
-        },
-        callback_url: `${process.env.WEB_URL}/subscription/callback`,
-      }),
+      body: JSON.stringify(paystackBody),
     })
 
     const paystackData = await paystackResponse.json()
@@ -112,12 +141,6 @@ export const createSubscription: PayloadHandler = async (req) => {
     })
   } catch (error: any) {
     console.error('Error creating subscription:', error)
-    return Response.json(
-      {
-        error: 'Failed to initialize subscription',
-        message: error.message,
-      },
-      { status: 500 }
-    )
+    return handleAuthError(error)
   }
 }

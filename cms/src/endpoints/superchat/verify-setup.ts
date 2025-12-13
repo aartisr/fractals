@@ -1,5 +1,5 @@
 import type { PayloadHandler } from 'payload'
-import { requireAuth } from '@/utils/auth'
+import { requireAuthenticatedUser, handleAuthError } from '@/utils/subscription-auth'
 
 /**
  * GET /api/superchat/verify-setup?reference={reference}
@@ -10,10 +10,10 @@ import { requireAuth } from '@/utils/auth'
  * - authorization: saved payment method details
  */
 export const verifySetup: PayloadHandler = async (req) => {
-  const user = await requireAuth(req)
-  const { payload } = req
-
   try {
+    const user = await requireAuthenticatedUser(req)
+    const { payload } = req
+
     const url = new URL(req.url || '', 'http://localhost')
     const reference = url.searchParams.get('reference')
 
@@ -137,12 +137,12 @@ export const verifySetup: PayloadHandler = async (req) => {
         is_default: paymentMethod.is_default,
       },
     }, { status: 200 })
-  } catch (error: any) {
-    console.error('Error verifying payment method setup:', error)
-    return Response.json({
+  } catch (error) {
+    console.error('Error verifying payment setup:', error)
+    return handleAuthError(error) || Response.json({
       success: false,
-      error: 'Failed to verify payment method setup',
-      message: error.message,
+      error: 'Failed to verify payment setup',
+      message: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 })
   }
 }
