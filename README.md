@@ -800,7 +800,7 @@ A: Use the built-in save buttons, or screenshot comparative analysis plots.
 
 ---
 
-## 🙏 Acknowledgments & AI Usage Disclosure
+## 🙏 Acknowledgments
 
 This project stands on the shoulders of giants:
 
