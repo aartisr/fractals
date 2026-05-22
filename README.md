@@ -800,7 +800,7 @@ A: Use the built-in save buttons, or screenshot comparative analysis plots.
 
 ---
 
-## 🙏 Acknowledgments
+## 🙏 Acknowledgments & AI Usage Disclosure
 
 This project stands on the shoulders of giants:
 
@@ -825,6 +825,23 @@ This project stands on the shoulders of giants:
 - All contributors, issue reporters, and users who make this project better
 - Medical imaging researchers sharing datasets and validations
 - Educators using this tool to inspire the next generation
+
+### AI Usage Disclosure
+
+This project was **independently conceptualized and designed by me**, including the core idea, research direction, mathematical exploration of fractals, system architecture, user interface, and overall application flow.
+
+AI tools were used only to support the development process. Specifically, I used **GitHub Copilot within Visual Studio Code** to improve coding efficiency. As part of the GitHub Developer Program, I have access to a limited number of AI-assisted suggestions, which I used selectively.
+
+AI assistance included:
+- Suggesting code for routine or repetitive tasks  
+- Helping identify and debug errors  
+- Supporting validation and verification of logic  
+- Recommending minor optimizations and improvements  
+- Assisting with clearer documentation and comments  
+
+All AI-generated suggestions were **carefully reviewed, tested, and modified by me** before inclusion in the project. I ensured full understanding and ownership of all implemented code.
+
+AI tools were used strictly as **productivity aids** and not for generating the project idea, research, or design decisions. The originality and intellectual contribution of this project are entirely my own.
 
 ---
 
